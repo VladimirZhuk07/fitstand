@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Фитстенд</title>
+<meta name="description" content="Подбор велосипеда под рост и пропорции райдера">
+<meta name="theme-color" content="#ECEEEB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1214" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: split workbench — rider measurements on the left, a live side-view bike on a 10 cm grid on the right; on phones the drawing pins to the top while you move sliders */
+:root{
+  --bg:#ECEEEB; --panel:#F8F9F7; --sunk:#E3E6E2; --ink:#15181B; --muted:#5D656B; --line:#D0D4CF;
+  --grid:rgba(21,24,27,.075); --accent:#2B47D6; --measure:#B5621A;
+  --figure:#3A4148; --rider:#2A3036; --metal:#8C949A; --tyre:#1D2023; --rim:#B6BCC0;
+  --good:#2B7F4E; --warn:#A97608; --bad:#BF3B33;
+  --frame:#2B47D6;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1214; --panel:#161A1D; --sunk:#1D2226; --ink:#E5E8EA; --muted:#949CA2; --line:#2B3136;
+    --grid:rgba(229,232,234,.06); --accent:#8296FF; --measure:#EE9F4C;
+    --figure:#B5BDC3; --rider:#C3CAD0; --metal:#78828A; --tyre:#3B4247; --rim:#5B646B;
+    --good:#55BE80; --warn:#E2B23E; --bad:#F06C61; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1214; --panel:#161A1D; --sunk:#1D2226; --ink:#E5E8EA; --muted:#949CA2; --line:#2B3136;
+  --grid:rgba(229,232,234,.06); --accent:#8296FF; --measure:#EE9F4C;
+  --figure:#B5BDC3; --rider:#C3CAD0; --metal:#78828A; --tyre:#3B4247; --rim:#5B646B;
+  --good:#55BE80; --warn:#E2B23E; --bad:#F06C61; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.wrap{max-width:1380px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(18px,env(safe-area-inset-top,0px));padding-bottom:max(36px,env(safe-area-inset-bottom,0px))}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 28px;margin-bottom:16px}
+.brand h1{margin:0;font-family:var(--f-display);font-stretch:125%;font-weight:800;font-size:clamp(26px,3vw,36px);line-height:1;letter-spacing:-.01em;text-wrap:balance}
+.brand h1 b{color:var(--frame);transition:color .35s}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px;max-width:60ch}
+.presets{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.presets > span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;transition:border-color .2s,color .2s}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.chip .n{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* main grid */
+.app{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-areas:"rider stage" "rider result" "ride result";grid-template-rows:auto auto 1fr;gap:16px 20px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.dock{display:contents}
+.tabs{display:none}
+.p-rider{grid-area:rider;padding:16px 18px 18px;display:grid;gap:16px}
+.p-ride{grid-area:ride;padding:16px 18px 18px;display:grid;gap:18px}
+.riderbody{display:grid;gap:18px}
+.stage{grid-area:stage;position:relative;overflow:hidden}
+.p-result{grid-area:result;padding:18px 20px 20px;min-width:0}
+.stage-status{display:none}
+
+/* person figure */
+.figrow{display:flex;gap:14px;align-items:flex-end}
+#person{display:block;height:300px;width:auto;aspect-ratio:132/234;max-width:46%;flex:none}
+.readouts{display:grid;gap:12px;flex:1;min-width:0;padding-bottom:6px}
+.ro dt{font-size:12px;color:var(--muted)}
+.ro dd{margin:0;font-family:var(--f-mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.ro dd small{font-size:12px;color:var(--muted);font-weight:400;margin-left:2px}
+.ro .hint{font-size:11.5px;color:var(--muted)}
+.f-fig{fill:var(--figure)} .s-fig{stroke:var(--figure);fill:none;stroke-linecap:round}
+#person .dim{transition:opacity .2s}
+#person .dim line,#person .dim path{stroke:var(--measure);fill:none;vector-effect:non-scaling-stroke;stroke-width:1.2}
+#person .dim text{fill:var(--measure);font-family:var(--f-mono);font-size:9.5px;font-weight:500}
+#person .dim .lead{stroke-dasharray:3 3;opacity:.7}
+#person[data-active] .dim{opacity:.25}
+#person[data-active="H"] .dim[data-k="H"],#person[data-active="I"] .dim[data-k="I"],
+#person[data-active="A"] .dim[data-k="A"],#person[data-active="W"] .dim[data-k="W"]{opacity:1}
+
+/* controls */
+.group{display:grid;gap:14px}
+.gtitle{font-family:var(--f-display);font-stretch:118%;font-weight:700;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.gtitle::after{content:"";flex:1;height:1px;background:var(--line)}
+.field{display:grid;gap:4px}
+.fhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fhead label{font-size:14px;font-weight:500}
+.fhead label small{color:var(--muted);font-weight:400;font-size:12px;margin-left:4px}
+.fhead output{font-family:var(--f-mono);font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fhead output span{color:var(--muted);font-size:12px;font-weight:400;margin-left:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--accent) var(--p),var(--line) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);margin-top:-8px;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:transform .15s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+input[type=range]:focus{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 28%,transparent)}
+input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 28%,transparent)}
+
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:3px;background:var(--sunk);border-radius:10px}
+.seg button{border:0;background:transparent;padding:8px 4px;border-radius:7px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;transition:background .2s,color .2s}
+.seg button[aria-checked="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.seg button:focus-visible,.chip:focus-visible,.sw button:focus-visible,.play:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.viewrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.sw{display:flex;gap:9px}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);background:var(--c);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.sw button[aria-checked="true"]{box-shadow:0 0 0 2px var(--ink)}
+.toggles{display:flex;gap:14px}
+.switch{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;cursor:pointer;user-select:none}
+.switch input{appearance:none;-webkit-appearance:none;width:32px;height:18px;border-radius:999px;background:var(--line);position:relative;margin:0;cursor:pointer;transition:background .2s}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(14px)}
+.switch input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* stage */
+#bike{display:block;width:100%;height:clamp(360px,62vh,680px);touch-action:pan-y}
+.stage-tag{position:absolute;top:13px;left:16px;font-family:var(--f-display);font-stretch:120%;font-weight:700;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);pointer-events:none}
+.stage-tag b{color:var(--ink)}
+.stage-note{position:absolute;bottom:10px;left:16px;font-family:var(--f-mono);font-size:11px;color:var(--muted);pointer-events:none}
+.play{position:absolute;top:9px;right:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer}
+.play svg{width:14px;height:14px;fill:var(--ink)}
+#bike .s-frame{stroke:var(--frame);transition:stroke .35s} #bike .f-frame{fill:var(--frame);transition:fill .35s}
+#bike .s-ink{stroke:var(--ink)} #bike .f-ink{fill:var(--ink)}
+#bike .s-metal{stroke:var(--metal)} #bike .f-metal{fill:var(--metal)}
+#bike .s-tyre{stroke:var(--tyre)} #bike .s-rim{stroke:var(--rim)}
+#bike .s-rider{stroke:var(--rider)} #bike .f-rider{fill:var(--rider)}
+#bike .f-panel{fill:var(--panel)}
+#bike line,#bike path,#bike polyline{stroke-linecap:round;stroke-linejoin:round}
+#bike .nf{fill:none}
+#bike .grid-line{stroke:var(--grid);fill:none;vector-effect:non-scaling-stroke;stroke-width:1}
+#bike .ground{stroke:var(--line);vector-effect:non-scaling-stroke;stroke-width:1.5}
+#bike .shadow{fill:var(--ink);opacity:.06}
+#bike .dims line,#bike .dims path{stroke:var(--measure);vector-effect:non-scaling-stroke;stroke-width:1.25;fill:none}
+#bike .dims .dash{stroke-dasharray:4 4;opacity:.75}
+#bike .dims text{fill:var(--measure);font-family:var(--f-mono);font-weight:500}
+#bike .dims .halo{stroke:var(--panel);stroke-width:4px;paint-order:stroke;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+#bike.no-rider .rider{display:none}
+#bike.no-dims .dims{display:none}
+
+/* specs */
+.summary{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.sizebig{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.sizebig .n{font-family:var(--f-display);font-stretch:125%;font-weight:800;font-size:46px;line-height:.95;letter-spacing:-.01em}
+.sizebig .sub{color:var(--muted);font-size:13.5px;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.status{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:999px;font-size:13.5px;font-weight:500;border:1px solid currentColor}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.status[data-s="good"]{color:var(--good)} .status[data-s="warn"]{color:var(--warn)} .status[data-s="bad"]{color:var(--bad)}
+.ladder{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:16px}
+.rung{text-align:center;padding:7px 0 6px;border-radius:8px;border:1px solid var(--line);font-family:var(--f-display);font-stretch:115%;font-weight:600;font-size:13px;color:var(--muted);position:relative;transition:background .25s,color .25s,border-color .25s}
+.rung small{display:block;font-family:var(--f-mono);font-stretch:normal;font-weight:400;font-size:10.5px;margin-top:1px}
+.rung.near{border-style:dashed;border-color:var(--muted);color:var(--ink)}
+.rung.on{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:0 24px;margin:18px 0 0}
+.m{border-top:1px solid var(--line);padding:10px 0 12px;display:grid;gap:1px;min-width:0}
+.m dt{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.m dt::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line);flex:none}
+.m[data-s="good"] dt::before{background:var(--good)} .m[data-s="warn"] dt::before{background:var(--warn)} .m[data-s="bad"] dt::before{background:var(--bad)}
+.m dd{margin:0;font-family:var(--f-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
+.m dd span{font-size:12px;color:var(--muted);font-weight:400;margin-left:3px}
+.m .hint{font-size:12px;color:var(--muted)}
+.foot{margin:14px 0 0;color:var(--muted);font-size:12.5px;max-width:78ch}
+
+@media (max-width:880px) and (min-width:701px){
+  .app{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"stage stage" "rider ride" "rider result";grid-template-rows:auto auto 1fr}
+}
+/* phone: one screen — drawing on top, tabbed controls below */
+@media (max-width:700px){
+  html,body{height:100%}
+  body{overscroll-behavior:none}
+  .wrap{height:100dvh;display:flex;flex-direction:column;padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
+  .top{margin-bottom:8px}
+  .brand h1{font-size:22px}
+  .brand p{display:none}
+  .app{flex:1;min-height:0;display:flex;flex-direction:column;align-items:stretch;gap:10px}
+  .stage{flex:1 1 0;min-height:190px}
+  #bike{position:absolute;inset:0;height:100%}
+  .stage-note{display:none}
+  .stage-tag{top:11px;left:12px}
+  .stage-status{display:inline-flex;align-items:center;gap:6px;position:absolute;left:10px;top:34px;padding:4px 10px 4px 8px;border-radius:999px;background:var(--panel);border:1px solid currentColor;font-size:12.5px;font-weight:500;pointer-events:none}
+  .stage-status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .stage-status[data-s="good"]{color:var(--good)} .stage-status[data-s="warn"]{color:var(--warn)} .stage-status[data-s="bad"]{color:var(--bad)}
+  .dock{display:flex;flex-direction:column;flex:none;height:clamp(300px,48dvh,440px);background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);flex:none}
+  .tabs button{border:0;background:transparent;padding:11px 4px 10px;font-weight:600;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+  .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+  .tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+  .tp{border:0;border-radius:0;background:transparent;flex:1;min-height:0;overflow:auto;padding:12px 16px 16px;-webkit-overflow-scrolling:touch}
+  .tp:not(.on){display:none}
+  .p-rider{gap:10px}
+  .riderbody{grid-template-columns:84px minmax(0,1fr);gap:12px;align-items:start}
+  .figrow{display:block}
+  #person{width:100%;height:auto;max-width:none}
+  .readouts{display:none}
+  .p-rider .gtitle{display:none}
+  .p-rider .group{gap:6px}
+  .field{gap:0}
+  .chip{padding:4px 12px}
+  .sizebig .n{font-size:34px}
+  .summary{gap:8px 12px}
+  .ladder{margin-top:12px;gap:4px}
+  .rung small{display:none}
+  .metrics{grid-template-columns:1fr 1fr;gap:0 14px;margin-top:10px}
+  .m{padding:7px 0 8px}
+  .m dd{font-size:17px}
+  .m .hint{display:none}
+  .foot{font-size:11.5px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Фит<b>стенд</b></h1>
+      <p>Задайте рост и пропорции — велосипед подстроит размер рамы, седло и кокпит.</p>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="panel stage" aria-label="Велосипед">
+      <svg id="bike" role="img" aria-label="Велосипед, подобранный под райдера" preserveAspectRatio="xMidYMid meet" viewBox="-900 -1900 2400 2200">
+        <defs>
+          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path class="grid-line" d="M100 0H0V100"/></pattern>
+        </defs>
+        <g id="scene"></g>
+      </svg>
+      <div class="stage-tag" id="stageTag"></div>
+      <button class="play" id="play" aria-label="Пауза"></button>
+      <div class="stage-note">сетка 10 см · размеры в мм</div>
+      <div class="stage-status" id="stageStatus" data-s="good"></div>
+    </section>
+
+    <div class="dock">
+      <div class="tabs" role="tablist" aria-label="Разделы">
+        <button role="tab" id="tab-rider" aria-controls="p-rider" aria-selected="true">Райдер</button>
+        <button role="tab" id="tab-ride" aria-controls="p-ride" aria-selected="false">Посадка</button>
+        <button role="tab" id="tab-result" aria-controls="p-result" aria-selected="false">Итог</button>
+      </div>
+
+      <section class="panel tp p-rider on" id="p-rider" role="tabpanel" aria-labelledby="tab-rider">
+        <div class="presets" role="group" aria-label="Примеры райдеров">
+          <span>Пример, см</span>
+          <button class="chip" data-preset="0" aria-pressed="false"><span class="n">160</span></button>
+          <button class="chip" data-preset="1" aria-pressed="true"><span class="n">178</span></button>
+          <button class="chip" data-preset="2" aria-pressed="false"><span class="n">195</span></button>
+        </div>
+        <div class="riderbody">
+          <div class="figrow">
+            <svg id="person" viewBox="-66 -228 132 234" role="img" aria-label="Силуэт райдера с размерами"></svg>
+            <dl class="readouts">
+              <div class="ro"><dt>Индекс ноги</dt><dd id="roLeg">—</dd><div class="hint">обычно 44–48 %</div></div>
+              <div class="ro"><dt>Торс, оценка</dt><dd id="roTorso">—</dd><div class="hint">от тазобедр. сустава до плеча</div></div>
+              <div class="ro"><dt>Седло по LeMond</dt><dd id="roSaddle">—</dd><div class="hint">0,883 × длина шва</div></div>
+            </dl>
+          </div>
+          <div class="group">
+            <div class="gtitle">Райдер</div>
+            <div class="field" data-dim="H">
+              <div class="fhead"><label for="inH">Рост</label><output for="inH" id="outH"></output></div>
+              <input type="range" id="inH" min="145" max="210" step="1">
+            </div>
+            <div class="field" data-dim="I">
+              <div class="fhead"><label for="inI">Нога <small>по шву</small></label><output for="inI" id="outI"></output></div>
+              <input type="range" id="inI" min="62" max="102" step="0.5">
+            </div>
+            <div class="field" data-dim="A">
+              <div class="fhead"><label for="inA">Рука <small>плечо–запястье</small></label><output for="inA" id="outA"></output></div>
+              <input type="range" id="inA" min="46" max="78" step="0.5">
+            </div>
+            <div class="field" data-dim="W">
+              <div class="fhead"><label for="inW">Плечи</label><output for="inW" id="outW"></output></div>
+              <input type="range" id="inW" min="32" max="52" step="0.5">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel tp p-ride" id="p-ride" role="tabpanel" aria-labelledby="tab-ride">
+        <div class="group">
+          <div class="gtitle">Посадка</div>
+          <div class="seg" role="radiogroup" aria-label="Тип велосипеда" id="seg">
+            <button role="radio" data-style="road" aria-checked="true">Шоссе</button>
+            <button role="radio" data-style="gravel" aria-checked="false">Грэвел</button>
+            <button role="radio" data-style="city" aria-checked="false">Город</button>
+          </div>
+          <div class="field">
+            <div class="fhead"><label for="inF">Гибкость спины</label><output for="inF" id="outF"></output></div>
+            <input type="range" id="inF" min="1" max="5" step="1">
+          </div>
+        </div>
+        <div class="group">
+          <div class="gtitle">Вид</div>
+          <div class="viewrow">
+            <div class="sw" role="radiogroup" aria-label="Цвет рамы" id="sw"></div>
+            <div class="toggles">
+              <label class="switch"><input type="checkbox" id="tRider" checked> Райдер</label>
+              <label class="switch"><input type="checkbox" id="tDims" checked> Размеры</label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel tp p-result" id="p-result" role="tabpanel" aria-labelledby="tab-result">
+        <div class="summary">
+          <div class="sizebig"><span class="n" id="sizeN">M</span><span class="sub" id="sizeSub"></span></div>
+          <span class="status" id="status" data-s="good" aria-live="polite"></span>
+        </div>
+        <div class="ladder" id="ladder"></div>
+        <dl class="metrics" id="metrics"></dl>
+        <p class="foot">Оценка по типовым формулам байкфита (высота седла по LeMond, угол колена, угол спины) и усреднённой геометрии рам. Точную посадку настраивают на станке с замерами.</p>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+// ===== MODEL START =====
+const D=Math.PI/180;
+const V=(x,y)=>({x,y});
+const add=(a,b)=>V(a.x+b.x,a.y+b.y);
+const sub=(a,b)=>V(a.x-b.x,a.y-b.y);
+const mul=(a,k)=>V(a.x*k,a.y*k);
+const len=a=>Math.hypot(a.x,a.y);
+const nrm=a=>{const l=len(a)||1;return V(a.x/l,a.y/l)};
+const dirv=deg=>V(Math.cos(deg*D),Math.sin(deg*D));
+const angOf=a=>Math.atan2(a.y,a.x)/D;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+function ik2(a,b,l1,l2,sign){
+  const d0=sub(b,a), d=len(d0);
+  const dc=clamp(d,Math.abs(l1-l2)+1,l1+l2-0.5);
+  const base=Math.atan2(d0.y,d0.x);
+  const A=Math.acos(clamp((l1*l1+dc*dc-l2*l2)/(2*l1*dc),-1,1));
+  const j=add(a,mul(V(Math.cos(base+sign*A),Math.sin(base+sign*A)),l1));
+  const e=add(j,mul(nrm(sub(b,j)),l2));
+  return {j,e,over:d-(l1+l2)};
+}
+
+const HIP_OFF=V(-20,40), ANK=V(-55,100), AEK=0.9;
+
+const STYLES={
+  road:  {name:'Шоссе', STA:73.5,HTA:73,drop:70,cs:410,tyre:28,rake:45,stemIdeal:100,stemMin:70,stemMax:140,stemAng:-6,stemAngs:[-6,-17,6,17],spMax:50,barReach:80,barDrop:125,sweep:0,fender:0,guard:0,ring:50,saddleK:0.883,alpha:46,alphaFlex:3,beta:90,torsoNorm:[40,52],reachAdj:-14,heightAdj:0},
+  gravel:{name:'Грэвел',STA:73,HTA:71,drop:75,cs:425,tyre:42,rake:50,stemIdeal:80,stemMin:50,stemMax:120,stemAng:-6,stemAngs:[-6,-17,6,17],spMax:50,barReach:75,barDrop:110,sweep:0,fender:0,guard:0,ring:40,saddleK:0.883,alpha:51,alphaFlex:3,beta:88,torsoNorm:[45,58],reachAdj:-35,heightAdj:0},
+  city:  {name:'Город', STA:71,HTA:69,drop:60,cs:450,tyre:42,rake:50,stemIdeal:80,stemMin:40,stemMax:120,stemAng:20,stemAngs:[20,7,35],spMax:60,barReach:0,barDrop:0,sweep:150,fender:1,guard:1,ring:38,saddleK:0.875,alpha:68,alphaFlex:2.5,beta:62,torsoNorm:[60,78],reachAdj:-40,heightAdj:0}
+};
+const CITY={reach:30,stack:5,ht:20};
+const ROAD_SIZES=[['XS',480,372,522,110],['S',510,378,543,130],['M',540,385,565,150],['L',560,392,588,172],['XL',580,400,612,195],['XXL',610,410,636,218]];
+function sizesFor(style){
+  return ROAD_SIZES.map(([n,st,r,s,ht],i)=>{
+    const wheel=i===0?'650b':'700c';
+    if(style==='gravel') return {n,st:st-10,reach:r-3,stack:s+25,ht:ht+25,wheel};
+    if(style==='city') return {n,st:[430,460,500,530,560,590][i],reach:r-CITY.reach,stack:s+CITY.stack,ht:ht+CITY.ht,wheel};
+    return {n,st,reach:r,stack:s,ht,wheel};
+  });
+}
+function bodyOf(p){
+  const H=p.H*10, I=p.I*10;
+  const hipH=I+0.06*H, ankleH=0.039*H, leg=hipH-ankleH;
+  return {torso:0.818*H-hipH, thigh:leg*0.5, shin:leg*0.5, arm:p.A*10+70, headR:0.062*H, foot:0.15*H};
+}
+function saddlePt(g){return mul(V(-Math.cos(g.STA*D),Math.sin(g.STA*D)),g.saddleH)}
+function barGeom(g,C){
+  const dk=g.barDrop/125, sk=g.sweep/150;
+  const G=add(C,V(g.barReach-g.sweep,35*sk));
+  const hand=add(G,V(8*dk,28*dk+12*sk));
+  return {G,hand,dk,sk};
+}
+function cockpit(g){
+  const Ht=V(g.reach,g.stack), u=dirv(180-g.HTA), q=dirv(90-g.HTA+g.stemAng);
+  const spTop=add(Ht,mul(u,15+g.sp));
+  const steerTop=add(spTop,mul(u,40));
+  const stemBase=add(spTop,mul(u,20));
+  const C=add(stemBase,mul(q,g.stemL));
+  return Object.assign({Ht,u,q,spTop,steerTop,stemBase,C},barGeom(g,C));
+}
+function legAt(g,hip,th){
+  const pedal=mul(dirv(th),g.crank);
+  const ank=add(pedal,mul(ANK,g.sc));
+  const k=ik2(hip,ank,g.thigh,g.shin,1);
+  const toe=add(pedal,V(g.foot*0.45,-14));
+  return {pedal,knee:k.j,ankle:k.e,toe,over:k.over};
+}
+function upperOf(g,hip,hand){
+  const s=ik2(hip,hand,g.torso,g.arm*AEK,1);
+  const shoulder=s.j;
+  const el=ik2(shoulder,hand,g.arm*0.52,g.arm*0.48,-1);
+  const a=angOf(sub(shoulder,hip));
+  const head=add(add(shoulder,mul(dirv(a),g.headR*0.9)),V(g.headR*0.8,g.headR*0.75));
+  return {shoulder,elbow:el.j,hand:el.e,alpha:a,head,over:s.over};
+}
+function kneeFlex(l,hip){
+  const a=nrm(sub(hip,l.knee)), b=nrm(sub(l.ankle,l.knee));
+  return 180-Math.acos(clamp(a.x*b.x+a.y*b.y,-1,1))/D;
+}
+function evalSize(p,st,b,sz,i,alpha,crank){
+  const g={STA:st.STA,HTA:st.HTA,drop:st.drop,cs:st.cs,tyre:st.tyre,rake:st.rake,
+    wheelR:(sz.wheel==='650b'?292:311)+st.tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
+    saddleH:p.I*10*st.saddleK-(crank-172.5*p.H/178),crank,stemAng:st.stemAng,barReach:st.barReach,barDrop:st.barDrop,sweep:st.sweep,
+    fender:st.fender,guard:st.guard,ring:st.ring,sp:0,stemL:0,sc:p.H/178,
+    torso:b.torso,thigh:b.thigh,shin:b.shin,arm:b.arm,headR:b.headR,foot:b.foot};
+  const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));
+  const sh=add(hip,mul(dirv(alpha),b.torso));
+  // hand target from body angles, with a calibration term so frame sizes track real size charts
+  const target=add(add(sh,mul(dirv(alpha+180+st.beta),b.arm*AEK)),V(st.reachAdj-(p.H-165)*0.95,st.heightAdj));
+  const off=barGeom(g,V(0,0)).hand;
+  const Cw=sub(target,off);
+  const Ht=V(g.reach,g.stack), u=dirv(180-g.HTA);
+  let opt=null;
+  st.stemAngs.forEach((sa,k)=>{
+    const q=dirv(90-g.HTA+sa);
+    const r=sub(Cw,add(Ht,mul(u,35))), det=u.x*q.y-u.y*q.x;
+    const spRaw=(r.x*q.y-q.x*r.y)/det;
+    const sp=Math.round(clamp(spRaw,0,st.spMax)/5)*5;
+    const r2=sub(r,mul(u,sp));
+    const Lraw=r2.x*q.x+r2.y*q.y;
+    const L=Math.round(clamp(Lraw,st.stemMin,st.stemMax)/10)*10;
+    const gg=Object.assign({},g,{sp,stemL:L,stemAng:sa});
+    const e=len(sub(cockpit(gg).hand,target))+(k?6:0);
+    if(!opt||e<opt.e) opt={e,sp,L,sa,Lraw,spRaw};
+  });
+  const {sp,L,Lraw,spRaw}=opt; g.stemAng=opt.sa;
+  g.sp=sp; g.stemL=L;
+  const ck=cockpit(g);
+  const err=len(sub(ck.hand,target));
+  const expo=g.saddleH-g.ST;
+  const expoMax=p.style==='city'?380:320;
+  const pen=Math.max(0,90-expo)*3+Math.max(0,expo-expoMax)*3;
+  const score=Math.abs(L-st.stemIdeal)*0.6+err*1.4+pen;
+  return {i,sz,g,score,err,expo,expoMax,Lraw,spRaw};
+}
+function fit(p){
+  const st=STYLES[p.style], b=bodyOf(p);
+  const c0=p.I<74?165:p.I<80?170:p.I<86?172.5:175;
+  const crank=p.style==='city'?Math.min(c0,170):c0;
+  const sizes=sizesFor(p.style);
+  // size is chosen for a neutral back, then the cockpit is tuned for the rider's flexibility
+  const cands=sizes.map((sz,i)=>evalSize(p,st,b,sz,i,st.alpha,crank));
+  const pick=cands.reduce((a,c)=>c.score<a.score?c:a);
+  const alpha=st.alpha-(p.flex-3)*st.alphaFlex;
+  const best=evalSize(p,st,b,pick.sz,pick.i,alpha,crank);
+  const g=best.g, S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc)), ck=cockpit(g);
+  const up=upperOf(g,hip,ck.hand);
+  let kMin=999;
+  for(let th=0;th<360;th+=5){kMin=Math.min(kMin,kneeFlex(legAt(g,hip,th),hip));}
+  const R=V(-Math.sqrt(g.cs*g.cs-g.drop*g.drop),g.drop);
+  const hta=g.HTA*D;
+  const Fx=g.reach+(g.stack-g.drop)/Math.tan(hta)+g.rake/Math.sin(hta);
+  let barW;
+  if(p.style==='road') barW=clamp(Math.round(p.W/2)*20,360,460);
+  else if(p.style==='gravel') barW=clamp(Math.round(p.W/2)*20+40,400,500);
+  else barW=clamp(Math.round((p.W*10+180)/20)*20,560,680);
+  return {st,best,cands,g,alpha:up.alpha,knee:kMin,drop:S.y-ck.G.y,wheelbase:Fx-R.x,barW,
+    near:cands.filter(c=>c.i!==pick.i&&c.score<pick.score+14).map(c=>c.i)};
+}
+// ===== MODEL END =====
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const f1=n=>(Math.round(n*10)/10).toFixed(1).replace(/\.0$/,'');
+const ru=s=>String(s).replace('.',',');
+const fmt=n=>ru(f1(n));
+const fx=n=>n.toFixed(1);
+const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const PRESETS=[{H:160,I:74,A:54,W:37},{H:178,I:83,A:61,W:42},{H:195,I:92,A:67,W:46}];
+const COLORS=[['#2B47D6','Кобальт'],['#D44A2C','Сигнальный'],['#4F8A64','Шалфей'],['#C59A55','Песок'],['#5C656E','Графит']];
+const FLEX=['Низкая','Ниже средней','Средняя','Хорошая','Отличная'];
+const state={H:178,I:83,A:61,W:42,flex:3,style:'road',color:COLORS[0][0],rider:true,dims:true,playing:!reduceMotion};
+const SAVE_KEY='fitstand:v1';
+try{const sv=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+  if(sv&&typeof sv==='object'){for(const k of ['H','I','A','W','flex']) if(typeof sv[k]==='number'&&isFinite(sv[k])) state[k]=sv[k];
+    if(sv.style in STYLES) state.style=sv.style; if(COLORS.some(c=>c[0]===sv.color)) state.color=sv.color;
+    if(typeof sv.rider==='boolean') state.rider=sv.rider; if(typeof sv.dims==='boolean') state.dims=sv.dims;}}catch(e){}
+let saveT=0;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,flex,style,color,rider,dims}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,flex,style,color,rider,dims}));}catch(e){}},300);}
+
+/* ---------- controls ---------- */
+const inputs={H:$('#inH'),I:$('#inI'),A:$('#inA'),W:$('#inW'),flex:$('#inF')};
+const outs={H:$('#outH'),I:$('#outI'),A:$('#outA'),W:$('#outW'),flex:$('#outF')};
+function setP(el){const p=(el.value-el.min)/(el.max-el.min)*100;el.style.setProperty('--p',p+'%')}
+function syncControls(){
+  for(const k of ['H','I','A','W']){inputs[k].value=state[k];outs[k].innerHTML=`${fmt(Math.round(state[k]*2)/2)}<span>см</span>`;setP(inputs[k]);}
+  inputs.flex.value=state.flex;outs.flex.textContent=FLEX[state.flex-1];setP(inputs.flex);
+  document.querySelectorAll('[data-preset]').forEach(b=>{const p=PRESETS[+b.dataset.preset];
+    b.setAttribute('aria-pressed',String(Math.abs(p.H-state.H)<.6&&Math.abs(p.I-state.I)<.6&&Math.abs(p.A-state.A)<.6&&Math.abs(p.W-state.W)<.6));});
+}
+inputs.H.addEventListener('input',()=>{
+  const nh=+inputs.H.value, r=nh/state.H; state.H=nh;
+  state.I=clamp(state.I*r,62,102); state.A=clamp(state.A*r,46,78); state.W=clamp(state.W*r,32,52);
+  changed();
+});
+for(const k of ['I','A','W']) inputs[k].addEventListener('input',()=>{state[k]=+inputs[k].value;changed();});
+inputs.flex.addEventListener('input',()=>{state.flex=+inputs.flex.value;changed();});
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{Object.assign(state,PRESETS[+b.dataset.preset]);changed();}));
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{
+  state.style=b.dataset.style;
+  document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-checked',String(x===b)));
+  changed();
+}));
+$('#seg').addEventListener('keydown',e=>{
+  if(!['ArrowLeft','ArrowRight'].includes(e.key))return;
+  const bs=[...document.querySelectorAll('#seg button')];let i=bs.findIndex(x=>x.dataset.style===state.style);
+  i=(i+(e.key==='ArrowRight'?1:-1)+bs.length)%bs.length;bs[i].click();bs[i].focus();e.preventDefault();
+});
+const sw=$('#sw');
+COLORS.forEach(([c,n])=>{const b=document.createElement('button');b.setAttribute('role','radio');b.setAttribute('aria-label',n);b.title=n;b.style.setProperty('--c',c);
+  b.setAttribute('aria-checked',String(c===state.color));
+  b.addEventListener('click',()=>{state.color=c;document.documentElement.style.setProperty('--frame',c);sw.querySelectorAll('button').forEach(x=>x.setAttribute('aria-checked',String(x===b)));save();});
+  sw.appendChild(b);});
+const bikeSvg=$('#bike');
+$('#tRider').addEventListener('change',e=>{state.rider=e.target.checked;bikeSvg.classList.toggle('no-rider',!state.rider);changed();});
+$('#tDims').addEventListener('change',e=>{state.dims=e.target.checked;bikeSvg.classList.toggle('no-dims',!state.dims);save();});
+// restore saved view state into the controls
+document.documentElement.style.setProperty('--frame',state.color);
+document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-checked',String(x.dataset.style===state.style)));
+$('#tRider').checked=state.rider; $('#tDims').checked=state.dims;
+bikeSvg.classList.toggle('no-rider',!state.rider); bikeSvg.classList.toggle('no-dims',!state.dims);
+// tabs (phone layout)
+const tabs=[...document.querySelectorAll('.tabs [role=tab]')];
+function selectTab(t){tabs.forEach(x=>{const on=x===t;x.setAttribute('aria-selected',String(on));x.tabIndex=on?0:-1;document.getElementById(x.getAttribute('aria-controls')).classList.toggle('on',on);});}
+tabs.forEach((t,i)=>{t.tabIndex=i?-1:0;t.addEventListener('click',()=>selectTab(t));
+  t.addEventListener('keydown',e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;const n=tabs[(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];selectTab(n);n.focus();e.preventDefault();});});
+const playBtn=$('#play');
+function syncPlay(){playBtn.innerHTML=state.playing?'<svg viewBox="0 0 14 14"><rect x="2" y="1.5" width="3.6" height="11" rx="1"/><rect x="8.4" y="1.5" width="3.6" height="11" rx="1"/></svg>':'<svg viewBox="0 0 14 14"><path d="M3 1.6v10.8a.8.8 0 0 0 1.2.7l8.6-5.4a.8.8 0 0 0 0-1.4L4.2.9A.8.8 0 0 0 3 1.6z"/></svg>';
+  playBtn.setAttribute('aria-label',state.playing?'Пауза':'Крутить педали');}
+playBtn.addEventListener('click',()=>{state.playing=!state.playing;syncPlay();});
+
+// highlight dims on the figure
+const personSvg=$('#person');
+document.querySelectorAll('.field[data-dim]').forEach(fl=>{
+  const k=fl.dataset.dim, on=()=>personSvg.dataset.active=k, off=()=>{if(personSvg.dataset.active===k)delete personSvg.dataset.active};
+  fl.addEventListener('pointerenter',on);fl.addEventListener('pointerleave',off);
+  fl.querySelector('input').addEventListener('focus',on);fl.querySelector('input').addEventListener('blur',off);
+});
+
+/* ---------- person figure (front view, cm) ---------- */
+function personMarkup(p){
+  const H=p.H,I=p.I,A=p.A,W=p.W, Y=v=>fx(-v);
+  const headH=0.13*H, Sh=0.818*H, hipH=I+0.06*H, kneeH=0.285*H, ankH=0.039*H;
+  const nw=W*0.12, hx=W*0.21, w2=W/2;
+  const pt=(x,y)=>`${fx(x)} ${Y(y)}`;
+  const half=s=>[
+    `${s<0?'M':'L'}${pt(s*nw,Sh+2.2)}`,`Q${pt(s*w2,Sh+2)} ${pt(s*w2,Sh-3.5)}`,`L${pt(s*(w2-3.2),Sh-15)}`,
+    `Q${pt(s*W*0.32,(Sh+hipH)/2)} ${pt(s*W*0.41,hipH+1)}`,`Q${pt(s*W*0.43,I+1)} ${pt(s*W*0.28,I-2)}`,`L${pt(s*2.2,I-0.5)}`];
+  const L=half(-1);
+  // build torso: left side down, across crotch, right side up
+  const right=[`L${pt(2.2,I-0.5)}`,`L${pt(W*0.28,I-2)}`,`Q${pt(W*0.43,I+1)} ${pt(W*0.41,hipH+1)}`,`Q${pt(W*0.32,(Sh+hipH)/2)} ${pt(w2-3.2,Sh-15)}`,`L${pt(w2,Sh-3.5)}`,`Q${pt(w2,Sh+2)} ${pt(nw,Sh+2.2)}`,'Z'];
+  const torso=L.join(' ')+' '+right.join(' ');
+  let s=`<path class="f-fig" d="${torso}"/>`;
+  s+=`<rect class="f-fig" x="${fx(-nw)}" y="${Y(H-headH+1.5)}" width="${fx(nw*2)}" height="${fx(H-headH+1.5-Sh-1)}" rx="1.5"/>`;
+  s+=`<ellipse class="f-fig" cx="0" cy="${Y(H-headH/2)}" rx="${fx(headH*0.37)}" ry="${fx(headH/2)}"/>`;
+  for(const sg of [-1,1]){
+    const hip=[sg*hx,hipH], knee=[sg*hx*0.94,kneeH], ank=[sg*hx*0.9,ankH];
+    s+=`<line class="s-fig" x1="${fx(hip[0])}" y1="${Y(hip[1])}" x2="${fx(knee[0])}" y2="${Y(knee[1])}" stroke-width="${fx(0.082*H)}"/>`;
+    s+=`<line class="s-fig" x1="${fx(knee[0])}" y1="${Y(knee[1])}" x2="${fx(ank[0])}" y2="${Y(ank[1])}" stroke-width="${fx(0.055*H)}"/>`;
+    s+=`<ellipse class="f-fig" cx="${fx(sg*hx*0.98)}" cy="${Y(2.4)}" rx="${fx(0.034*H)}" ry="2.6"/>`;
+    const sj=[sg*(w2-2.4),Sh-3.8], d=[sg*Math.sin(8*D),-Math.cos(8*D)];
+    const el=[sj[0]+d[0]*A*0.53,sj[1]+d[1]*A*0.53], wr=[sj[0]+d[0]*A,sj[1]+d[1]*A];
+    s+=`<line class="s-fig" x1="${fx(sj[0])}" y1="${Y(sj[1])}" x2="${fx(el[0])}" y2="${Y(el[1])}" stroke-width="${fx(0.05*H)}"/>`;
+    s+=`<line class="s-fig" x1="${fx(el[0])}" y1="${Y(el[1])}" x2="${fx(wr[0])}" y2="${Y(wr[1])}" stroke-width="${fx(0.04*H)}"/>`;
+    const hc=[wr[0]+d[0]*0.045*H,wr[1]+d[1]*0.045*H];
+    s+=`<ellipse class="f-fig" cx="${fx(hc[0])}" cy="${Y(hc[1])}" rx="${fx(0.021*H)}" ry="${fx(0.05*H)}" transform="rotate(${-sg*8} ${fx(hc[0])} ${Y(hc[1])})"/>`;
+  }
+  // dimensions
+  const x0=-w2-15;
+  s+=`<g class="dim" data-k="H"><line x1="${fx(x0)}" y1="0" x2="${fx(x0)}" y2="${Y(H)}"/><line x1="${fx(x0-2.5)}" y1="0" x2="${fx(x0+2.5)}" y2="0"/><line x1="${fx(x0-2.5)}" y1="${Y(H)}" x2="${fx(x0+2.5)}" y2="${Y(H)}"/><line class="lead" x1="${fx(x0+2.5)}" y1="${Y(H)}" x2="-4" y2="${Y(H)}"/><text text-anchor="middle" transform="translate(${fx(x0-4)} ${Y(H/2)}) rotate(-90)">${Math.round(H)}</text></g>`;
+  const x1=Math.max(w2+A*0.14+9,37);
+  s+=`<g class="dim" data-k="I"><line x1="${fx(x1)}" y1="0" x2="${fx(x1)}" y2="${Y(I)}"/><line x1="${fx(x1-2.5)}" y1="0" x2="${fx(x1+2.5)}" y2="0"/><line x1="${fx(x1-2.5)}" y1="${Y(I)}" x2="${fx(x1+2.5)}" y2="${Y(I)}"/><line class="lead" x1="3" y1="${Y(I)}" x2="${fx(x1-2.5)}" y2="${Y(I)}"/><text text-anchor="middle" transform="translate(${fx(x1+9)} ${Y(I/2)}) rotate(-90)">${fmt(Math.round(I*2)/2)}</text></g>`;
+  const sj=[w2-2.4,Sh-3.8], d=[Math.sin(8*D),-Math.cos(8*D)], n=[Math.cos(8*D),Math.sin(8*D)], o=0.04*H/2+3;
+  const a1=[sj[0]+n[0]*o,sj[1]+n[1]*o], a2=[sj[0]+d[0]*A+n[0]*o,sj[1]+d[1]*A+n[1]*o];
+  s+=`<g class="dim" data-k="A"><line x1="${fx(a1[0])}" y1="${Y(a1[1])}" x2="${fx(a2[0])}" y2="${Y(a2[1])}"/><line x1="${fx(a1[0]-1.5)}" y1="${Y(a1[1])}" x2="${fx(a1[0]+1.5)}" y2="${Y(a1[1])}"/><line x1="${fx(a2[0]-1.5)}" y1="${Y(a2[1])}" x2="${fx(a2[0]+1.5)}" y2="${Y(a2[1])}"/><text x="${fx((a1[0]+a2[0])/2+3.5)}" y="${Y((a1[1]+a2[1])/2)}">${fmt(Math.round(A*2)/2)}</text></g>`;
+  const y2=H+7;
+  s+=`<g class="dim" data-k="W"><line class="lead" x1="${fx(-w2)}" y1="${Y(Sh)}" x2="${fx(-w2)}" y2="${Y(y2+2)}"/><line class="lead" x1="${fx(w2)}" y1="${Y(Sh)}" x2="${fx(w2)}" y2="${Y(y2+2)}"/><line x1="${fx(-w2)}" y1="${Y(y2)}" x2="${fx(w2)}" y2="${Y(y2)}"/><text text-anchor="start" x="${fx(w2+2)}" y="${Y(y2-1.2)}">${fmt(Math.round(W*2)/2)}</text></g>`;
+  return s;
+}
+
+/* ---------- bike drawing (side view, mm, y up) ---------- */
+const P=v=>`${fx(v.x)},${fx(-v.y)}`;
+function L_(a,b,cls,w,extra=''){return `<line class="${cls}" x1="${fx(a.x)}" y1="${fx(-a.y)}" x2="${fx(b.x)}" y2="${fx(-b.y)}" stroke-width="${w}" ${extra}/>`}
+function arcPts(c,r,a0,a1,n=24){let s=[];for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*D;s.push(P(V(c.x+r*Math.cos(a),c.y+r*Math.sin(a))));}return s.join(' ')}
+function wheel(c,g,id){
+  const r=g.wheelR, rimR=r-g.tyre-5;
+  let sp='';
+  for(let i=0;i<20;i++){const a=i*18*D, a2=a+(i%2?0.35:-0.35);
+    const h=V(c.x+26*Math.cos(a2),c.y+26*Math.sin(a2)), e=V(c.x+rimR*Math.cos(a),c.y+rimR*Math.sin(a));sp+=L_(h,e,'s-metal',2.6);}
+  return `<g id="${id}">${sp}</g>
+  <circle class="s-rim nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
+  <circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>
+  <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`;
+}
+function geomPts(g){
+  const sta=g.STA*D, hta=g.HTA*D;
+  const sd=V(-Math.cos(sta),Math.sin(sta));
+  const R=V(-Math.sqrt(g.cs*g.cs-g.drop*g.drop),g.drop);
+  const ck=cockpit(g);
+  const Hb=sub(ck.Ht,mul(ck.u,g.HT));
+  const F=V(g.reach+(g.stack-g.drop)/Math.tan(hta)+g.rake/Math.sin(hta),g.drop);
+  const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));
+  const up=upperOf(g,hip,ck.hand);
+  return {sta,hta,sd,R,ck,Hb,F,S,hip,up,ground:g.drop-g.wheelR};
+}
+function bikeMarkup(g,ux){
+  const {sd,R,ck,Hb,F,S,hip,up,ground,hta}=geomPts(g);
+  const BB=V(0,0), u=ck.u;
+  let s='';
+  // grid + ground
+  const gx0=R.x-g.wheelR-2000, gx1=F.x+g.wheelR+2000;
+  s+=`<rect x="${fx(gx0)}" y="-4000" width="${fx(gx1-gx0)}" height="${fx(4000-ground+400)}" fill="url(#grid)" />`;
+  s+=`<ellipse class="shadow" cx="${fx((R.x+F.x)/2)}" cy="${fx(-ground)}" rx="${fx((F.x-R.x)/2+g.wheelR*0.8)}" ry="18"/>`;
+  s+=`<line class="ground" x1="${fx(gx0)}" y1="${fx(-ground)}" x2="${fx(gx1)}" y2="${fx(-ground)}"/>`;
+  // far side: crank, leg
+  s+=`<g opacity=".42"><line id="fCrank" class="s-ink" stroke-width="24"/><line id="fPedal" class="s-ink" stroke-width="20"/></g>`;
+  s+=`<g class="rider" opacity=".36"><line id="fThigh" class="s-rider" stroke-width="${fx(g.headR*0.72)}"/><line id="fShin" class="s-rider" stroke-width="${fx(g.headR*0.54)}"/><line id="fFoot" class="s-rider" stroke-width="${fx(g.headR*0.36)}"/></g>`;
+  // wheels + fenders
+  s+=wheel(R,g,'wR')+wheel(F,g,'wF');
+  if(g.fender>0.02){
+    s+=`<g opacity="${fx(g.fender)}"><polyline class="s-metal nf" stroke-width="16" points="${arcPts(R,g.wheelR+22,8,200)}"/><polyline class="s-metal nf" stroke-width="16" points="${arcPts(F,g.wheelR+22,-28,128)}"/></g>`;
+  }
+  // drivetrain
+  const rc=g.ring*12.7/(2*Math.PI), rg=34;
+  s+=L_(V(0,rc),V(R.x,R.y+rg),'s-metal',7)+L_(V(0,-rc),V(R.x,R.y-rg),'s-metal',7);
+  s+=`<circle class="s-ink nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="${rg}" stroke-width="9"/>`;
+  // frame
+  const T=mul(sd,g.ST), Tj=mul(sd,g.ST-25);
+  const HtJ=sub(ck.Ht,mul(u,24)), HbJ=add(Hb,mul(u,36));
+  s+=L_(add(S,mul(sd,-48)),T,'s-metal',24); // seatpost
+  s+=L_(R,BB,'s-frame',22)+L_(R,sub(Tj,mul(sd,15)),'s-frame',18);
+  s+=L_(BB,T,'s-frame',32)+L_(Tj,HtJ,'s-frame',30)+L_(BB,HbJ,'s-frame',40);
+  // fork
+  const crown=sub(Hb,mul(u,14));
+  const axisCtl=V(g.reach+(g.stack-(g.drop+180))/Math.tan(hta),g.drop+180);
+  s+=`<path class="s-frame nf" stroke-width="24" d="M${P(crown)} Q${P(axisCtl)} ${P(F)}"/>`;
+  s+=L_(sub(Hb,mul(u,8)),add(ck.Ht,mul(u,4)),'s-frame',48);
+  s+=`<circle class="s-frame nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="1" stroke-width="22"/>`;
+  // steerer, spacers, stem
+  s+=L_(add(ck.Ht,mul(u,8)),ck.spTop,'s-metal',38)+L_(ck.spTop,ck.steerTop,'s-ink',40)+L_(ck.stemBase,ck.C,'s-ink',30);
+  s+=`<circle class="f-ink" cx="${fx(ck.C.x)}" cy="${fx(-ck.C.y)}" r="24"/>`;
+  // handlebar
+  const {G,dk,sk}=ck;
+  const ctl=add(ck.C,V((g.barReach-g.sweep)*0.55,32*sk+4));
+  let bar=`M${P(ck.C)} Q${P(ctl)} ${P(G)}`;
+  if(dk>0.02){const E=add(G,V(-15*dk,-g.barDrop)), E2=add(G,V(-95*dk,-g.barDrop+8*dk));
+    bar+=` C${P(add(G,V(58*dk,-6*dk)))} ${P(add(G,V(58*dk,-g.barDrop*0.92)))} ${P(E)} L${P(E2)}`;}
+  s+=`<path class="s-ink nf" stroke-width="25" d="${bar}"/>`;
+  if(dk>0.02){
+    s+=`<g opacity="${fx(dk)}"><path class="f-ink" d="M${P(add(G,V(-14,-4)))} Q${P(add(G,V(-6,38*dk)))} ${P(add(G,V(28*dk,34*dk)))} Q${P(add(G,V(56*dk,30*dk)))} ${P(add(G,V(48*dk,-26*dk)))} L${P(add(G,V(26*dk,-30*dk)))} Z"/>${L_(add(G,V(40*dk,-24*dk)),add(G,V(30*dk,-108*dk)),'s-ink',12)}</g>`;
+  }
+  if(sk>0.02) s+=`<g opacity="${fx(sk)}">${L_(add(G,V(30*sk,-2*sk)),add(G,V(-75*sk,4*sk)),'s-rider',40)}</g>`;
+  // saddle
+  s+=`<path class="f-ink" d="M${P(add(S,V(-118,4)))} C${P(add(S,V(-40,2)))} ${P(add(S,V(60,-2)))} ${P(add(S,V(148,-10)))} Q${P(add(S,V(156,-26)))} ${P(add(S,V(122,-28)))} L${P(add(S,V(-60,-26)))} Q${P(add(S,V(-128,-24)))} ${P(add(S,V(-128,-6)))} Z"/>`;
+  // chainring + guard
+  s+=`<circle class="s-ink nf" cx="0" cy="0" r="${fx(rc)}" stroke-width="11"/><circle class="f-metal" cx="0" cy="0" r="38"/>`;
+  if(g.guard>0.02) s+=`<polyline class="s-frame nf" opacity="${fx(g.guard*0.9)}" stroke-width="30" points="${arcPts(V(0,0),rc+20,-25,205)}"/>`;
+  // near crank
+  s+=`<line id="nCrank" class="s-ink" stroke-width="28"/><circle class="f-metal" cx="0" cy="0" r="16"/><line id="nPedal" class="s-ink" stroke-width="22"/>`;
+  // near leg + upper body
+  const hr=g.headR;
+  s+=`<g class="rider"><line id="nThigh" class="s-rider" stroke-width="${fx(hr*0.72)}"/><line id="nShin" class="s-rider" stroke-width="${fx(hr*0.54)}"/><line id="nFoot" class="s-rider" stroke-width="${fx(hr*0.36)}"/>`;
+  s+=`<circle class="f-rider" cx="${fx(hip.x)}" cy="${fx(-hip.y)}" r="${fx(hr*0.62)}"/>`;
+  s+=L_(hip,up.shoulder,'s-rider',fx(hr*1.0));
+  s+=L_(up.shoulder,add(up.shoulder,mul(nrm(sub(up.head,up.shoulder)),hr*0.6)),'s-rider',fx(hr*0.42));
+  s+=L_(up.shoulder,up.elbow,'s-rider',fx(hr*0.46))+L_(up.elbow,up.hand,'s-rider',fx(hr*0.38));
+  s+=`<circle class="f-rider" cx="${fx(up.hand.x)}" cy="${fx(-up.hand.y)}" r="${fx(hr*0.26)}"/>`;
+  s+=`<circle class="f-rider" cx="${fx(up.head.x)}" cy="${fx(-up.head.y)}" r="${fx(hr)}"/>`;
+  const tilt=(90-up.alpha)*0.55, hc=up.head, R2=hr*1.1;
+  s+=`<path class="f-frame" transform="rotate(${fx(tilt)} ${fx(hc.x)} ${fx(-hc.y)})" d="M${fx(hc.x-R2-8)} ${fx(-hc.y+8)} A${fx(R2)} ${fx(R2)} 0 0 1 ${fx(hc.x+R2)} ${fx(-hc.y+2)} L${fx(hc.x+R2*0.55)} ${fx(-hc.y+16)} Z"/>`;
+  s+=`</g>`;
+  // dimensions
+  const fs=fx(12*ux), tk=6*ux;
+  let d='';
+  const n=V(-Math.sin(g.STA*D),-Math.cos(g.STA*D)), off=150;
+  const a=add(BB,mul(n,off)), b=add(S,mul(n,off));
+  const tick=(p,dir)=>L_(add(p,mul(dir,tk)),sub(p,mul(dir,tk)),'',1);
+  d+=L_(a,b,'',1)+tick(a,n)+tick(b,n)+L_(add(BB,mul(n,20)),add(a,mul(n,6*ux)),'dash',1)+L_(add(S,mul(n,40)),add(b,mul(n,6*ux)),'dash',1);
+  const mid=add(mul(add(a,b),0.5),mul(n,16*ux));
+  d+=`<text class="halo" font-size="${fs}" text-anchor="middle" transform="translate(${P(mid).replace(',',' ')}) rotate(${fx(g.STA-180)})">седло ${Math.round(g.saddleH)}</text>`;
+  const wy=ground-60;
+  d+=L_(V(R.x,wy),V(F.x,wy),'',1)+L_(V(R.x,wy+tk*1.6),V(R.x,wy-tk*1.6),'',1)+L_(V(F.x,wy+tk*1.6),V(F.x,wy-tk*1.6),'',1);
+  d+=`<text class="halo" font-size="${fs}" text-anchor="middle" x="${fx((R.x+F.x)/2)}" y="${fx(-wy+16*ux)}">база ${Math.round(F.x-R.x)}</text>`;
+  const dx=Math.max(up.hand.x,G.x)+70, dropV=S.y-G.y;
+  d+=L_(add(S,V(150,0)),V(dx+tk*1.6,S.y),'dash',1)+L_(V(dx,S.y),V(dx,G.y),'',1)+L_(V(dx-tk*1.6,G.y),V(dx+tk*1.6,G.y),'',1)+L_(V(dx-tk*1.6,S.y),V(dx+tk*1.6,S.y),'',1);
+  d+=`<text class="halo" font-size="${fs}" x="${fx(dx+9*ux)}" y="${fx(-(S.y+G.y)/2+4*ux)}">${dropV>=0?'перепад':'руль выше'} ${Math.abs(Math.round(dropV))}</text>`;
+  s+=`<g class="dims">${d}</g>`;
+  return s;
+}
+function boundsOf(g,rider,ux){
+  const {R,F,ck,S,up,ground}=geomPts(g);
+  const minX=R.x-g.wheelR-70, maxX=Math.max(F.x+g.wheelR+50,Math.max(up.hand.x,ck.G.x)+70+130*ux);
+  const minY=ground-60-34*ux;
+  const top=(rider?up.head.y+g.headR*1.25+50:Math.max(S.y,ck.steerTop.y,ck.G.y)+110)+56*ux;
+  return {x:minX,y:-top,w:maxX-minX,h:top-minY};
+}
+
+/* ---------- metrics panel ---------- */
+const ladder=$('#ladder'), metrics=$('#metrics');
+function stat(v,lo,hi,soft){return v>=lo&&v<=hi?'good':(v>=lo-soft&&v<=hi+soft?'warn':'bad')}
+function renderSpecs(F){
+  const {best,g,st}=F;
+  const sizes=sizesFor(state.style);
+  $('#sizeN').textContent=best.sz.n;
+  $('#sizeSub').innerHTML=`рама ${ru(g.ST/10)} см · ${best.sz.wheel} · стек ${g.stack} / рич ${g.reach}`;
+  $('#stageTag').innerHTML=`<b>${best.sz.n}</b> · ${st.name} · ${best.sz.wheel}`;
+  ladder.innerHTML=sizes.map((s,i)=>`<div class="rung${i===best.i?' on':F.near.includes(i)?' near':''}" title="${i===best.i?'Подобранный размер':F.near.includes(i)?'Тоже подойдёт с другим выносом':''}">${s.n}<small>${ru(s.st/10)}</small></div>`).join('');
+  const kS=stat(F.knee,25,35,6), aS=stat(F.alpha,st.torsoNorm[0],st.torsoNorm[1],6);
+  const reachS=best.err<22?'good':best.err<50?'warn':'bad';
+  const stemS=g.stemL<=st.stemMin||g.stemL>=st.stemMax?'warn':stat(g.stemL,st.stemIdeal-30,st.stemIdeal+30,15);
+  const eS=best.expo<90||best.expo>best.expoMax?'warn':'good';
+  const rows=[
+    ['Высота седла',`${Math.round(g.saddleH)}<span>мм</span>`,'от оси каретки до верха седла','good'],
+    ['Сгиб колена внизу',`${Math.round(F.knee)}<span>°</span>`,'норма 25–35°',kS],
+    ['Угол спины',`${Math.round(F.alpha)}<span>°</span>`,`к горизонту, для «${st.name.toLowerCase()}» ${st.torsoNorm[0]}–${st.torsoNorm[1]}°`,aS],
+    ['Вынос руля',`${g.stemL}<span>мм · ${g.stemAng>0?'+':'−'}${Math.abs(g.stemAng)}°</span>`,`типично ${st.stemIdeal} мм`,stemS],
+    ['Проставки',`${g.sp}<span>мм</span>`,`до ${st.spMax} мм на штоке`,best.spRaw>st.spMax+5?'warn':'good'],
+    ['Дотягивание',`${best.err<10?'точно':'±'+Math.round(best.err)}<span>${best.err<10?'':'мм'}</span>`,'руки до хватов против идеала',reachS],
+    ['Длина шатунов',`${ru(g.crank)}<span>мм</span>`,'по длине ноги','good'],
+    ['Ширина руля',`${F.barW}<span>мм</span>`,state.style==='city'?'прямой руль':'по ширине плеч','good'],
+    ['Подседел над рамой',`${Math.round(best.expo)}<span>мм</span>`,`комфортно 90–${best.expoMax} мм`,eS],
+  ];
+  metrics.innerHTML=rows.map(r=>`<div class="m" data-s="${r[3]}"><dt>${r[0]}</dt><dd>${r[1]}</dd><div class="hint">${r[2]}</div></div>`).join('');
+  const worst=[kS,reachS,eS,aS].includes('bad')?'bad':[kS,reachS,eS,aS,stemS].includes('warn')?'warn':'good';
+  const st_=$('#status');st_.dataset.s=worst;
+  st_.textContent=worst==='good'?'Посадка в норме':worst==='warn'?'Есть компромисс':'Нужна доработка';
+  const ss=$('#stageStatus'); ss.dataset.s=worst; ss.textContent=st_.textContent;
+  const b=bodyOf(state);
+  $('#roLeg').innerHTML=`${fmt(state.I/state.H*100)}<small>%</small>`;
+  $('#roTorso').innerHTML=`${fmt(b.torso/10)}<small>см</small>`;
+  $('#roSaddle').innerHTML=`${fmt(state.I*0.883)}<small>см</small>`;
+}
+
+/* ---------- animation loop ---------- */
+let target=null, cur=null, curP=null, vb=null, ux=1, theta=-30, wheelA=0, dirty=true, personDirty=true, refs={};
+const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot'];
+function changed(){
+  syncControls();
+  const F=fit(state); target=F.g; renderSpecs(F);
+  if(!cur){cur={...target};curP={H:state.H,I:state.I,A:state.A,W:state.W};}
+  dirty=true; personDirty=true; save();
+}
+function computeUx(b){
+  const r=bikeSvg.getBoundingClientRect(); if(!r.width||!r.height)return 1;
+  return 1/Math.min(r.width/b.w,r.height/b.h);
+}
+function rebuild(){
+  const scene=$('#scene');
+  scene.innerHTML=bikeMarkup(cur,ux);
+  refs={}; ['fCrank','fPedal','fThigh','fShin','fFoot','nCrank','nPedal','nThigh','nShin','nFoot','wR','wF'].forEach(id=>refs[id]=document.getElementById(id));
+  refs.pts=geomPts(cur);
+}
+function setL(el,a,b){if(!el)return;el.setAttribute('x1',fx(a.x));el.setAttribute('y1',fx(-a.y));el.setAttribute('x2',fx(b.x));el.setAttribute('y2',fx(-b.y));}
+function updateDynamic(){
+  const g=cur, hip=refs.pts.hip;
+  for(const [side,th] of [['n',theta],['f',theta+180]]){
+    const l=legAt(g,hip,th);
+    setL(refs[side+'Crank'],V(0,0),l.pedal);
+    setL(refs[side+'Pedal'],sub(l.pedal,V(48,0)),add(l.pedal,V(48,0)));
+    setL(refs[side+'Thigh'],hip,l.knee);setL(refs[side+'Shin'],l.knee,l.ankle);setL(refs[side+'Foot'],l.ankle,l.toe);
+  }
+  const {R,F}=refs.pts;
+  if(refs.wR)refs.wR.setAttribute('transform',`rotate(${fx(wheelA)} ${fx(R.x)} ${fx(-R.y)})`);
+  if(refs.wF)refs.wF.setAttribute('transform',`rotate(${fx(wheelA)} ${fx(F.x)} ${fx(-F.y)})`);
+}
+let last=performance.now();
+function tick(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(target){
+    const k=1-Math.exp(-dt*11);
+    let moving=false;
+    for(const key of NUM){const d=target[key]-cur[key];if(Math.abs(d)>0.02){cur[key]+=d*k;moving=true;}else cur[key]=target[key];}
+    for(const key of ['H','I','A','W']){const d=state[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==state[key]){curP[key]=state[key];personDirty=true;}}
+    const tb=boundsOf(cur,state.rider,ux);
+    if(!vb)vb={...tb};
+    let vbMove=false;
+    for(const key of ['x','y','w','h']){const d=tb[key]-vb[key];if(Math.abs(d)>0.3){vb[key]+=d*k*0.8;vbMove=true;}else vb[key]=tb[key];}
+    if(vbMove||moving||dirty){bikeSvg.setAttribute('viewBox',`${fx(vb.x)} ${fx(vb.y)} ${fx(vb.w)} ${fx(vb.h)}`);
+      const nu=computeUx(vb); if(Math.abs(nu-ux)/ux>0.04){ux=nu;dirty=true;}}
+    if(moving||dirty){rebuild();dirty=false;updateDynamic();}
+    if(state.playing){theta-=dt*360/1.5;wheelA+=dt*360/1.5*1.35;updateDynamic();}
+    if(personDirty){personSvg.innerHTML=personMarkup(curP);personDirty=false;}
+  }
+  requestAnimationFrame(tick);
+}
+const onResize=()=>{if(vb){ux=computeUx(vb);dirty=true;}};
+if('ResizeObserver' in window) new ResizeObserver(onResize).observe(bikeSvg); else window.addEventListener('resize',onResize);
+if('serviceWorker' in navigator && location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
+syncPlay();
+changed();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
