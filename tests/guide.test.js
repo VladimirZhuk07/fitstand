@@ -1,0 +1,52 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { parseRoute, backTarget, answerAllowed, ANSWER_GUARD_MS } = require('../guide.js');
+const { CONTENT } = require('../content.js');
+
+const r = h => parseRoute(h, CONTENT);
+
+test('parseRoute: fitstand', () => {
+  for (const h of ['', '#', '#junk', '#types/mtb/extra/x', '#quizzz']) assert.deepEqual(r(h), { view: 'fit' }, h);
+});
+
+test('parseRoute: quiz', () => {
+  assert.deepEqual(r('#quiz/3'), { view: 'quiz', n: 3 });
+  assert.deepEqual(r('#quiz/6'), { view: 'quiz', n: 6 });
+  for (const h of ['#quiz', '#quiz/0', '#quiz/9', '#quiz/x']) assert.deepEqual(r(h), { view: 'quiz', n: 1 }, h);
+});
+
+test('parseRoute: result', () => assert.deepEqual(r('#result'), { view: 'result' }));
+
+test('parseRoute: types', () => {
+  assert.deepEqual(r('#types'), { view: 'types' });
+  assert.deepEqual(r('#types/mtb'), { view: 'type', id: 'mtb' });
+  assert.deepEqual(r('#types/ebike'), { view: 'type', id: 'ebike' });
+  assert.deepEqual(r('#types/xyz'), { view: 'types' });
+  assert.deepEqual(r('#types/constructor'), { view: 'types' });
+});
+
+test('parseRoute: parts', () => {
+  assert.deepEqual(r('#parts'), { view: 'parts' });
+  assert.deepEqual(r('#parts/brakes'), { view: 'part', id: 'brakes' });
+  assert.deepEqual(r('#parts/xyz'), { view: 'parts' });
+});
+
+test('backTarget', () => {
+  for (const s of [null, undefined, {}, { fs: 0 }, { fs: -1 }, { fs: 1.5 }, { fs: '2' }]) assert.deepEqual(backTarget(s), { kind: 'replace' }, JSON.stringify(s));
+  assert.deepEqual(backTarget({ fs: 3 }), { kind: 'back', steps: 3 });
+});
+
+test('answer taps right after a new question are ignored (double tap)', () => {
+  assert.equal(ANSWER_GUARD_MS, 350);
+  assert.equal(answerAllowed(1000, 1120), false);
+  assert.equal(answerAllowed(1000, 1349), false);
+  assert.equal(answerAllowed(1000, 1350), true);
+  assert.equal(answerAllowed(0, 5), true, 'first screen after load is not guarded');
+});
+
+test('guide texts live in content.js, not in code', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  assert.doesNotMatch(src, /электровелосипед/i);
+  const q = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'quiz.js'), 'utf8');
+  assert.doesNotMatch(q, /Присмотритесь/);
+});
