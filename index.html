@@ -303,7 +303,13 @@ body.page-open{overflow:hidden}
 @media (max-width:480px){.geo th:nth-child(3),.geo td:nth-child(3){display:none}}
 .grp{margin:20px 0 10px}
 .acc-sec{margin:12px 0 8px}
-.acc-top li{margin-bottom:3px}
+.acc-top{list-style:none;padding:0!important}
+.acc-top li{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.acc-mini{width:44px;height:44px;flex:none;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--line)}
+.acc-thumb{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:10px;margin-bottom:6px}
+.acc-photo{display:block;width:100%;max-width:380px;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:14px;border:1px solid var(--line);margin:0 0 12px}
+.var-photo{float:right;width:120px;height:120px;object-fit:contain;background:#fff;border-radius:10px;margin:0 0 8px 12px}
+.var::after{content:"";display:block;clear:both}
 .acc-sit{margin:0 0 6px}
 .prog-acc{display:block;margin-top:4px;font-size:13px;color:var(--accent)}
 .grp:first-of-type{margin-top:4px}

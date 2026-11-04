@@ -65,6 +65,10 @@ function init() {
   // before: an optional line for the first step («Перед первой поездкой: …»)
   const program = (t, before) => `<section><h2>С чего начать</h2><ol class="prog">${t.program.map((s, i) => `<li><b>${esc(s.title)}</b><span>${esc(s.text)}</span>${i === 0 && before ? `<span class="prog-acc">${esc(before)}</span>` : ''}</li>`).join('')}</ol></section>`;
   const accLink = id => `<a href="#acc/${id}">${esc(C.accessories[id].name)}</a>`;
+  // pictures: img/acc/<id>.webp, img/parts/<part>-<n>.webp; data-opt — removed quietly if the file is missing
+  const pic = (src, cls, alt = '') => `<img class="${cls}" src="${src}" alt="${esc(alt)}" loading="lazy" decoding="async" data-opt>`;
+  const accPic = (id, cls) => pic(`img/acc/${id}.webp`, cls);
+  const accRow = id => `<li>${accPic(id, 'acc-mini')}<span>${accLink(id)} — ${esc(C.accessories[id].why)}</span></li>`;
   const switcher = on => `<nav class="pg-switch" aria-label="Разделы гида"><a href="#types"${on === 'types' ? ' aria-current="page"' : ''}>Виды</a><a href="#parts"${on === 'parts' ? ' aria-current="page"' : ''}>Узлы</a></nav>`;
   const fitBtn = (style, motor) => `<button class="btn primary" data-action="fit" data-style="${style}"${motor ? ' data-motor="1"' : ''}>Подобрать размер</button>`;
 
@@ -136,19 +140,19 @@ function init() {
       `</tbody></table><p class="pg-note">${esc(C.health.geometryWarning)}</p></details>`;
   }
   function accBlock(rec) {
-    const top = `<section><h2>Что взять</h2><ul class="acc-top">${rec.top.map(id => `<li>${accLink(id)} — ${esc(C.accessories[id].why)}</li>`).join('')}</ul></section>`;
+    const top = `<section><h2>Что взять</h2><ul class="acc-top">${rec.top.map(accRow).join('')}</ul></section>`;
     const sits = rec.bySituation.length ? `<section><h2>По ситуациям</h2>${rec.bySituation.map(s => `<p class="acc-sit"><b>${esc(s.title)}:</b> ${s.ids.map(accLink).join(', ')}</p>`).join('')}<p><a href="#acc">Все аксессуары</a></p></section>` : `<p><a href="#acc">Все аксессуары</a></p>`;
     return top + sits;
   }
   function accView() {
     return head('Аксессуары') + C.accGroups.map(g => `<h2 class="grp">${g.icon} ${esc(g.title)}</h2>` + g.sections.map(sec =>
       (sec.title ? `<h3 class="acc-sec">${esc(sec.title)}</h3>` : '') +
-      `<div class="cards">${sec.ids.map(id => `<a class="card" href="#acc/${id}"><b>${esc(C.accessories[id].name)}</b><span>${esc(C.accessories[id].short)}</span></a>`).join('')}</div>`).join('')).join('');
+      `<div class="cards">${sec.ids.map(id => `<a class="card" href="#acc/${id}">${accPic(id, 'acc-thumb')}<b>${esc(C.accessories[id].name)}</b><span>${esc(C.accessories[id].short)}</span></a>`).join('')}</div>`).join('')).join('');
   }
   function accItemView(id) {
     const a = C.accessories[id], g = C.accGroups.find(x => x.sections.some(s => s.ids.includes(id)));
     const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
-    return head(a.name, `${g.icon} ${g.title}`) + `<p class="lead">${esc(a.text)}</p>` +
+    return head(a.name, `${g.icon} ${g.title}`) + pic(`img/acc/${id}.webp`, 'acc-photo', a.name) + `<p class="lead">${esc(a.text)}</p>` +
       (a.kinds ? sec('Виды', `<ul class="why">${a.kinds.map(k => `<li><b>${esc(k.name)}</b> — ${esc(k.text)}</li>`).join('')}</ul>`) : '') +
       (a.choose ? sec('Как выбрать', list(a.choose, 'why')) : '') +
       (a.weather ? sec('Под какую погоду', `<p>${esc(a.weather)}</p>`) : '') +
@@ -195,7 +199,7 @@ function init() {
       (t.teach ? sec('Как учить', `<ol class="steps">${t.teach.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`) : '') +
       (t.fear ? sec('Если ребёнок боится', list(t.fear, 'why')) : '') +
       kidsTable +
-      (t.acc ? sec('Что взять', `<ul class="acc-top">${t.acc.map(id => `<li>${accLink(id)} — ${esc(C.accessories[id].why)}</li>`).join('')}</ul>`) : '') +
+      (t.acc ? sec('Что взять', `<ul class="acc-top">${t.acc.map(accRow).join('')}</ul>`) : '') +
       `<section>${prosCons(t.pros, t.cons)}</section>` + program(t) +
       `<div class="pg-actions">${fit ? fitBtn(fit[0], fit[1]) : ''}<a class="btn" href="#quiz/1">Пройти опрос</a></div>`;
   }
@@ -206,7 +210,7 @@ function init() {
   function partView(id) {
     const p = C.parts[id], st = fsApi().getState();
     return head(p.name) + bike(st.style, st.motor, id) + `<p class="lead">${esc(p.short)}</p>` +
-      p.variants.map(v => `<article class="var"><h2>${esc(v.name)}</h2><p>${esc(v.text)}</p>${prosCons(v.pros, v.cons)}</article>`).join('');
+      p.variants.map((v, i) => `<article class="var">${pic(`img/parts/${id}-${i}.webp`, 'var-photo', v.name)}<h2>${esc(v.name)}</h2><p>${esc(v.text)}</p>${prosCons(v.pros, v.cons)}</article>`).join('');
   }
 
   function render() {
@@ -283,6 +287,8 @@ function init() {
       fsApi().showTab('result'); toFit();
     }
   });
+  // a picture that is not there yet: drop it, the screen stays as before
+  document.addEventListener('error', e => { if (e.target instanceof HTMLImageElement && e.target.hasAttribute('data-opt')) e.target.remove(); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !page.hidden) back(); });
   window.addEventListener('popstate', render);
 

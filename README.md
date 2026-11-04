@@ -78,3 +78,11 @@ node --test
 node tools/content-review.mjs
 # создаст info/content-review.md (папка info не попадает в git)
 ```
+
+## Картинки аксессуаров и узлов
+
+1. `node tools/make-image-prompts.js` — собирает промпты в `info/image-prompts.md` (по одному на каждый аксессуар и вариант узла).
+2. Генерация (например, в Cursor) сохраняет PNG в `img/raw/` (папка не попадает в git).
+3. `python tools/convert-images.py` (нужен Pillow) — сжимает в WebP 512×512: `img/acc/<id>.webp`, `img/parts/<узел>-<n>.webp`.
+
+`node --test` проверяет, что картинка есть у каждой позиции и весит не больше 120 КБ.
