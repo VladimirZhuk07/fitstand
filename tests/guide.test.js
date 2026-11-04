@@ -12,7 +12,9 @@ test('parseRoute: fitstand', () => {
 test('parseRoute: quiz', () => {
   assert.deepEqual(r('#quiz/3'), { view: 'quiz', n: 3 });
   assert.deepEqual(r('#quiz/6'), { view: 'quiz', n: 6 });
-  for (const h of ['#quiz', '#quiz/0', '#quiz/9', '#quiz/x']) assert.deepEqual(r(h), { view: 'quiz', n: 1 }, h);
+  for (const h of ['#quiz', '#quiz/0', '#quiz/17', '#quiz/x']) assert.deepEqual(r(h), { view: 'quiz', n: 1 }, h);
+  assert.deepEqual(r('#quiz/9'), { view: 'quiz', n: 9 });
+  assert.deepEqual(r('#quiz/16'), { view: 'quiz', n: 16 });
 });
 
 test('parseRoute: result', () => assert.deepEqual(r('#result'), { view: 'result' }));
@@ -58,8 +60,11 @@ test('parseRoute: menu', () => {
 
 test('menu «Подобрать велосипед» opens the quiz or the saved result', () => {
   const { quizTarget } = require('../guide.js');
-  assert.equal(quizTarget(null, 6), '#quiz/1');
-  assert.equal(quizTarget([null, null, null, null, null, null], 6), '#quiz/1');
-  assert.equal(quizTarget([0, 1, null, 2, null, null], 6), '#quiz/3');
-  assert.equal(quizTarget([0, 1, 0, 2, 1, 4], 6), '#result');
+  const six = { q1: 0, q2: 1, q3: 0, q4: 2, q5: 1, q6: 4 };
+  assert.equal(quizTarget(null, CONTENT), '#quiz/1');
+  assert.equal(quizTarget({ v: 2, a: {} }, CONTENT), '#quiz/1');
+  assert.equal(quizTarget({ v: 2, a: { q1: 0, q2: 1, q4: 2 } }, CONTENT), '#quiz/3');
+  assert.equal(quizTarget({ v: 2, a: six }, CONTENT), '#quiz/7');
+  assert.equal(quizTarget({ v: 2, a: { ...six, gate: ['none'] } }, CONTENT), '#result');
+  assert.equal(quizTarget({ v: 2, a: { ...six, gate: ['back'], back1: [0] } }, CONTENT), '#quiz/9');
 });

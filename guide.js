@@ -2,6 +2,8 @@
 // Адрес после # определяет экран; parseRoute и backTarget — чистые функции (тестируются в Node).
 (function (root) {
 const has = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
+// quiz.js: in the browser its functions are globals, in Node it is required
+const Qz = typeof module === 'object' && module.exports ? require('./quiz.js') : root;
 
 function parseRoute(hash, content) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
@@ -9,7 +11,7 @@ function parseRoute(hash, content) {
   if (extra !== undefined) return { view: 'fit' };
   if (head === 'quiz') {
     const n = Number(arg);
-    return { view: 'quiz', n: Number.isInteger(n) && n >= 1 && n <= content.quiz.length ? n : 1 };
+    return { view: 'quiz', n: Number.isInteger(n) && n >= 1 && n <= Qz.MAX_STEPS ? n : 1 };
   }
   if (head === 'result' && arg === undefined) return { view: 'result' };
   if (head === 'menu' && arg === undefined) return { view: 'menu' };
@@ -24,11 +26,11 @@ function backTarget(historyState) {
   return Number.isInteger(fs) && fs > 0 ? { kind: 'back', steps: fs } : { kind: 'replace' };
 }
 
-// menu «Подобрать велосипед»: first unanswered question, or the result when the quiz is complete
-function quizTarget(answers, count) {
-  if (!Array.isArray(answers)) return '#quiz/1';
-  for (let i = 0; i < count; i++) if (!Number.isInteger(answers[i])) return '#quiz/' + (i + 1);
-  return '#result';
+// menu «Подобрать велосипед»: first unanswered step, or the result when the quiz is complete
+function quizTarget(saved, content) {
+  const A = saved && saved.v === 2 ? saved.a : null;
+  const i = Qz.firstMissingStep(A, content);
+  return i === -1 ? '#result' : '#quiz/' + (i + 1);
 }
 
 // a second tap that lands on the next question within this time is a double tap, not an answer
@@ -63,36 +65,87 @@ function init() {
   const switcher = on => `<nav class="pg-switch" aria-label="Разделы гида"><a href="#types"${on === 'types' ? ' aria-current="page"' : ''}>Виды</a><a href="#parts"${on === 'parts' ? ' aria-current="page"' : ''}>Узлы</a></nav>`;
   const fitBtn = (style, motor) => `<button class="btn primary" data-action="fit" data-style="${style}"${motor ? ' data-motor="1"' : ''}>Подобрать размер</button>`;
 
+  const answers = () => { const q = fsApi().getQuiz(); return q && q.v === 2 ? q.a : {}; };
+  const saveAnswers = A => fsApi().setQuiz({ v: 2, a: A });
+  const gearName = (g, fit) => C.health.gear[g].replace('{mm}', fit.crankMax);
+  let shownResult = null;
+
   function menuView() {
-    const answers = fsApi().getQuiz(), target = quizTarget(answers, C.quiz.length);
-    const res = target === '#result' ? root.scoreQuiz(answers, C.quiz, C.ebikeHint) : null;
+    const q = fsApi().getQuiz(), target = quizTarget(q, C);
+    const res = target === '#result' ? Qz.buildResult(answers(), C) : null;
+    const v = res && res.complete ? res.variants[0] : null;
     const href = { quiz: target, types: '#types', parts: '#parts' };
     const item = m => {
-      const short = m.id === 'quiz' && res ? `Ваш результат — ${C.types[res.type].name}${res.motor ? ' с мотором' : ''}` : m.short;
+      const short = m.id === 'quiz' && v ? `Ваш результат — ${C.types[v.type].name}${v.motor ? ' с мотором' : ''}` : m.short;
       const inner = `<b>${esc(m.title)}</b><span>${esc(short)}</span>`;
-      return m.id === 'fit'
-        ? `<button class="menu-item" data-action="tofit">${inner}</button>`
-        : `<a class="menu-item" href="${href[m.id]}">${inner}</a>`;
+      if (m.id === 'fit') return `<button class="menu-item" data-action="tofit">${inner}</button>`;
+      if (m.id === 'erase') return `<button class="menu-item" data-action="erase">${inner}</button>`;
+      return `<a class="menu-item" href="${href[m.id]}">${inner}</a>`;
     };
     return head('Меню') + `<nav class="menu" aria-label="Меню">${C.menu.map(item).join('')}</nav>`;
   }
+  function explainView(blockId, A) {
+    const b = C.health.blocks.find(x => x.id === blockId);
+    const lines = [];
+    for (const q of b.questions) {
+      const v = A[q.id];
+      for (const i of (Array.isArray(v) ? v : [v])) { const a = q.answers[i]; if (a && a.explain) lines.push(a.explain); }
+    }
+    return head(b.title, 'Что мы учли') +
+      (lines.length ? list([...new Set(lines)].slice(0, 3), 'why') : '<p>Учтём ваши ответы в подборе.</p>') +
+      `<div class="pg-actions"><button class="btn primary" data-action="next">Дальше</button></div>`;
+  }
   function quizView(n) {
-    const q = C.quiz[n - 1], ans = (fsApi().getQuiz() || [])[n - 1];
-    return head(q.q, `Вопрос ${n} / ${C.quiz.length}`) +
-      `<div class="pg-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${C.quiz.length}" aria-valuenow="${n}"><i style="width:${(n / C.quiz.length) * 100}%"></i></div>` +
-      `<div class="answers">${q.answers.map((a, i) => `<button class="ans" data-answer="${i}" aria-pressed="${ans === i}">${esc(a.text)}</button>`).join('')}</div>`;
+    const A = answers(), flow = Qz.quizFlow(A, C), step = flow[n - 1];
+    if (step.kind === 'explain') return explainView(step.block, A);
+    const q = Qz.getQuestion(step.id, C), qSteps = flow.filter(s => s.kind === 'q');
+    const pos = qSteps.findIndex(s => s.id === step.id) + 1, total = qSteps.length;
+    const progress = `<div class="pg-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${pos}"><i style="width:${(pos / total) * 100}%"></i></div>`;
+    const cur = A[step.id];
+    let body;
+    if (q.multi) {
+      const key = (a, i) => (step.id === 'gate' ? a.id : i);
+      const on = (a, i) => Array.isArray(cur) && cur.includes(key(a, i));
+      body = `<p class="pg-hint">Можно выбрать несколько</p><div class="answers">${q.answers.map((a, i) =>
+        `<button class="ans" data-toggle="${key(a, i)}" aria-pressed="${on(a, i)}">${esc(a.text)}</button>`).join('')}</div>` +
+        `<div class="pg-actions"><button class="btn primary" data-action="next"${Qz.isAnswered(step, A, C) ? '' : ' disabled'}>Дальше</button></div>`;
+    } else {
+      body = `<div class="answers">${q.answers.map((a, i) => `<button class="ans" data-answer="${i}" aria-pressed="${cur === i}">${esc(a.text)}</button>`).join('')}</div>`;
+    }
+    const note = step.id === 'gate' ? `<p class="pg-note">${esc(C.health.disclaimer.split('. ')[0])}. ${esc(C.health.privacy)}</p>` : '';
+    return head(q.q, `Вопрос ${pos} из ${total}`) + progress + body + note;
+  }
+  function variantCard(v, i) {
+    const t = C.types[v.type];
+    const chips = v.gear.length ? `<ul class="gear">${v.gear.map(g => `<li>${esc(gearName(g, v.fit))}</li>`).join('')}</ul>` : '';
+    const warn = v.warn.map(w => `<p class="v-warn">${esc(w)}</p>`).join('');
+    return `<article class="variant"><div class="v-kind">${esc(C.health.variantNames[v.kind])}</div>` +
+      `<svg class="bike v-bike" data-style="${v.type}"${v.motor ? ' data-motor="1"' : ''} data-variant="${i}" role="img" aria-label="Схема велосипеда"></svg>` +
+      `<b>${esc(t.name)}${v.motor ? ' с мотором' : ''}</b>${chips}${warn}` +
+      `<button class="btn primary" data-action="fit" data-variant="${i}">Подобрать размер</button></article>`;
+  }
+  function geometryView(v) {
+    const s = fsApi().fitSummary({ style: v.type, health: { ...v.fit, gear: v.gear } });
+    const val = { stack: `${s.stack} мм`, reach: `${s.reach} мм`, crank: `${String(s.crank).replace('.', ',')} мм`, bar: `${s.bar} мм`, tyre: `${s.tyre} мм`, frame: s.stepThrough ? 'с низкой трубой' : 'обычная' };
+    return `<details class="geo"><summary>Цифры геометрии · размер ${esc(s.size)}</summary><table>` +
+      `<thead><tr><th>Параметр</th><th>У вас</th><th>Что это</th><th>Куда смотреть при травмах</th></tr></thead><tbody>` +
+      C.health.geometryRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(val[r.key])}</td><td>${esc(r.what)}</td><td>${esc(r.injury)}</td></tr>`).join('') +
+      `</tbody></table><p class="pg-note">${esc(C.health.geometryWarning)}</p></details>`;
   }
   function resultView(r) {
-    const t = C.types[r.type];
-    const reasons = r.reasons.map(cap);
-    const name = t.name + (r.motor ? ' с мотором' : '');
-    return head(name, 'Вам подойдёт') + bike(r.type, r.motor) +
+    shownResult = r;
+    const bal = r.variants[0], t = C.types[bal.type];
+    const name = t.name + (bal.motor ? ' с мотором' : '');
+    return head(name, 'Вам подойдёт') +
+      (r.rehab ? `<p class="pg-alert">${esc(C.health.rehabText)}</p>` : '') +
+      `<div class="variants">${r.variants.map(variantCard).join('')}</div>` +
       `<p class="lead">${esc(t.purpose)}</p>` +
-      (reasons.length ? `<section><h2>Почему</h2>${list(reasons, 'why')}</section>` : '') +
-      (r.runnerUp ? `<section><h2>Ещё подойдёт</h2><p><a href="#types/${r.runnerUp}">${esc(C.types[r.runnerUp].name)}</a> — ${esc(C.types[r.runnerUp].short.toLowerCase())}</p></section>` : '') +
+      (r.reasons.length ? `<section><h2>Почему</h2>${list(r.reasons.map(cap), 'why')}</section>` : '') +
       (r.notes.length ? `<section><h2>Что учесть</h2>${list(r.notes, 'notes')}</section>` : '') +
       `<section>${prosCons(t.pros, t.cons)}</section>` + program(t) +
-      `<div class="pg-actions">${fitBtn(r.type, r.motor)}<button class="btn" data-action="restart">Пройти заново</button><a class="btn" href="#types">Все виды</a></div>`;
+      `<section>${geometryView(bal)}</section>` +
+      `<p class="pg-note">${esc(C.health.disclaimer)}</p>` +
+      `<div class="pg-actions"><button class="btn" data-action="restart">Пройти заново</button><a class="btn" href="#types">Все виды</a></div>`;
   }
   const typeBike = id => (id === 'ebike' ? ['city', true] : [id, false]);
   function typesView() {
@@ -126,9 +179,11 @@ function init() {
     if (!open) { page.innerHTML = ''; return; }
     let html;
     if (r.view === 'menu') html = menuView();
-    else if (r.view === 'quiz') html = quizView(r.n);
-    else if (r.view === 'result') {
-      const res = root.scoreQuiz(fsApi().getQuiz() || [], C.quiz, C.ebikeHint);
+    else if (r.view === 'quiz') {
+      if (r.n > Qz.quizFlow(answers(), C).length) { history.replaceState(history.state, '', quizTarget(fsApi().getQuiz(), C)); return render(); }
+      html = quizView(r.n);
+    } else if (r.view === 'result') {
+      const res = Qz.buildResult(answers(), C);
       if (!res.complete) { history.replaceState(history.state, '', '#quiz/' + (res.firstMissing + 1)); return render(); }
       html = resultView(res);
     } else if (r.view === 'types') html = typesView();
@@ -136,8 +191,11 @@ function init() {
     else if (r.view === 'parts') html = partsView();
     else html = partView(r.id);
     page.innerHTML = `<div class="pg">${html}</div>`;
-    page.querySelectorAll('svg[data-style]').forEach(svg =>
-      fsApi().drawBike(svg, { style: svg.dataset.style, motor: svg.dataset.motor === '1', highlight: svg.dataset.hl || null }));
+    page.querySelectorAll('svg[data-style]').forEach(svg => {
+      const v = svg.dataset.variant !== undefined && shownResult ? shownResult.variants[Number(svg.dataset.variant)] : null;
+      fsApi().drawBike(svg, { style: svg.dataset.style, motor: svg.dataset.motor === '1', highlight: svg.dataset.hl || null,
+        health: v ? { ...v.fit, gear: v.gear } : null });
+    });
     page.scrollTop = 0;
     const h = page.querySelector('h1'); if (h) h.focus({ preventScroll: true });
   }
@@ -147,18 +205,42 @@ function init() {
     if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); go(a.getAttribute('href')); return; }
     const b = e.target.closest('#page button');
     if (!b) return;
+    const n = parseRoute(location.hash, C).n;
+    const advance = A => { const len = Qz.quizFlow(A, C).length; go(n < len ? '#quiz/' + (n + 1) : '#result'); };
     if (b.dataset.answer !== undefined) {
       const now = performance.now();
       if (!answerAllowed(lastAnswerAt, now)) return;
       lastAnswerAt = now;
-      const n = parseRoute(location.hash, C).n, answers = fsApi().getQuiz() || C.quiz.map(() => null);
-      answers[n - 1] = Number(b.dataset.answer);
-      fsApi().setQuiz(answers);
-      go(n < C.quiz.length ? '#quiz/' + (n + 1) : '#result');
+      const step = Qz.quizFlow(answers(), C)[n - 1], A = { ...answers(), [step.id]: Number(b.dataset.answer) };
+      saveAnswers(A);
+      advance(A);
+    } else if (b.dataset.toggle !== undefined) {
+      const step = Qz.quizFlow(answers(), C)[n - 1];
+      const val = step.id === 'gate' ? b.dataset.toggle : Number(b.dataset.toggle);
+      const prev = Array.isArray(answers()[step.id]) ? answers()[step.id] : [];
+      let list;
+      if (prev.includes(val)) list = prev.filter(x => x !== val);          // switch off
+      else if (step.id === 'gate' && val === 'none') list = ['none'];     // «Нет» clears the blocks
+      else list = [...prev.filter(x => x !== 'none'), val];               // a block clears «Нет»
+      let A = { ...answers(), [step.id]: list };
+      if (!list.length) delete A[step.id];
+      if (step.id === 'gate') A = Qz.pruneAnswers(A, C);
+      saveAnswers(A);
+      render();
+    } else if (b.dataset.action === 'next') {
+      const A = answers(), step = Qz.quizFlow(A, C)[n - 1];
+      if (step && Qz.isAnswered(step, A, C)) advance(A);
+    } else if (b.dataset.action === 'erase') {
+      if (window.confirm('Стереть ответы опроса и поправки посадки?')) { fsApi().eraseAnswers(); render(); }
     } else if (b.dataset.action === 'back') back();
     else if (b.dataset.action === 'tofit') toFit();
     else if (b.dataset.action === 'restart') { fsApi().setQuiz(null); go('#quiz/1'); }
-    else if (b.dataset.action === 'fit') { fsApi().applyStyle(b.dataset.style, b.dataset.motor === '1'); fsApi().showTab('result'); toFit(); }
+    else if (b.dataset.action === 'fit') {
+      const v = b.dataset.variant !== undefined && shownResult ? shownResult.variants[Number(b.dataset.variant)] : null;
+      if (v) fsApi().applyStyle(v.type, v.motor, { ...v.fit, gear: v.gear });
+      else fsApi().applyStyle(b.dataset.style, b.dataset.motor === '1');
+      fsApi().showTab('result'); toFit();
+    }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !page.hidden) back(); });
   window.addEventListener('popstate', render);

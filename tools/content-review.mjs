@@ -26,6 +26,36 @@ CONTENT.quiz.forEach((q, qi) => {
 
 L.push('**Совет в «Что учесть»**, если мотор не выбран, но человек ездит до работы или 50+ км и возит багажник или ребёнка:', '', `> ${CONTENT.ebikeHint}`, '');
 
+const H = CONTENT.health;
+const TYPE_NAMES = { ...TYPE_RU };
+const effects = a => {
+  const out = [];
+  const pts = Object.entries(a.pts || {}).map(([t, v]) => `${TYPE_NAMES[t]} ${v > 0 ? '+' : ''}${v}`);
+  if (pts.length) out.push('баллы: ' + pts.join(', '));
+  const f = a.fit || {};
+  if (f.upright) out.push(`спина вертикальнее на ${f.upright}°`);
+  if (f.barUp) out.push(`руль выше на ${f.barUp} мм`);
+  if (f.crankMax) out.push(`шатуны до ${f.crankMax} мм`);
+  if (f.stepThrough) out.push('рама с низкой трубой');
+  const gear = [...(a.gear || []), ...(a.offroadGear || []).map(g => g + '*')];
+  if (gear.length) out.push('оснастка: ' + gear.map(g => g.endsWith('*') ? H.gear[g.slice(0, -1)] + ' (при бездорожье)' : H.gear[g]).join(', ').replace('{mm}', f.crankMax || 'N'));
+  if (a.rehab) out.push('совет врача');
+  return out.join('; ') || 'без эффектов';
+};
+L.push('## Здоровье', '', `Вопрос 7: **${H.gate.q}** — ${H.gate.answers.map(a => a.text).join(' / ')} (можно несколько)`, '');
+for (const q of [...H.blocks.flatMap(b => b.questions.map(x => ({ ...x, block: b.title }))), { ...H.cushion, block: 'всем, кто отметил травму' }]) {
+  L.push(`### ${q.q}`, '', `*Блок: ${q.block}; ${q.multi ? 'можно несколько ответов' : 'один ответ'}*`, '');
+  q.answers.forEach((a, i) => {
+    L.push(`${i + 1}. **${a.text}** — ${effects(a)}`);
+    if (a.warn) L.push(`   - предупреждение (${a.warn.types.map(t => TYPE_NAMES[t]).join(', ')}): «${a.warn.text}»`);
+    if (a.explain) L.push(`   - объяснение после блока: «${a.explain}»`);
+    if (a.reason) L.push(`   - причина в результате: «${a.reason}»`);
+    if (a.note) L.push(`   - «Что учесть»: ${a.note}`);
+  });
+  L.push('');
+}
+L.push('**Дисклеймер:** ' + H.disclaimer, '', '**Хранение:** ' + H.privacy, '', '**Совет врача:** ' + H.rehabText, '');
+
 L.push('## Виды велосипедов', '');
 for (const id of CONTENT.typeOrder) {
   const t = CONTENT.types[id];
