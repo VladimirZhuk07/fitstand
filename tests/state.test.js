@@ -71,3 +71,14 @@ test('healthOn default true', () => {
   assert.equal(load({ healthOn: false }).healthOn, false);
   assert.equal(load({ healthOn: 'no' }).healthOn, true);
 });
+
+// ---------- fit styles only (sub-project A, Task 5) ----------
+const MODEL = require('../model.js');
+const FIT = Object.fromEntries(MODEL.FIT_STYLES.map(s => [s, MODEL.STYLES[s]]));
+test('old saved mtb style still loads', () => {
+  assert.equal(loadSaved(JSON.stringify({ style: 'mtb' }), DEF, FIT, COLORS).style, 'mtb');
+  assert.equal(loadSaved(JSON.stringify({ style: 'fullsus' }), DEF, FIT, COLORS).style, 'fullsus');
+});
+test('catalog-only styles are rejected', () => {
+  for (const style of ['balance', 'bmx', 'cx', 'kidTrike', 'special']) assert.equal(loadSaved(JSON.stringify({ style }), DEF, FIT, COLORS).style, 'road', style);
+});

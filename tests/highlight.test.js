@@ -15,3 +15,8 @@ test('health row and toggle exist', () => {
   assert.match(html, /id="healthRow"/);
   assert.match(html, /<input type="checkbox" id="tHealth" checked>/);
 });
+
+test('fullsus button and fit-only styles in the fitstand', () => {
+  assert.match(html, /<button role="radio" data-style="fullsus" aria-checked="false">Двухподвес<\/button>/);
+  assert.match(html, /loadSaved\(saved,DEFAULTS,FIT_ONLY,/);
+});

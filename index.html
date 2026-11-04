@@ -301,6 +301,14 @@ body.page-open{overflow:hidden}
 .geo th,.geo td{text-align:left;padding:6px 8px 6px 0;border-top:1px solid var(--line);vertical-align:top}
 .geo th{color:var(--muted);font-weight:500}
 @media (max-width:480px){.geo th:nth-child(3),.geo td:nth-child(3){display:none}}
+.grp{margin:20px 0 10px}
+.grp:first-of-type{margin-top:4px}
+.card small{color:var(--muted);font-weight:500;margin-left:6px}
+.kids{border-collapse:collapse;font-size:13.5px;margin-top:4px}
+.kids th,.kids td{text-align:left;padding:5px 14px 5px 0;border-top:1px solid var(--line)}
+.kids th{color:var(--muted);font-weight:500}
+.kids tr.on td{font-weight:600;color:var(--accent)}
+.steps{margin:0;padding-left:22px;display:grid;gap:4px}
 .var{margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
 .var h2{font-family:var(--f-body);font-stretch:normal;text-transform:none;letter-spacing:0;font-size:16px;color:var(--ink)}
 .pg-back:focus-visible,.ans:focus-visible,.btn:focus-visible,.card:focus-visible,.pg-switch a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -390,6 +398,7 @@ body.page-open{overflow:hidden}
             <button role="radio" data-style="city" aria-checked="false">Город</button>
             <button role="radio" data-style="hybrid" aria-checked="false">Гибрид</button>
             <button role="radio" data-style="mtb" aria-checked="false">MTB</button>
+            <button role="radio" data-style="fullsus" aria-checked="false">Двухподвес</button>
             <button role="radio" data-style="folding" aria-checked="false">Складной</button>
           </div>
           <a class="more" id="aboutType" href="#types/road">Об этом виде ›</a>
@@ -447,7 +456,8 @@ const FLEX=['Низкая','Ниже средней','Средняя','Хоро�
 const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'road',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
 const SAVE_KEY='fitstand:v1';
 let saved=null; try{saved=localStorage.getItem(SAVE_KEY);}catch(e){}
-const state=loadSaved(saved,DEFAULTS,STYLES,COLORS.map(c=>c[0]));
+const FIT_ONLY=Object.fromEntries(FIT_STYLES.map(s=>[s,STYLES[s]]));
+const state=loadSaved(saved,DEFAULTS,FIT_ONLY,COLORS.map(c=>c[0]));
 let saveT=0;
 function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}));}catch(e){}},300);}
 
@@ -678,14 +688,15 @@ if('serviceWorker' in navigator && location.protocol==='https:'){window.addEvent
 window.fitstand={
   getState:()=>JSON.parse(JSON.stringify(state)),
   applyStyle(style,motor,health){
-    if(!(style in STYLES))return;
+    if(!FIT_STYLES.includes(style))return;
     state.style=style;state.motor=!!motor;
     if(health!==undefined){state.health=health?{upright:health.upright||0,barUp:health.barUp||0,crankMax:health.crankMax??null,stepThrough:!!health.stepThrough,gear:[...(health.gear||[])]}:null;state.healthOn=true;}
     syncStyle();dirty=true;changed();
   },
   showTab(name){const t=document.getElementById('tab-'+name);if(t)selectTab(t);},
   drawBike(svg,opts){
-    const g=fit({...state,style:opts.style,health:opts.health||null}).g, b=boundsOf(g,false,1);
+    const body=(STYLES[opts.style]&&STYLES[opts.style].rider)||{}; // kids, BMX: a dummy of their own size
+    const g=fit({...state,...body,style:opts.style,health:opts.health||null}).g, b=boundsOf(g,false,1);
     svg.setAttribute('viewBox',`${fx(b.x)} ${fx(b.y)} ${fx(b.w)} ${fx(b.h)}`);
     svg.innerHTML=bikeMarkup(g,1,{live:false,motor:!!opts.motor,highlight:opts.highlight||null});
   },

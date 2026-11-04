@@ -59,7 +59,14 @@ L.push('**Дисклеймер:** ' + H.disclaimer, '', '**Хранение:** '
 L.push('## Виды велосипедов', '');
 for (const id of CONTENT.typeOrder) {
   const t = CONTENT.types[id];
-  L.push(`### ${t.name}`, '', `*${t.short}*`, '', t.purpose, '', `**Кому подходит:** ${t.forWhom}`, '');
+  L.push(`### ${t.name}${t.age ? ` (${t.age})` : ''}`, '', `*${t.short}*`, '', t.purpose, '', `**Кому подходит:** ${t.forWhom}`, '');
+  if (t.note) L.push(t.note, '');
+  if (t.terrain) L.push(`**Для каких трасс:** ${t.terrain}`, '');
+  if (t.compare) L.push(`**Чем отличается от шоссейного и чем похож:** ${t.compare}`, '');
+  if (t.variants) bullets('Варианты', t.variants);
+  if (t.teach) bullets('Как учить', t.teach);
+  if (t.fear) bullets('Если ребёнок боится', t.fear);
+  if (t.wheels) L.push(`**Колёса:** ${t.wheels.map(w => w + '″').join(', ')}`, '');
   bullets('Плюсы', t.pros);
   bullets('Минусы', t.cons);
   bullets('С чего начать', t.program.map(s => `${s.title}: ${s.text}`));

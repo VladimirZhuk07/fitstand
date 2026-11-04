@@ -147,18 +147,31 @@ function init() {
       `<p class="pg-note">${esc(C.health.disclaimer)}</p>` +
       `<div class="pg-actions"><button class="btn" data-action="restart">Пройти заново</button><a class="btn" href="#types">Все виды</a></div>`;
   }
+  // the drawing of a type: e-bike is a city bike with a motor, every other type has its own drawing
   const typeBike = id => (id === 'ebike' ? ['city', true] : [id, false]);
+  const fitOf = id => { const f = C.types[id].fitAs; return f ? [f, id === 'ebike'] : null; };
   function typesView() {
+    const card = id => { const [s, m] = typeBike(id), t = C.types[id];
+      return `<a class="card" href="#types/${id}">${bike(s, m, null, 'card-bike')}<b>${esc(t.name)}${t.age ? `<small>${esc(t.age)}</small>` : ''}</b><span>${esc(t.short)}</span></a>`; };
     return head('Виды велосипедов') + switcher('types') +
-      `<div class="cards">${C.typeOrder.map(id => { const [s, m] = typeBike(id);
-        return `<a class="card" href="#types/${id}">${bike(s, m, null, 'card-bike')}<b>${esc(C.types[id].name)}</b><span>${esc(C.types[id].short)}</span></a>`; }).join('')}</div>`;
+      C.typeGroups.map(g => `<h2 class="grp">${esc(g.title)}</h2><div class="cards">${g.ids.map(card).join('')}</div>`).join('');
   }
   function typeView(id) {
-    const t = C.types[id], [s, m] = typeBike(id);
-    return head(t.name) + bike(s, m) + `<p class="lead">${esc(t.purpose)}</p>` +
-      `<section><h2>Кому подходит</h2><p>${esc(t.forWhom)}</p></section>` +
+    const t = C.types[id], [s, m] = typeBike(id), fit = fitOf(id);
+    const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
+    const kidsTable = t.wheels ? sec('Размер колеса по росту ребёнка', `<table class="kids"><tr><th>Рост</th><th>Колесо</th></tr>${C.kidsWheels.map(w =>
+      `<tr${t.wheels.includes(w.wheel) ? ' class="on"' : ''}><td>${w.from}–${w.to} см</td><td>${w.wheel}″</td></tr>`).join('')}</table><p class="pg-note">Ориентир: точнее — примерка, ребёнок должен доставать до земли носками.</p>`) : '';
+    return head(t.name, t.age || null) + bike(s, m) + `<p class="lead">${esc(t.purpose)}</p>` +
+      (t.note ? `<p>${esc(t.note)}</p>` : '') +
+      sec('Кому подходит', `<p>${esc(t.forWhom)}</p>`) +
+      (t.terrain ? sec('Для каких трасс', `<p>${esc(t.terrain)}</p>`) : '') +
+      (t.compare ? sec('Чем отличается от шоссейного и чем похож', `<p>${esc(t.compare)}</p>`) : '') +
+      (t.variants ? sec('Варианты', list(t.variants, 'why')) : '') +
+      (t.teach ? sec('Как учить', `<ol class="steps">${t.teach.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`) : '') +
+      (t.fear ? sec('Если ребёнок боится', list(t.fear, 'why')) : '') +
+      kidsTable +
       `<section>${prosCons(t.pros, t.cons)}</section>` + program(t) +
-      `<div class="pg-actions">${fitBtn(s, m)}<a class="btn" href="#quiz/1">Пройти опрос</a></div>`;
+      `<div class="pg-actions">${fit ? fitBtn(fit[0], fit[1]) : ''}<a class="btn" href="#quiz/1">Пройти опрос</a></div>`;
   }
   function partsView() {
     return head('Узлы велосипеда') + switcher('parts') +
