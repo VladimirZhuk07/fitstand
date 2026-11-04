@@ -68,3 +68,9 @@ test('menu «Подобрать велосипед» opens the quiz or the saved
   assert.equal(quizTarget({ v: 2, a: { ...six, gate: ['none'] } }, CONTENT), '#result');
   assert.equal(quizTarget({ v: 2, a: { ...six, gate: ['back'], back1: [0] } }, CONTENT), '#quiz/9');
 });
+
+test('parseRoute acc', () => {
+  assert.deepEqual(r('#acc'), { view: 'acc' });
+  assert.deepEqual(r('#acc/helmet'), { view: 'accItem', id: 'helmet' });
+  assert.deepEqual(r('#acc/xyz'), { view: 'acc' });
+});

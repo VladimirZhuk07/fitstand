@@ -302,3 +302,14 @@ test('acc items', () => {
   for (const id of ['suspPost', 'rack', 'pedals', 'fenders', 'tube', 'childSeat', 'roofRack', 'hitchRack']) assert.ok(nonEmpty(A[id].check), `${id}.check`);
   assert.deepEqual(Object.keys(CONTENT.accSituationTitles), ['city', 'rain', 'touring', 'offroad', 'kids', 'back', 'wrists', 'knees', 'long']);
 });
+
+test('kids types list their own accessories', () => {
+  const T = CONTENT.types, A = CONTENT.accessories;
+  for (const id of ['kidTrike', 'balance', 'kidTraining', 'kid', 'teen']) {
+    assert.ok(Array.isArray(T[id].acc) && T[id].acc.length >= 2, `${id}.acc`);
+    for (const a of T[id].acc) assert.ok(A[a], `${id}: ${a}`);
+  }
+  assert.ok(!T.balance.acc.includes('trainingWheels'), 'no training wheels on a balance bike');
+  assert.ok(T.kidTraining.acc.includes('trainingWheels'));
+  for (const id of ['kidTrike', 'balance', 'kidTraining', 'kid']) assert.ok(T[id].acc.includes('kidsHelmet'), `${id} helmet`);
+});

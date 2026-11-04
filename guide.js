@@ -15,6 +15,7 @@ function parseRoute(hash, content) {
   }
   if (head === 'result' && arg === undefined) return { view: 'result' };
   if (head === 'menu' && arg === undefined) return { view: 'menu' };
+  if (head === 'acc') return arg !== undefined && has(content.accessories, arg) ? { view: 'accItem', id: arg } : { view: 'acc' };
   if (head === 'types') return arg !== undefined && has(content.types, arg) ? { view: 'type', id: arg } : { view: 'types' };
   if (head === 'parts') return arg !== undefined && has(content.parts, arg) ? { view: 'part', id: arg } : { view: 'parts' };
   return { view: 'fit' };
@@ -61,7 +62,9 @@ function init() {
     `<svg class="bike ${cls}" data-style="${style}"${motor ? ' data-motor="1"' : ''}${hl ? ` data-hl="${hl}"` : ''} role="img" aria-label="Схема велосипеда"></svg>`;
   const list = (items, cls) => `<ul class="${cls}">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
   const prosCons = (pros, cons) => `<div class="pc"><div><h3>Плюсы</h3>${list(pros, 'pros')}</div><div><h3>Минусы</h3>${list(cons, 'cons')}</div></div>`;
-  const program = t => `<section><h2>С чего начать</h2><ol class="prog">${t.program.map(s => `<li><b>${esc(s.title)}</b><span>${esc(s.text)}</span></li>`).join('')}</ol></section>`;
+  // before: an optional line for the first step («Перед первой поездкой: …»)
+  const program = (t, before) => `<section><h2>С чего начать</h2><ol class="prog">${t.program.map((s, i) => `<li><b>${esc(s.title)}</b><span>${esc(s.text)}</span>${i === 0 && before ? `<span class="prog-acc">${esc(before)}</span>` : ''}</li>`).join('')}</ol></section>`;
+  const accLink = id => `<a href="#acc/${id}">${esc(C.accessories[id].name)}</a>`;
   const switcher = on => `<nav class="pg-switch" aria-label="Разделы гида"><a href="#types"${on === 'types' ? ' aria-current="page"' : ''}>Виды</a><a href="#parts"${on === 'parts' ? ' aria-current="page"' : ''}>Узлы</a></nav>`;
   const fitBtn = (style, motor) => `<button class="btn primary" data-action="fit" data-style="${style}"${motor ? ' data-motor="1"' : ''}>Подобрать размер</button>`;
 
@@ -74,7 +77,7 @@ function init() {
     const q = fsApi().getQuiz(), target = quizTarget(q, C);
     const res = target === '#result' ? Qz.buildResult(answers(), C) : null;
     const v = res && res.complete ? res.variants[0] : null;
-    const href = { quiz: target, types: '#types', parts: '#parts' };
+    const href = { quiz: target, types: '#types', parts: '#parts', acc: '#acc' };
     const item = m => {
       const short = m.id === 'quiz' && v ? `Ваш результат — ${C.types[v.type].name}${v.motor ? ' с мотором' : ''}` : m.short;
       const inner = `<b>${esc(m.title)}</b><span>${esc(short)}</span>`;
@@ -132,17 +135,39 @@ function init() {
       C.health.geometryRows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(val[r.key])}</td><td>${esc(r.what)}</td><td>${esc(r.injury)}</td></tr>`).join('') +
       `</tbody></table><p class="pg-note">${esc(C.health.geometryWarning)}</p></details>`;
   }
+  function accBlock(rec) {
+    const top = `<section><h2>Что взять</h2><ul class="acc-top">${rec.top.map(id => `<li>${accLink(id)} — ${esc(C.accessories[id].why)}</li>`).join('')}</ul></section>`;
+    const sits = rec.bySituation.length ? `<section><h2>По ситуациям</h2>${rec.bySituation.map(s => `<p class="acc-sit"><b>${esc(s.title)}:</b> ${s.ids.map(accLink).join(', ')}</p>`).join('')}<p><a href="#acc">Все аксессуары</a></p></section>` : `<p><a href="#acc">Все аксессуары</a></p>`;
+    return top + sits;
+  }
+  function accView() {
+    return head('Аксессуары') + C.accGroups.map(g => `<h2 class="grp">${g.icon} ${esc(g.title)}</h2>` + g.sections.map(sec =>
+      (sec.title ? `<h3 class="acc-sec">${esc(sec.title)}</h3>` : '') +
+      `<div class="cards">${sec.ids.map(id => `<a class="card" href="#acc/${id}"><b>${esc(C.accessories[id].name)}</b><span>${esc(C.accessories[id].short)}</span></a>`).join('')}</div>`).join('')).join('');
+  }
+  function accItemView(id) {
+    const a = C.accessories[id], g = C.accGroups.find(x => x.sections.some(s => s.ids.includes(id)));
+    const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
+    return head(a.name, `${g.icon} ${g.title}`) + `<p class="lead">${esc(a.text)}</p>` +
+      (a.kinds ? sec('Виды', `<ul class="why">${a.kinds.map(k => `<li><b>${esc(k.name)}</b> — ${esc(k.text)}</li>`).join('')}</ul>`) : '') +
+      (a.choose ? sec('Как выбрать', list(a.choose, 'why')) : '') +
+      (a.weather ? sec('Под какую погоду', `<p>${esc(a.weather)}</p>`) : '') +
+      (a.check ? sec('Проверьте совместимость', `<p class="v-warn">${esc(a.check)}</p>`) : '') +
+      `<div class="pg-actions"><a class="btn" href="#acc">Все аксессуары</a></div>`;
+  }
   function resultView(r) {
     shownResult = r;
+    const rec = Qz.recommendAccessories(answers(), C);
+    const before = 'Перед первой поездкой: ' + rec.top.map(id => C.accessories[id].name.toLowerCase()).join(', ') + '.';
     const bal = r.variants[0], t = C.types[bal.type];
     const name = t.name + (bal.motor ? ' с мотором' : '');
     return head(name, 'Вам подойдёт') +
       (r.rehab ? `<p class="pg-alert">${esc(C.health.rehabText)}</p>` : '') +
-      `<div class="variants">${r.variants.map(variantCard).join('')}</div>` +
+      `<div class="variants">${r.variants.map(variantCard).join('')}</div>` + accBlock(rec) +
       `<p class="lead">${esc(t.purpose)}</p>` +
       (r.reasons.length ? `<section><h2>Почему</h2>${list(r.reasons.map(cap), 'why')}</section>` : '') +
       (r.notes.length ? `<section><h2>Что учесть</h2>${list(r.notes, 'notes')}</section>` : '') +
-      `<section>${prosCons(t.pros, t.cons)}</section>` + program(t) +
+      `<section>${prosCons(t.pros, t.cons)}</section>` + program(t, before) +
       `<section>${geometryView(bal)}</section>` +
       `<p class="pg-note">${esc(C.health.disclaimer)}</p>` +
       `<div class="pg-actions"><button class="btn" data-action="restart">Пройти заново</button><a class="btn" href="#types">Все виды</a></div>`;
@@ -170,6 +195,7 @@ function init() {
       (t.teach ? sec('Как учить', `<ol class="steps">${t.teach.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`) : '') +
       (t.fear ? sec('Если ребёнок боится', list(t.fear, 'why')) : '') +
       kidsTable +
+      (t.acc ? sec('Что взять', `<ul class="acc-top">${t.acc.map(id => `<li>${accLink(id)} — ${esc(C.accessories[id].why)}</li>`).join('')}</ul>`) : '') +
       `<section>${prosCons(t.pros, t.cons)}</section>` + program(t) +
       `<div class="pg-actions">${fit ? fitBtn(fit[0], fit[1]) : ''}<a class="btn" href="#quiz/1">Пройти опрос</a></div>`;
   }
@@ -202,6 +228,8 @@ function init() {
     } else if (r.view === 'types') html = typesView();
     else if (r.view === 'type') html = typeView(r.id);
     else if (r.view === 'parts') html = partsView();
+    else if (r.view === 'acc') html = accView();
+    else if (r.view === 'accItem') html = accItemView(r.id);
     else html = partView(r.id);
     page.innerHTML = `<div class="pg">${html}</div>`;
     page.querySelectorAll('svg[data-style]').forEach(svg => {

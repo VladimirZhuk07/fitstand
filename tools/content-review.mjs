@@ -56,6 +56,23 @@ for (const q of [...H.blocks.flatMap(b => b.questions.map(x => ({ ...x, block: b
 }
 L.push('**Дисклеймер:** ' + H.disclaimer, '', '**Хранение:** ' + H.privacy, '', '**Совет врача:** ' + H.rehabText, '');
 
+L.push('## Аксессуары', '', 'Приоритет: 1 — безопасность, 2 — комфорт и практичность, 3 — электроника. «Когда» — в каких ситуациях подбирается после опроса.', '');
+for (const g of CONTENT.accGroups) {
+  L.push(`### ${g.icon} ${g.title}`, '');
+  for (const sec of g.sections) {
+    if (sec.title) L.push(`**${sec.title}**`, '');
+    for (const id of sec.ids) {
+      const a = CONTENT.accessories[id];
+      const when = a.when === 'always' ? 'всем' : a.when.map(w => CONTENT.accSituationTitles[w] || (w === 'commute' ? 'По дороге на работу' : w)).join(', ');
+      L.push(`#### ${a.name}`, '', `*${a.short}* — приоритет ${a.priority}; когда: ${when}; зачем: «${a.why}»`, '', a.text, '');
+      if (a.kinds) bullets('Виды', a.kinds.map(k => `${k.name} — ${k.text}`));
+      if (a.choose) bullets('Как выбрать', a.choose);
+      if (a.weather) L.push(`**Под какую погоду:** ${a.weather}`, '');
+      if (a.check) L.push(`**Проверьте совместимость:** ${a.check}`, '');
+    }
+  }
+}
+
 L.push('## Виды велосипедов', '');
 for (const id of CONTENT.typeOrder) {
   const t = CONTENT.types[id];
