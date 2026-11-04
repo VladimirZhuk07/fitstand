@@ -420,12 +420,12 @@ const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduc
 const PRESETS=[{H:160,I:74,A:54,W:37},{H:178,I:83,A:61,W:42},{H:195,I:92,A:67,W:46}];
 const COLORS=[['#2B47D6','Кобальт'],['#D44A2C','Сигнальный'],['#4F8A64','Шалфей'],['#C59A55','Песок'],['#5C656E','Графит']];
 const FLEX=['Низкая','Ниже средней','Средняя','Хорошая','Отличная'];
-const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'road',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,playing:!reduceMotion};
+const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'road',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
 const SAVE_KEY='fitstand:v1';
 let saved=null; try{saved=localStorage.getItem(SAVE_KEY);}catch(e){}
 const state=loadSaved(saved,DEFAULTS,STYLES,COLORS.map(c=>c[0]));
 let saveT=0;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,flex,style,color,rider,dims,motor,quiz}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,flex,style,color,rider,dims,motor,quiz}));}catch(e){}},300);}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}));}catch(e){}},300);}
 
 /* ---------- controls ---------- */
 const inputs={H:$('#inH'),I:$('#inI'),A:$('#inA'),W:$('#inW'),flex:$('#inF')};
@@ -643,8 +643,8 @@ window.fitstand={
     svg.setAttribute('viewBox',`${fx(b.x)} ${fx(b.y)} ${fx(b.w)} ${fx(b.h)}`);
     svg.innerHTML=bikeMarkup(g,1,{live:false,motor:!!opts.motor,highlight:opts.highlight||null});
   },
-  getQuiz:()=>state.quiz?[...state.quiz]:null,
-  setQuiz(a){state.quiz=a?[...a]:null;save();},
+  getQuiz:()=>state.quiz?JSON.parse(JSON.stringify(state.quiz)):null,
+  setQuiz(q){state.quiz=q?JSON.parse(JSON.stringify(q)):null;save();},
 };
 syncPlay();
 changed();
