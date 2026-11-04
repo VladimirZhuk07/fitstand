@@ -106,3 +106,13 @@ test('riser bar lifts the hands more than spacers alone', () => {
   assert.ok(withBar.best.err < without.best.err, `err ${withBar.best.err} vs ${without.best.err}`);
   assert.ok(withBar.g.rise > 0);
 });
+
+test('summary bar height includes the riser bar rise', () => {
+  const h = { upright: 6, barUp: 30, crankMax: null, stepThrough: false, gear: ['riseBar'] };
+  const F = M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid', health: h });
+  const s = M.summaryOf(F);
+  assert.equal(s.bar, F.g.stack + F.g.sp + 30);
+  assert.deepEqual([s.size, s.stack, s.reach, s.crank, s.tyre, s.stepThrough], [F.best.sz.n, F.g.stack, F.g.reach, F.g.crank, F.g.tyre, false]);
+  const plain = M.summaryOf(M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid' }));
+  assert.equal(plain.bar, plain.stack + M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid' }).g.sp);
+});

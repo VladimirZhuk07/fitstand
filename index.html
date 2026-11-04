@@ -692,8 +692,7 @@ window.fitstand={
   getQuiz:()=>state.quiz?JSON.parse(JSON.stringify(state.quiz)):null,
   setQuiz(q){state.quiz=q?JSON.parse(JSON.stringify(q)):null;save();},
   fitSummary(opts){
-    const F=fit({...state,style:opts.style,health:opts.health||null}), g=F.g;
-    return {size:F.best.sz.n,stack:g.stack,reach:g.reach,crank:g.crank,bar:g.stack+g.sp,tyre:g.tyre,stepThrough:!!g.stepThrough};
+    return summaryOf(fit({...state,style:opts.style,health:opts.health||null}));
   },
   eraseAnswers(){state.quiz=null;state.health=null;syncStyle();dirty=true;changed();},
 };

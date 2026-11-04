@@ -214,3 +214,7 @@ test('health texts', () => {
   for (const r of H.geometryRows) assert.ok(nonEmpty(r.name) && nonEmpty(r.what) && nonEmpty(r.injury), r.key);
   assert.deepEqual(H.variantNames, { balance: 'Баланс', comfort: 'Максимальный комфорт', simple: 'Проще и дешевле' });
 });
+
+test('menu does not promise a fixed number of questions', () => {
+  assert.doesNotMatch(CONTENT.menu.find(m => m.id === 'quiz').short, /\d+ вопрос/);
+});

@@ -15,7 +15,8 @@ function rankTypes(scores, priorityAnswer) {
 
 // answers: номер ответа (с 0) на каждый вопрос или null; quiz: вопросы из content.js;
 // ebikeHint: текст совета про электровелосипед (CONTENT.ebikeHint), без него совет не добавляется
-function scoreQuiz(answers, quiz, ebikeHint) {
+// forType: build the reasons for this type instead of the winner (used when health points change the winner)
+function scoreQuiz(answers, quiz, ebikeHint, forType) {
   const firstMissing = quiz.findIndex((q, i) => !Number.isInteger(answers[i]) || !q.answers[answers[i]]);
   if (firstMissing !== -1) return { complete: false, firstMissing };
 
@@ -33,7 +34,7 @@ function scoreQuiz(answers, quiz, ebikeHint) {
   const motorAnswer = chosen.find(a => a.motor === true);
   const motor = Boolean(motorAnswer);
   const reasons = chosen
-    .map((a, i) => ({ a, i, p: pts(a, type) }))
+    .map((a, i) => ({ a, i, p: pts(a, forType || type) }))
     .filter(x => x.p > 0)
     .sort((x, y) => y.p - x.p || x.i - y.i)
     .slice(0, motor && motorAnswer.reason ? MAX_REASONS - 1 : MAX_REASONS)
@@ -177,8 +178,10 @@ function buildResult(A0, C) {
   if ([...G].some(g => SUSPENSION.includes(g))) variants.push(variant('simple', type, simpleGear, health));
 
   const healthReasons = [...new Set(chosen.map(a => a.reason).filter(Boolean))].slice(0, 2);
-  const motorReason = base.motor ? base.reasons[base.reasons.length - 1] : null;
-  const baseReasons = base.motor ? base.reasons.slice(0, -1) : base.reasons;
+  // reasons from the first six answers, rebuilt for the final winner
+  const forWinner = type === base.type ? base.reasons : scoreQuiz(BASE_IDS.map(id => A[id]), C.quiz, C.ebikeHint, type).reasons;
+  const motorReason = base.motor ? forWinner[forWinner.length - 1] : null;
+  const baseReasons = base.motor ? forWinner.slice(0, -1) : forWinner;
   const reasons = [...healthReasons, ...baseReasons].slice(0, motorReason ? 3 : 4);
   if (motorReason) reasons.push(motorReason);
 

@@ -296,3 +296,17 @@ test('a more upright back brings a riser bar', () => {
   assert.equal(small.health.upright, 2);
   assert.ok(!V(small, 'balance').gear.includes('riseBar'));
 });
+
+test('reasons describe the final winner when health changes it', () => {
+  const base = { q1: 0, q2: 4, q3: 4, q4: 0, q5: 0, q6: 2 };
+  assert.equal(Q.buildResult({ ...base, gate: ['none'] }, REAL).variants[0].type, 'folding');
+  const r = Q.buildResult({ ...base, gate: ['back'], back1: [0], back2: 0, cushion: 3 }, REAL);
+  const type = r.variants[0].type;
+  assert.equal(type, 'city');
+  // every reason from the first six answers must belong to an answer that gives the winner points
+  const ok = new Set();
+  ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'].forEach((id, i) => { const a = REAL.quiz[i].answers[base[id]]; if ((a.pts[type] || 0) > 0) ok.add(a.reason); });
+  const healthReasons = new Set([healthAnswer('back1', 0).reason, healthAnswer('back2', 0).reason]);
+  for (const reason of r.reasons) assert.ok(ok.has(reason) || healthReasons.has(reason), `foreign reason: ${reason}`);
+  assert.ok(!r.reasons.includes(REAL.quiz[2].answers[4].reason), 'no «важна компактность» for a city bike');
+});

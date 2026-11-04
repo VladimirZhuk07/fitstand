@@ -126,6 +126,11 @@ function evalSize(p,st,b,sz,i,alpha,crank){
   const score=Math.abs(L-st.stemIdeal)*0.6+err*1.4+pen;
   return {i,sz,g,score,err,expo,expoMax,Lraw,spRaw};
 }
+// numbers for the «Цифры геометрии» table: bar height = stack + spacers + riser bar rise
+function summaryOf(F){
+  const g=F.g;
+  return {size:F.best.sz.n,stack:g.stack,reach:g.reach,crank:g.crank,bar:g.stack+g.sp+(g.rise||0),tyre:g.tyre,stepThrough:!!g.stepThrough};
+}
 function fit(p){
   const st=STYLES[p.style], b=bodyOf(p);
   const c0=p.I<74?165:p.I<80?170:p.I<86?172.5:175;
@@ -153,7 +158,7 @@ function fit(p){
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,
-  sizesFor, bodyOf, saddlePt, barGeom, cockpit, legAt, upperOf, kneeFlex, evalSize, fit };
+  summaryOf, sizesFor, bodyOf, saddlePt, barGeom, cockpit, legAt, upperOf, kneeFlex, evalSize, fit };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
