@@ -391,3 +391,16 @@ test('child seat brings kids items', () => {
   assert.ok(kids.ids.includes('childSeat') && kids.ids.includes('kidsHelmet'));
   assert.ok(r.top.includes('kidsHelmet'), 'kids helmet is a safety pick');
 });
+
+test('a child seat brings the child helmet and seat into «Что взять»', () => {
+  const r = Q.recommendAccessories({ q1: 0, q2: 0, q3: 0, q4: 1, q5: 0, q6: 3, gate: ['none'] }, REAL);
+  assert.deepEqual(r.top.slice(0, 3), ['helmet', 'frontLight', 'rearLight']);
+  assert.ok(r.top.includes('kidsHelmet'), `top: ${r.top}`);
+  assert.ok(r.top.includes('kidSeatHarness'), `top: ${r.top}`);
+});
+
+test('every accessory can reach a result page', () => {
+  const titled = new Set(Object.keys(REAL.accSituationTitles));
+  for (const [id, a] of Object.entries(REAL.accessories))
+    assert.ok(a.when === 'always' || a.when.some(w => titled.has(w)), `${id} is only in untitled situations`);
+});

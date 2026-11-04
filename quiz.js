@@ -220,12 +220,15 @@ function accSituations(A, C) {
 }
 
 const MAX_ACC = 5;
+const SPECIFIC = new Set(['kids', 'back', 'wrists', 'knees', 'offroad', 'touring']);
 function recommendAccessories(A, C) {
   const sit = accSituations(A, C), items = Object.entries(C.accessories);
   const hit = a => a.when === 'always' || a.when.some(w => sit.has(w));
+  // within one priority: items for everyone, then items for this person's specific situation, then general city ones
+  const rank = a => (a.when === 'always' ? 0 : a.when.every(w => SPECIFIC.has(w)) ? 1 : 2);
   const top = items.filter(([, a]) => hit(a))
-    .map(([id, a], i) => ({ id, p: a.priority, always: a.when === 'always' ? 0 : 1, i }))
-    .sort((x, y) => x.p - y.p || x.always - y.always || x.i - y.i)
+    .map(([id, a], i) => ({ id, p: a.priority, r: rank(a), i }))
+    .sort((x, y) => x.p - y.p || x.r - y.r || x.i - y.i)
     .slice(0, MAX_ACC).map(x => x.id);
   const bySituation = Object.entries(C.accSituationTitles)
     .filter(([id]) => sit.has(id))
