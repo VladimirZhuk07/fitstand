@@ -249,14 +249,13 @@ test('simple variant drops suspension', () => {
   assert.equal(V(Q.buildResult({ ...SIX, gate: ['none'] }, REAL), 'simple'), undefined);
 });
 
-test('offroad comfort is full suspension', () => {
+test('offroad comfort is fullsus without fullSusp label', () => {
   const r = Q.buildResult({ ...SIX, q1: 2, gate: ['back'], back1: [0], back2: 1, cushion: 0 }, REAL);
   assert.equal(Q.isOffroad({ q1: 2 }), true);
   assert.equal(Q.isOffroad({ q1: 0, q4: 4 }), true);
   assert.equal(Q.isOffroad({ q1: 0, q4: 1 }), false);
-  assert.equal(V(r, 'comfort').type, 'mtb');
-  assert.ok(V(r, 'comfort').gear.includes('fullSusp'));
-  assert.ok(V(r, 'balance').gear.includes('fullSusp'));
+  assert.equal(V(r, 'comfort').type, 'fullsus');
+  for (const v of r.variants) assert.ok(!v.gear.includes('fullSusp'), `${v.kind} has no fullSusp label`);
 });
 
 test('rehab', () => {
@@ -309,4 +308,34 @@ test('reasons describe the final winner when health changes it', () => {
   const healthReasons = new Set([healthAnswer('back1', 0).reason, healthAnswer('back2', 0).reason]);
   for (const reason of r.reasons) assert.ok(ok.has(reason) || healthReasons.has(reason), `foreign reason: ${reason}`);
   assert.ok(!r.reasons.includes(REAL.quiz[2].answers[4].reason), 'no «важна компактность» for a city bike');
+});
+
+// ---------- MTB split (sub-project A, Task 4) ----------
+const RIDER = { q1: 2, q2: 2, q3: 2, q5: 1, q6: 2 };
+test('jumps give full suspension', () => {
+  const r = Q.buildResult({ ...RIDER, q4: 4, gate: ['none'] }, REAL);
+  assert.equal(V(r, 'balance').type, 'fullsus');
+  assert.equal(Q.wantsFullSus({ q4: 4 }), true);
+});
+test('hardtail otherwise', () => {
+  const r = Q.buildResult({ ...RIDER, q4: 3, gate: ['none'] }, REAL);
+  assert.equal(V(r, 'balance').type, 'mtb');
+  assert.equal(r.scores.fullsus, undefined);
+});
+test('back plus offroad gives full suspension', () => {
+  const r = Q.buildResult({ ...RIDER, q4: 3, gate: ['back'], back1: [3], back2: 3, cushion: 3 }, REAL);
+  assert.equal(V(r, 'balance').type, 'fullsus');
+  assert.equal(Q.wantsFullSus({ q1: 0, q4: 1, gate: ['back'] }), false);
+});
+test('critical cushioning on an MTB gives full suspension', () => {
+  const r = Q.buildResult({ ...RIDER, q4: 3, gate: ['upper'], upper1: [4], cushion: 0 }, REAL);
+  assert.equal(V(r, 'balance').type, 'fullsus');
+});
+test('fullsus simple is hardtail', () => {
+  const r = Q.buildResult({ ...RIDER, q4: 4, gate: ['back'], back1: [3], back2: 3, cushion: 3 }, REAL);
+  assert.equal(V(r, 'balance').type, 'fullsus');
+  const s = V(r, 'simple');
+  assert.ok(s, 'simple exists');
+  assert.equal(s.type, 'mtb');
+  assert.ok(!s.gear.includes('suspPost'));
 });

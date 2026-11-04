@@ -112,6 +112,8 @@ const COMFORT_GEAR = ['suspFork', 'suspPost', 'wideTyres', 'riseBar'];
 const SUSPENSION = ['fullSusp', 'suspFork', 'suspPost'];
 
 const isOffroad = A => Boolean(A) && (A.q1 === 2 || A.q4 === 3 || A.q4 === 4);
+// MTB → full suspension: jumps, critical cushioning, or a bad back on rough ground
+const wantsFullSus = A => Boolean(A) && (A.q4 === 4 || A.cushion === 0 || (gateBlocks(A).includes('back') && isOffroad(A)));
 
 function chosenHealthAnswers(A, C) {
   const out = [];
@@ -158,24 +160,31 @@ function buildResult(A0, C) {
   if (health.upright >= 3 || health.barUp > 0) G.add('riseBar');
   if (health.crankMax !== null) G.add('shortCranks');
 
-  const warnFor = t => [...new Set(chosen.filter(a => a.warn && a.warn.types.includes(t)).map(a => a.warn.text))];
+  // full suspension is a type of its own, not a gear label
+  G.delete('fullSusp');
+  const shown = wantsFullSus(A) && type === 'mtb' ? 'fullsus' : type;
+  const warnFor = t => { const w = t === 'fullsus' ? 'mtb' : t;
+    return [...new Set(chosen.filter(a => a.warn && a.warn.types.includes(w)).map(a => a.warn.text))]; };
   const variant = (kind, t, gear, fit) => ({ kind, type: t, motor: base.motor, gear: sortGear(gear), fit, warn: warnFor(t) });
-  const variants = [variant('balance', type, G, health)];
+  const variants = [variant('balance', shown, G, health)];
 
   let comfortType;
-  if (offroad) comfortType = 'mtb';
+  if (offroad) comfortType = 'fullsus';
   else if (type === 'folding') comfortType = 'folding';
   else comfortType = COMFORT_ORDER.find(t => scores[t] > 0 && scores[t] >= 0.5 * scores[type]) || type;
+  if (comfortType === 'mtb' && shown === 'fullsus') comfortType = 'fullsus';
   const comfortGear = new Set(G);
-  for (const g of COMFORT_GEAR) if (!(g === 'suspFork' && comfortType === 'mtb')) comfortGear.add(g);
-  if (offroad) comfortGear.add('fullSusp');
+  const mtbLike = comfortType === 'mtb' || comfortType === 'fullsus';
+  for (const g of COMFORT_GEAR) if (!(g === 'suspFork' && mtbLike)) comfortGear.add(g);
   const comfortFit = { ...health, upright: Math.min(CAP.upright, health.upright + 3), barUp: Math.min(CAP.barUp, health.barUp + 20) };
   const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
-  if (!(comfortType === type && sameSet(comfortGear, G))) variants.push(variant('comfort', comfortType, comfortGear, comfortFit));
+  if (!(comfortType === shown && sameSet(comfortGear, G))) variants.push(variant('comfort', comfortType, comfortGear, comfortFit));
 
   const simpleGear = new Set([...G].filter(g => !SUSPENSION.includes(g)));
   simpleGear.add('wideTyres');
-  if ([...G].some(g => SUSPENSION.includes(g))) variants.push(variant('simple', type, simpleGear, health));
+  // the simpler choice for a full-suspension MTB is a hardtail
+  if (shown === 'fullsus') variants.push(variant('simple', 'mtb', simpleGear, health));
+  else if ([...G].some(g => SUSPENSION.includes(g))) variants.push(variant('simple', shown, simpleGear, health));
 
   const healthReasons = [...new Set(chosen.map(a => a.reason).filter(Boolean))].slice(0, 2);
   // reasons from the first six answers, rebuilt for the final winner
@@ -192,7 +201,7 @@ function buildResult(A0, C) {
   return { complete: true, scores, motor: base.motor, variants, reasons, notes, rehab: chosen.some(a => a.rehab === true), health };
 }
 
-const api = { BASE_TYPES, TIE_ORDER, COMFORT_ORDER, scoreQuiz, rankTypes, isOffroad, buildResult, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
+const api = { BASE_TYPES, TIE_ORDER, COMFORT_ORDER, scoreQuiz, rankTypes, isOffroad, wantsFullSus, buildResult, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
