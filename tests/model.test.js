@@ -90,3 +90,19 @@ test('gear flags reach geometry', () => {
   assert.deepEqual([plain.susp, plain.suspPost, plain.stepThrough, plain.tyre], [false, false, false, 38]);
   assert.equal(M.fit({ ...P178, style: 'mtb', health: { ...HEALTH0, gear: ['wideTyres'] } }).g.tyre, 58);
 });
+
+test('health never changes the frame size', () => {
+  const heavy = { upright: 12, barUp: 60, crankMax: 155, stepThrough: true, gear: ['riseBar', 'suspFork', 'suspPost', 'wideTyres'] };
+  for (const style of ['road', 'gravel', 'city', 'hybrid', 'mtb', 'folding']) for (const p of PRESETS) {
+    const a = M.fit({ ...p, flex: 3, style }), b = M.fit({ ...p, flex: 3, style, health: heavy });
+    assert.equal(b.best.sz.n, a.best.sz.n, `${style} ${p.H}`);
+  }
+});
+
+test('riser bar lifts the hands more than spacers alone', () => {
+  const up = { upright: 6, barUp: 30, crankMax: null, stepThrough: false };
+  const p = { ...PRESETS[1], flex: 3, style: 'hybrid' };
+  const without = M.fit({ ...p, health: { ...up, gear: [] } }), withBar = M.fit({ ...p, health: { ...up, gear: ['riseBar'] } });
+  assert.ok(withBar.best.err < without.best.err, `err ${withBar.best.err} vs ${without.best.err}`);
+  assert.ok(withBar.g.rise > 0);
+});

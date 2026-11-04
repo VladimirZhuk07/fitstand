@@ -159,6 +159,8 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .cta:hover{background:color-mix(in srgb,var(--accent) 13%,transparent)}
 .more{justify-self:start;color:var(--accent);font-size:13.5px;font-weight:500;text-decoration:none}
 .more:hover{text-decoration:underline}
+.health-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;padding:9px 12px;border-radius:10px;background:color-mix(in srgb,var(--good) 9%,transparent);font-size:13.5px}
+.health-row span{color:var(--ink)}
 .top .guide-link{text-decoration:none;color:var(--ink);font-size:14px;padding:7px 16px}
 .cta:focus-visible,.more:focus-visible,.guide-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -370,6 +372,7 @@ body.page-open{overflow:hidden}
             <button role="radio" data-style="folding" aria-checked="false">Складной</button>
           </div>
           <a class="more" id="aboutType" href="#types/road">Об этом виде ›</a>
+          <div class="health-row" id="healthRow" hidden><span id="healthText"></span><label class="switch"><input type="checkbox" id="tHealth" checked> Учитывать</label></div>
           <div class="field">
             <div class="fhead"><label for="inF">Гибкость спины</label><output for="inF" id="outF"></output></div>
             <input type="range" id="inF" min="1" max="5" step="1">
@@ -445,10 +448,25 @@ inputs.H.addEventListener('input',()=>{
 for(const k of ['I','A','W']) inputs[k].addEventListener('input',()=>{state[k]=+inputs[k].value;changed();});
 inputs.flex.addEventListener('input',()=>{state.flex=+inputs.flex.value;changed();});
 document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{Object.assign(state,PRESETS[+b.dataset.preset]);changed();}));
+const healthNow=()=>state.healthOn&&state.health?state.health:null;
+function healthText(h){
+  const p=[];
+  if(h.upright) p.push(`спина +${h.upright}°`);
+  if(h.barUp) p.push(`руль +${h.barUp} мм`);
+  if(h.crankMax) p.push(`шатуны до ${h.crankMax} мм`);
+  if(h.stepThrough) p.push('рама с низкой трубой');
+  if(!p.length&&h.gear&&h.gear.length) p.push('оснастка из опроса');
+  return p.length?'Учтено здоровье: '+p.join(', '):'';
+}
+function syncHealth(){
+  const t=state.health?healthText(state.health):'';
+  $('#healthRow').hidden=!t; $('#healthText').textContent=t; $('#tHealth').checked=state.healthOn;
+}
 function syncStyle(){
   document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-checked',String(x.dataset.style===state.style)));
   $('#aboutType').href='#types/'+state.style;
   $('#tMotor').checked=state.motor;
+  syncHealth();
 }
 document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{state.style=b.dataset.style;syncStyle();changed();}));
 $('#seg').addEventListener('keydown',e=>{
@@ -465,6 +483,7 @@ const bikeSvg=$('#bike');
 $('#tRider').addEventListener('change',e=>{state.rider=e.target.checked;bikeSvg.classList.toggle('no-rider',!state.rider);changed();});
 $('#tDims').addEventListener('change',e=>{state.dims=e.target.checked;bikeSvg.classList.toggle('no-dims',!state.dims);save();});
 $('#tMotor').addEventListener('change',e=>{state.motor=e.target.checked;dirty=true;save();});
+$('#tHealth').addEventListener('change',e=>{state.healthOn=e.target.checked;dirty=true;changed();});
 // restore saved view state into the controls
 document.documentElement.style.setProperty('--frame',state.color);
 syncStyle();
@@ -545,7 +564,8 @@ function renderSpecs(F){
   ladder.style.gridTemplateColumns=st.oneSize?'1fr':'';
   if(st.oneSize) ladder.innerHTML='<div class="rung on">один размер</div>';
   else ladder.innerHTML=sizes.map((s,i)=>`<div class="rung${i===best.i?' on':F.near.includes(i)?' near':''}" title="${i===best.i?'Подобранный размер':F.near.includes(i)?'Тоже подойдёт с другим выносом':''}">${s.n}<small>${ru(s.st/10)}</small></div>`).join('');
-  const kS=stat(F.knee,25,35,6), aS=stat(F.alpha,st.torsoNorm[0],st.torsoNorm[1],6);
+  const tn=[st.torsoNorm[0]+F.upright,st.torsoNorm[1]+F.upright];
+  const kS=stat(F.knee,25,35,6), aS=stat(F.alpha,tn[0],tn[1],6);
   const reachS=best.err<22?'good':best.err<50?'warn':'bad';
   const stemS=g.stemL<=st.stemMin||g.stemL>=st.stemMax?'warn':stat(g.stemL,st.stemIdeal-30,st.stemIdeal+30,15);
   const eS=st.oneSize?'good':best.expo<90||best.expo>best.expoMax?'warn':'good';
@@ -553,11 +573,11 @@ function renderSpecs(F){
   let rows=[
     ['Высота седла',`${Math.round(g.saddleH)}<span>мм</span>`,'от оси каретки до верха седла','good'],
     ['Сгиб колена внизу',`${Math.round(F.knee)}<span>°</span>`,'норма 25–35°',kS],
-    ['Угол спины',`${Math.round(F.alpha)}<span>°</span>`,`к горизонту, для «${st.name.toLowerCase()}» ${st.torsoNorm[0]}–${st.torsoNorm[1]}°`,aS],
+    ['Угол спины',`${Math.round(F.alpha)}<span>°</span>`,`к горизонту, для «${st.name.toLowerCase()}» ${tn[0]}–${tn[1]}°${F.upright?' с учётом здоровья':''}`,aS],
     ['Вынос руля',`${g.stemL}<span>мм · ${g.stemAng>0?'+':'−'}${Math.abs(g.stemAng)}°</span>`,`типично ${st.stemIdeal} мм`,stemS],
-    ['Проставки',`${g.sp}<span>мм</span>`,`до ${st.spMax} мм на штоке`,best.spRaw>st.spMax+5?'warn':'good'],
+    ['Проставки',`${g.sp}<span>мм</span>`,`до ${st.spMax+(g.rise?30:0)} мм на штоке`,best.spRaw>st.spMax+(g.rise?30:0)+5?'warn':'good'],
     ['Дотягивание',`${best.err<10?'точно':'±'+Math.round(best.err)}<span>${best.err<10?'':'мм'}</span>`,'руки до хватов против идеала',reachS],
-    ['Длина шатунов',`${ru(g.crank)}<span>мм</span>`,'по длине ноги','good'],
+    ['Длина шатунов',`${ru(g.crank)}<span>мм</span>`,F.crankCut?'укорочены по ответам о коленях':'по длине ноги','good'],
     ['Ширина руля',`${F.barW}<span>мм</span>`,st.flat?'прямой руль':'по ширине плеч','good'],
     ['Подседел над рамой',`${Math.round(best.expo)}<span>мм</span>`,`комфортно 90–${best.expoMax} мм`,eS],
   ];
@@ -578,11 +598,11 @@ function renderSpecs(F){
 
 /* ---------- animation loop ---------- */
 let target=null, cur=null, curP=null, vb=null, ux=1, theta=-30, wheelA=0, dirty=true, personDirty=true, refs={};
-const FLAGS=['brake','susp','hinge'];
+const FLAGS=['brake','susp','hinge','suspPost','stepThrough'];
 const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot'];
 function changed(){
   syncControls();
-  const F=fit(state); target=F.g; renderSpecs(F);
+  const F=fit({...state,health:healthNow()}); target=F.g; renderSpecs(F);
   if(!cur){cur={...target};curP={H:state.H,I:state.I,A:state.A,W:state.W};}
   dirty=true; personDirty=true; save();
 }
@@ -636,15 +656,25 @@ if('serviceWorker' in navigator && location.protocol==='https:'){window.addEvent
 /* ---------- API for guide.js ---------- */
 window.fitstand={
   getState:()=>JSON.parse(JSON.stringify(state)),
-  applyStyle(style,motor){if(!(style in STYLES))return;state.style=style;state.motor=!!motor;syncStyle();dirty=true;changed();},
+  applyStyle(style,motor,health){
+    if(!(style in STYLES))return;
+    state.style=style;state.motor=!!motor;
+    if(health!==undefined){state.health=health?{upright:health.upright||0,barUp:health.barUp||0,crankMax:health.crankMax??null,stepThrough:!!health.stepThrough,gear:[...(health.gear||[])]}:null;state.healthOn=true;}
+    syncStyle();dirty=true;changed();
+  },
   showTab(name){const t=document.getElementById('tab-'+name);if(t)selectTab(t);},
   drawBike(svg,opts){
-    const g=fit({...state,style:opts.style}).g, b=boundsOf(g,false,1);
+    const g=fit({...state,style:opts.style,health:opts.health||null}).g, b=boundsOf(g,false,1);
     svg.setAttribute('viewBox',`${fx(b.x)} ${fx(b.y)} ${fx(b.w)} ${fx(b.h)}`);
     svg.innerHTML=bikeMarkup(g,1,{live:false,motor:!!opts.motor,highlight:opts.highlight||null});
   },
   getQuiz:()=>state.quiz?JSON.parse(JSON.stringify(state.quiz)):null,
   setQuiz(q){state.quiz=q?JSON.parse(JSON.stringify(q)):null;save();},
+  fitSummary(opts){
+    const F=fit({...state,style:opts.style,health:opts.health||null}), g=F.g;
+    return {size:F.best.sz.n,stack:g.stack,reach:g.reach,crank:g.crank,bar:g.stack+g.sp,tyre:g.tyre,stepThrough:!!g.stepThrough};
+  },
+  eraseAnswers(){state.quiz=null;state.health=null;syncStyle();dirty=true;changed();},
 };
 syncPlay();
 changed();

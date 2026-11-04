@@ -153,6 +153,8 @@ function buildResult(A0, C) {
     if (offroad) for (const g of a.offroadGear || []) G.add(g);
   }
   if (health.stepThrough) G.add('stepThrough');
+  // a more upright back or a higher bar needs a riser bar or a high stem — spacers alone do not reach
+  if (health.upright >= 3 || health.barUp > 0) G.add('riseBar');
   if (health.crankMax !== null) G.add('shortCranks');
 
   const warnFor = t => [...new Set(chosen.filter(a => a.warn && a.warn.types.includes(t)).map(a => a.warn.text))];

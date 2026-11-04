@@ -287,3 +287,12 @@ test('answers of unchecked block are ignored', () => {
 test('incomplete', () => {
   assert.deepEqual(Q.buildResult({ ...SIX }, REAL), { complete: false, firstMissing: 6 });
 });
+
+test('a more upright back brings a riser bar', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['back'], back1: [0], back2: 3, cushion: 3 }, REAL);
+  assert.equal(r.health.upright, 6);
+  assert.ok(V(r, 'balance').gear.includes('riseBar'));
+  const small = Q.buildResult({ ...SIX, gate: ['back'], back1: [5], back2: 3, cushion: 3 }, REAL);
+  assert.equal(small.health.upright, 2);
+  assert.ok(!V(small, 'balance').gear.includes('riseBar'));
+});

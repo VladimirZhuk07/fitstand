@@ -10,3 +10,8 @@ test('highlighted part is painted in the accent colour (spec 3.5, 6)', () => {
 test('header button opens the menu', () => {
   assert.match(html, /<a class="chip guide-link" href="#menu">Меню<\/a>/);
 });
+
+test('health row and toggle exist', () => {
+  assert.match(html, /id="healthRow"/);
+  assert.match(html, /<input type="checkbox" id="tHealth" checked>/);
+});

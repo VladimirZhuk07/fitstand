@@ -54,7 +54,7 @@ function bodyOf(p){
 function saddlePt(g){return mul(V(-Math.cos(g.STA*D),Math.sin(g.STA*D)),g.saddleH)}
 function barGeom(g,C){
   const dk=g.barDrop/125, sk=g.sweep/150;
-  const G=add(C,V(g.barReach-g.sweep,35*sk));
+  const G=add(C,V(g.barReach-g.sweep,35*sk+(g.rise||0)));
   const hand=add(G,V(8*dk,28*dk+12*sk));
   return {G,hand,dk,sk};
 }
@@ -88,10 +88,13 @@ function kneeFlex(l,hip){
 function evalSize(p,st,b,sz,i,alpha,crank){
   const h=p.health||null, gear=(h&&h.gear)||[];
   const tyre=gear.includes('wideTyres')?Math.max(st.tyre,46):st.tyre;
+  // a riser bar or high stem: 30 mm of rise, more spacers and steeper stems
+  const riser=gear.includes('riseBar'), spMax=st.spMax+(riser?30:0);
+  const stemAngs=riser?[...new Set([...st.stemAngs,25,35])]:st.stemAngs;
   const g={STA:st.STA,HTA:st.HTA,drop:st.drop,cs:st.cs,tyre,rake:st.rake,
     wheelR:WHEEL_R[sz.wheel]+tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
     saddleH:p.I*10*st.saddleK-(crank-172.5*p.H/178),crank,stemAng:st.stemAng,barReach:st.barReach,barDrop:st.barDrop,sweep:st.sweep,
-    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(h&&h.stepThrough),hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
+    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(h&&h.stepThrough),rise:riser?30:0,hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
     torso:b.torso,thigh:b.thigh,shin:b.shin,arm:b.arm,headR:b.headR,foot:b.foot};
   const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));
   const sh=add(hip,mul(dirv(alpha),b.torso));
@@ -101,11 +104,11 @@ function evalSize(p,st,b,sz,i,alpha,crank){
   const Cw=sub(target,off);
   const Ht=V(g.reach,g.stack), u=dirv(180-g.HTA);
   let opt=null;
-  st.stemAngs.forEach((sa,k)=>{
+  stemAngs.forEach((sa,k)=>{
     const q=dirv(90-g.HTA+sa);
     const r=sub(Cw,add(Ht,mul(u,35))), det=u.x*q.y-u.y*q.x;
     const spRaw=(r.x*q.y-q.x*r.y)/det;
-    const sp=Math.round(clamp(spRaw,0,st.spMax)/5)*5;
+    const sp=Math.round(clamp(spRaw,0,spMax)/5)*5;
     const r2=sub(r,mul(u,sp));
     const Lraw=r2.x*q.x+r2.y*q.y;
     const L=Math.round(clamp(Lraw,st.stemMin,st.stemMax)/10)*10;
@@ -130,8 +133,10 @@ function fit(p){
   const crank0=Math.min(c0,st.crankMax);
   const crank=h&&Number.isFinite(h.crankMax)?Math.min(crank0,h.crankMax):crank0;
   const sizes=sizesFor(p.style);
-  // size is chosen for a neutral back (raised by health limits), then the cockpit is tuned for the rider's flexibility
-  const cands=sizes.map((sz,i)=>evalSize(p,st,b,sz,i,st.alpha+upright,crank));
+  // size is chosen for a neutral back and no health limits, so it never grows to lift the bar;
+  // then the cockpit (spacers, stem, riser bar) is tuned for flexibility and health
+  const neutral={...p,health:null};
+  const cands=sizes.map((sz,i)=>evalSize(neutral,st,b,sz,i,st.alpha,crank0));
   const pick=cands.reduce((a,c)=>c.score<a.score?c:a);
   const alpha=st.alpha-(p.flex-3)*st.alphaFlex+upright;
   const best=evalSize(p,st,b,pick.sz,pick.i,alpha,crank);
