@@ -116,3 +116,42 @@ test('summary bar height includes the riser bar rise', () => {
   const plain = M.summaryOf(M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid' }));
   assert.equal(plain.bar, plain.stack + M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid' }).g.sp);
 });
+
+// ---------- bike types (sub-project A, Task 1) ----------
+const CATALOG = ['cx', 'track', 'trike', 'cargo', 'bmx', 'special', 'kidTrike', 'balance', 'kidTraining', 'kid', 'teen'];
+
+test('FIT_STYLES', () => {
+  assert.deepEqual(M.FIT_STYLES, ['road', 'gravel', 'city', 'hybrid', 'mtb', 'fullsus', 'folding']);
+  for (const s of M.FIT_STYLES) assert.ok(M.STYLES[s], s);
+});
+
+test('fullsus uses mtb sizes', () => {
+  assert.deepEqual(M.sizesFor('fullsus'), M.sizesFor('mtb'));
+  for (const p of PRESETS) {
+    const a = M.fit({ ...p, flex: 3, style: 'mtb' }), b = M.fit({ ...p, flex: 3, style: 'fullsus' });
+    assert.equal(b.best.sz.n, a.best.sz.n);
+    assert.equal(b.g.rearShock, true);
+    assert.ok(!a.g.rearShock);
+  }
+});
+
+test('catalog styles give finite geometry', () => {
+  for (const style of CATALOG) {
+    const st = M.STYLES[style];
+    assert.ok(st, style);
+    const body = st.rider || PRESETS[1];
+    const F = M.fit({ ...body, flex: 3, style });
+    for (const v of [F.g.saddleH, F.knee, F.alpha, F.g.wheelR]) assert.ok(Number.isFinite(v), `${style}: ${v}`);
+    if (!st.unicycle) assert.ok(F.best.err < 60, `${style}: reach error ${Math.round(F.best.err)}`); // a unicycle has no handlebar
+    if (st.crankMax < 170) assert.ok(F.g.crank <= st.crankMax, `${style} crank`);
+  }
+  const flags = { track: ['brake', 'none'], trike: ['trike', true], cargo: ['cargoBox', true], balance: ['noPedals', true], kidTraining: ['trainingWheels', true], kidTrike: ['frontPedals', true], special: ['unicycle', true] };
+  for (const [style, [k, v]] of Object.entries(flags)) {
+    const st = M.STYLES[style];
+    assert.equal(M.fit({ ...(st.rider || PRESETS[1]), flex: 3, style }).g[k], v, `${style}.${k}`);
+  }
+  assert.equal(M.fit({ ...M.STYLES.kidTrike.rider, flex: 3, style: 'kidTrike' }).g.trike, true);
+  assert.equal(M.sizesFor('cx').length, 6);
+  assert.equal(M.sizesFor('balance').length, 1);
+  assert.equal(M.sizesFor('balance')[0].wheel, '12');
+});
