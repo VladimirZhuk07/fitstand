@@ -86,15 +86,17 @@ function kneeFlex(l,hip){
   return 180-Math.acos(clamp(a.x*b.x+a.y*b.y,-1,1))/D;
 }
 function evalSize(p,st,b,sz,i,alpha,crank){
-  const g={STA:st.STA,HTA:st.HTA,drop:st.drop,cs:st.cs,tyre:st.tyre,rake:st.rake,
-    wheelR:WHEEL_R[sz.wheel]+st.tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
+  const h=p.health||null, gear=(h&&h.gear)||[];
+  const tyre=gear.includes('wideTyres')?Math.max(st.tyre,46):st.tyre;
+  const g={STA:st.STA,HTA:st.HTA,drop:st.drop,cs:st.cs,tyre,rake:st.rake,
+    wheelR:WHEEL_R[sz.wheel]+tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
     saddleH:p.I*10*st.saddleK-(crank-172.5*p.H/178),crank,stemAng:st.stemAng,barReach:st.barReach,barDrop:st.barDrop,sweep:st.sweep,
-    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp,hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
+    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(h&&h.stepThrough),hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
     torso:b.torso,thigh:b.thigh,shin:b.shin,arm:b.arm,headR:b.headR,foot:b.foot};
   const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));
   const sh=add(hip,mul(dirv(alpha),b.torso));
   // hand target from body angles, with a calibration term so frame sizes track real size charts
-  const target=add(add(sh,mul(dirv(alpha+180+st.beta),b.arm*AEK)),V(st.reachAdj-(p.H-165)*0.95,st.heightAdj));
+  const target=add(add(sh,mul(dirv(alpha+180+st.beta),b.arm*AEK)),V(st.reachAdj-(p.H-165)*0.95,st.heightAdj+((h&&h.barUp)||0)));
   const off=barGeom(g,V(0,0)).hand;
   const Cw=sub(target,off);
   const Ht=V(g.reach,g.stack), u=dirv(180-g.HTA);
@@ -124,12 +126,14 @@ function evalSize(p,st,b,sz,i,alpha,crank){
 function fit(p){
   const st=STYLES[p.style], b=bodyOf(p);
   const c0=p.I<74?165:p.I<80?170:p.I<86?172.5:175;
-  const crank=Math.min(c0,st.crankMax);
+  const h=p.health||null, upright=(h&&h.upright)||0;
+  const crank0=Math.min(c0,st.crankMax);
+  const crank=h&&Number.isFinite(h.crankMax)?Math.min(crank0,h.crankMax):crank0;
   const sizes=sizesFor(p.style);
-  // size is chosen for a neutral back, then the cockpit is tuned for the rider's flexibility
-  const cands=sizes.map((sz,i)=>evalSize(p,st,b,sz,i,st.alpha,crank));
+  // size is chosen for a neutral back (raised by health limits), then the cockpit is tuned for the rider's flexibility
+  const cands=sizes.map((sz,i)=>evalSize(p,st,b,sz,i,st.alpha+upright,crank));
   const pick=cands.reduce((a,c)=>c.score<a.score?c:a);
-  const alpha=st.alpha-(p.flex-3)*st.alphaFlex;
+  const alpha=st.alpha-(p.flex-3)*st.alphaFlex+upright;
   const best=evalSize(p,st,b,pick.sz,pick.i,alpha,crank);
   const g=best.g, S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc)), ck=cockpit(g);
   const up=upperOf(g,hip,ck.hand);
@@ -140,7 +144,7 @@ function fit(p){
   const Fx=g.reach+(g.stack-g.drop)/Math.tan(hta)+g.rake/Math.sin(hta);
   const barW=clamp(Math.round((p.W*10+st.barAdd)/20)*20,st.barMin,st.barMax);
   return {st,best,cands,g,alpha:up.alpha,knee:kMin,drop:S.y-ck.G.y,wheelbase:Fx-R.x,barW,
-    near:cands.filter(c=>c.i!==pick.i&&c.score<pick.score+14).map(c=>c.i)};
+    near:cands.filter(c=>c.i!==pick.i&&c.score<pick.score+14).map(c=>c.i),upright,crankCut:crank<crank0};
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,

@@ -45,3 +45,48 @@ test('style flags reach geometry', () => {
   const r = M.fit({ ...PRESETS[1], flex: 3, style: 'road' }).g;
   assert.deepEqual([r.brake, r.susp, r.hinge], ['rim', false, false]);
 });
+
+// ---------- health adjustments (Task 5) ----------
+test('fit without health equals baseline', () => {
+  for (const [style, rows] of Object.entries(EXPECT)) PRESETS.forEach((p, i) => {
+    const F = M.fit({ ...p, flex: 3, style, health: null });
+    assert.deepEqual([F.best.sz.n, F.g.stemL, F.g.sp, Math.round(F.g.saddleH), F.barW, F.g.crank], rows[i], `${style} ${p.H}`);
+    assert.equal(F.upright, 0);
+    assert.equal(F.crankCut, false);
+  });
+});
+
+const HEALTH0 = { upright: 0, barUp: 0, crankMax: null, stepThrough: false, gear: [] };
+const P178 = { ...PRESETS[1], flex: 3 };
+
+test('upright raises the back', () => {
+  const a = M.fit({ ...P178, style: 'city' }), b = M.fit({ ...P178, style: 'city', health: { ...HEALTH0, upright: 6 } });
+  const d = b.alpha - a.alpha;
+  assert.ok(d >= 4 && d <= 8, `delta ${d}`);
+  assert.equal(b.upright, 6);
+});
+
+test('barUp raises the bar', () => {
+  const y = F => M.cockpit(F.g).G.y;
+  const a = M.fit({ ...P178, style: 'hybrid' }), b = M.fit({ ...P178, style: 'hybrid', health: { ...HEALTH0, barUp: 30 } });
+  assert.ok(y(b) - y(a) >= 15, `bar up ${y(b) - y(a)}`);
+});
+
+test('crankMax limits cranks', () => {
+  const tall = { ...PRESETS[2], flex: 3, style: 'road' };
+  const cut = M.fit({ ...tall, health: { ...HEALTH0, crankMax: 155 } });
+  assert.equal(cut.g.crank, 155);
+  assert.equal(cut.crankCut, true);
+  const free = M.fit(tall);
+  assert.equal(free.g.crank, 175);
+  assert.equal(free.crankCut, false);
+  assert.equal(M.fit({ ...tall, health: { ...HEALTH0, crankMax: 175 } }).crankCut, false);
+});
+
+test('gear flags reach geometry', () => {
+  const g = M.fit({ ...P178, style: 'hybrid', health: { ...HEALTH0, stepThrough: true, gear: ['suspFork', 'suspPost', 'wideTyres'] } }).g;
+  assert.deepEqual([g.susp, g.suspPost, g.stepThrough, g.tyre], [true, true, true, 46]);
+  const plain = M.fit({ ...P178, style: 'hybrid' }).g;
+  assert.deepEqual([plain.susp, plain.suspPost, plain.stepThrough, plain.tyre], [false, false, false, 38]);
+  assert.equal(M.fit({ ...P178, style: 'mtb', health: { ...HEALTH0, gear: ['wideTyres'] } }).g.tyre, 58);
+});
