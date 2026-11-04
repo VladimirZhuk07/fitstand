@@ -20,3 +20,9 @@ test('fullsus button and fit-only styles in the fitstand', () => {
   assert.match(html, /<button role="radio" data-style="fullsus" aria-checked="false">Двухподвес<\/button>/);
   assert.match(html, /loadSaved\(saved,DEFAULTS,FIT_ONLY,/);
 });
+
+test('catalog groups and sections have room around them', () => {
+  // must be stronger than the generic `.pg h2{margin:0 0 8px}`, which used to zero the gaps
+  assert.match(html, /\.pg \.grp\{margin:36px 0 14px/);
+  assert.match(html, /\.pg \.acc-sec\{margin:22px 0 10px/);
+});
