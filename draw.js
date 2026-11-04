@@ -28,6 +28,7 @@ function geomPts(g){
 }
 // brakes: disc rotor + caliper, or a rim caliper where the fork / seat stay crosses the rim
 function brakesMarkup(g,R,F,crown,stayTop){
+  if(g.brake==='none') return '<g data-k="noBrakes"></g>';
   const rimR=g.wheelR-g.tyre-5;
   if(g.brake==='disc'){
     let s='';
@@ -45,8 +46,25 @@ function brakesMarkup(g,R,F,crown,stayTop){
   }
   return `<g data-k="rim">${s}</g>`;
 }
+// одноколёсный: колесо, штырь от оси к седлу, шатуны на оси
+function unicycleMarkup(g,hl){
+  const part=(name,inner)=>`<g data-part="${name}"${hl===name?' data-on':''}>${inner}</g>`;
+  const C=V(0,0), S=V(0,g.saddleH), top=V(0,g.wheelR+50), ground=-g.wheelR;
+  const pN=mul(dirv(-30),g.crank), pF=mul(dirv(150),g.crank);
+  let s=`<ellipse class="shadow" cx="0" cy="${fx(-ground)}" rx="${fx(g.wheelR*0.9)}" ry="18"/>`;
+  s+=`<line class="ground" x1="${fx(-g.wheelR-600)}" y1="${fx(-ground)}" x2="${fx(g.wheelR+600)}" y2="${fx(-ground)}"/>`;
+  s+=`<g opacity=".42">${L_(C,pF,'s-ink',24)}${L_(add(pF,V(-48,0)),add(pF,V(48,0)),'s-ink',20)}</g>`;
+  s+=part('wheels',wheel(C,g,null));
+  s+=part('frame',`<g data-k="unicycle">${L_(add(C,V(-34,0)),add(top,V(-34,0)),'s-frame',22)}${L_(add(C,V(34,0)),add(top,V(34,0)),'s-frame',22)}${L_(add(top,V(-40,0)),add(top,V(40,0)),'s-frame',26)}</g>`);
+  s+=part('fork','')+part('brakes','')+part('cockpit','');
+  s+=part('saddle',L_(top,S,'s-metal',24)+`<path class="f-ink" d="M${P(add(S,V(-110,4)))} C${P(add(S,V(-40,8)))} ${P(add(S,V(40,8)))} ${P(add(S,V(110,4)))} Q${P(add(S,V(118,-22)))} ${P(add(S,V(80,-26)))} L${P(add(S,V(-80,-26)))} Q${P(add(S,V(-118,-22)))} ${P(add(S,V(-110,4)))} Z"/>`);
+  s+=part('drivetrain',L_(C,pN,'s-ink',28)+'<circle class="f-metal" cx="0" cy="0" r="16"/>');
+  s+=part('pedals',L_(add(pN,V(-48,0)),add(pN,V(48,0)),'s-ink',22));
+  return hl?`<g class="hl" data-hl="${hl}">${s}</g>`:s;
+}
 function bikeMarkup(g,ux,opts={}){
   const live=opts.live!==false, motor=!!opts.motor, hl=opts.highlight||null;
+  if(g.unicycle&&!live) return unicycleMarkup(g,hl);
   const {sd,R,ck,Hb,F,S,hip,up,ground,hta}=geomPts(g);
   const BB=V(0,0), u=ck.u;
   const part=(name,inner)=>`<g data-part="${name}"${hl===name?' data-on':''}>${inner}</g>`;
@@ -54,6 +72,7 @@ function bikeMarkup(g,ux,opts={}){
   const th=-30, pN=mul(dirv(th),g.crank), pF=mul(dirv(th+180),g.crank);
   const crankAt=(p,w)=>live?'':` x1="0" y1="0" x2="${fx(p.x)}" y2="${fx(-p.y)}"`;
   const pedalAt=p=>live?'':` x1="${fx(p.x-48)}" y1="${fx(-p.y)}" x2="${fx(p.x+48)}" y2="${fx(-p.y)}"`;
+  const pedals=!g.noPedals, chain=pedals&&!g.frontPedals;
   let s='';
   // grid + ground
   const gx0=R.x-g.wheelR-2000, gx1=F.x+g.wheelR+2000;
@@ -61,10 +80,17 @@ function bikeMarkup(g,ux,opts={}){
   s+=`<ellipse class="shadow" cx="${fx((R.x+F.x)/2)}" cy="${fx(-ground)}" rx="${fx((F.x-R.x)/2+g.wheelR*0.8)}" ry="18"/>`;
   s+=`<line class="ground" x1="${fx(gx0)}" y1="${fx(-ground)}" x2="${fx(gx1)}" y2="${fx(-ground)}"/>`;
   // far side: crank, pedal, leg
-  s+=`<g opacity=".42"><line${id('fCrank')} class="s-ink" stroke-width="24"${crankAt(pF)}/><line${id('fPedal')} class="s-ink" stroke-width="20"${pedalAt(pF)}/></g>`;
+  if(pedals&&!g.frontPedals) s+=`<g opacity=".42"><line${id('fCrank')} class="s-ink" stroke-width="24"${crankAt(pF)}/><line${id('fPedal')} class="s-ink" stroke-width="20"${pedalAt(pF)}/></g>`;
   if(live) s+=`<g class="rider" opacity=".36"><line id="fThigh" class="s-rider" stroke-width="${fx(g.headR*0.72)}"/><line id="fShin" class="s-rider" stroke-width="${fx(g.headR*0.54)}"/><line id="fFoot" class="s-rider" stroke-width="${fx(g.headR*0.36)}"/></g>`;
   // wheels + fenders
-  s+=part('wheels',wheel(R,g,live?'wR':null)+wheel(F,g,live?'wF':null));
+  let wh='';
+  if(g.trike) wh+=`<g data-k="trike" opacity=".45">${wheel(add(R,V(-46,0)),g,null)}</g>`;
+  wh+=wheel(R,g,live?'wR':null)+wheel(F,g,live?'wF':null);
+  if(g.trainingWheels){
+    const r=g.wheelR*0.42, c=V(R.x-40,ground+r);
+    wh+=`<g data-k="trainingWheels">${L_(R,c,'s-metal',12)}<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-9)}" stroke-width="18"/><circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="12"/></g>`;
+  }
+  s+=part('wheels',wh);
   if(g.fender>0.02){
     s+=`<g opacity="${fx(g.fender)}"><polyline class="s-metal nf" stroke-width="16" points="${arcPts(R,g.wheelR+22,8,200)}"/><polyline class="s-metal nf" stroke-width="16" points="${arcPts(F,g.wheelR+22,-28,128)}"/></g>`;
   }
@@ -81,6 +107,10 @@ function bikeMarkup(g,ux,opts={}){
   fr+=L_(BB,T,'s-frame',32)+(g.stepThrough?`<g data-k="stepThrough">${tt}</g>`:tt)+L_(BB,HbJ,'s-frame',40);
   fr+=L_(sub(Hb,mul(u,8)),add(ck.Ht,mul(u,4)),'s-frame',48);
   fr+=`<circle class="s-frame nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="1" stroke-width="22"/>`;
+  if(g.rearShock){
+    const a=mul(sd,g.ST*0.55), b=add(R,mul(sub(stayTop,R),0.45));
+    fr+=`<g data-k="rearShock">${L_(a,b,'s-ink',30)}${L_(add(a,mul(nrm(sub(b,a)),40)),sub(b,mul(nrm(sub(b,a)),40)),'s-metal',14)}<circle class="f-ink" cx="0" cy="0" r="30"/></g>`;
+  }
   if(g.hinge){const m=mul(add(ttEnd,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
   s+=part('frame',fr);
   // fork
@@ -93,6 +123,10 @@ function bikeMarkup(g,ux,opts={}){
     fk=`<path class="s-frame nf" stroke-width="24" d="M${P(crown)} Q${P(axisCtl)} ${P(F)}"/>`;
   }
   s+=part('fork',fk);
+  if(g.cargoBox){
+    const x0=F.x-g.wheelR*0.85, x1=F.x+g.wheelR*0.9, y0=F.y+g.wheelR+40, y1=y0+260;
+    s+=`<g data-k="cargoBox"><path class="f-panel s-ink" stroke-width="12" d="M${P(V(x0,y0))} L${P(V(x1,y0))} L${P(V(x1,y1))} L${P(V(x0,y1))} Z"/>${L_(V(x0+20,y0),HbJ,'s-metal',14)}</g>`;
+  }
   // brakes over the frame and fork, so rim calipers stay visible
   s+=part('brakes',brakesMarkup(g,R,F,crown,stayTop));
   // motor + battery
@@ -121,13 +155,23 @@ function bikeMarkup(g,ux,opts={}){
   s+=part('saddle',sa);
   // drivetrain: chain, cassette, chainring, guard, near crank
   const rc=g.ring*12.7/(2*Math.PI), rg=34;
-  let dr=L_(V(0,rc),V(R.x,R.y+rg),'s-metal',7)+L_(V(0,-rc),V(R.x,R.y-rg),'s-metal',7);
-  dr+=`<circle class="s-ink nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="${rg}" stroke-width="9"/>`;
-  dr+=`<circle class="s-ink nf" cx="0" cy="0" r="${fx(rc)}" stroke-width="11"/><circle class="f-metal" cx="0" cy="0" r="38"/>`;
-  if(g.guard>0.02) dr+=`<polyline class="s-frame nf" opacity="${fx(g.guard*0.9)}" stroke-width="30" points="${arcPts(V(0,0),rc+20,-25,205)}"/>`;
-  dr+=`<line${id('nCrank')} class="s-ink" stroke-width="28"${crankAt(pN)}/><circle class="f-metal" cx="0" cy="0" r="16"/>`;
+  let dr='', pd='';
+  if(chain){
+    dr+=`<g data-k="chain">${L_(V(0,rc),V(R.x,R.y+rg),'s-metal',7)}${L_(V(0,-rc),V(R.x,R.y-rg),'s-metal',7)}</g>`;
+    dr+=`<circle class="s-ink nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="${rg}" stroke-width="9"/>`;
+    dr+=`<circle class="s-ink nf" cx="0" cy="0" r="${fx(rc)}" stroke-width="11"/><circle class="f-metal" cx="0" cy="0" r="38"/>`;
+    if(g.guard>0.02&&g.brake!=='none') dr+=`<polyline class="s-frame nf" opacity="${fx(g.guard*0.9)}" stroke-width="30" points="${arcPts(V(0,0),rc+20,-25,205)}"/>`;
+    dr+=`<line${id('nCrank')} class="s-ink" stroke-width="28"${crankAt(pN)}/><circle class="f-metal" cx="0" cy="0" r="16"/>`;
+    pd=`<line${id('nPedal')} class="s-ink" stroke-width="22"${pedalAt(pN)}/>`;
+  }else if(g.frontPedals){
+    const a=add(F,pN), b=add(F,pF);
+    dr+=`<g data-k="frontPedals"><g opacity=".42">${L_(F,b,'s-ink',20)}</g>${L_(F,a,'s-ink',24)}<circle class="f-metal" cx="${fx(F.x)}" cy="${fx(-F.y)}" r="14"/></g>`;
+    pd=L_(add(a,V(-36,0)),add(a,V(36,0)),'s-ink',18);
+  }else{
+    dr+='<g data-k="noPedals"></g>';
+  }
   s+=part('drivetrain',dr);
-  s+=part('pedals',`<line${id('nPedal')} class="s-ink" stroke-width="22"${pedalAt(pN)}/>`);
+  s+=part('pedals',pd);
   if(live){
     // near leg + upper body
     const hr=g.headR;
@@ -161,6 +205,7 @@ function bikeMarkup(g,ux,opts={}){
   return hl?`<g class="hl" data-hl="${hl}">${s}</g>`:s;
 }
 function boundsOf(g,rider,ux){
+  if(g.unicycle) return {x:-g.wheelR-200,y:-(g.saddleH+120),w:2*g.wheelR+400,h:g.saddleH+120+g.wheelR+80};
   const {R,F,ck,S,up,ground}=geomPts(g);
   const minX=R.x-g.wheelR-70, maxX=Math.max(F.x+g.wheelR+50,Math.max(up.hand.x,ck.G.x)+70+130*ux);
   const minY=ground-60-34*ux;

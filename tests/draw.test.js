@@ -57,3 +57,36 @@ test('no gear marks without health', () => {
   const s = Dr.bikeMarkup(gh('hybrid', null), 1, { live: false });
   for (const k of ['susp', 'suspPost', 'stepThrough']) assert.doesNotMatch(s, new RegExp(`data-k="${k}"`));
 });
+
+// ---------- new bike types (sub-project A, Task 2) ----------
+const gt = s => { const st = M.STYLES[s]; return M.fit({ ...(st.rider || { H: 178, I: 83, A: 61, W: 42 }), flex: 3, style: s }).g; };
+const MARK = { fullsus: 'rearShock', track: 'noBrakes', trike: 'trike', cargo: 'cargoBox', balance: 'noPedals', kidTraining: 'trainingWheels', kidTrike: 'frontPedals', special: 'unicycle' };
+
+test('each new style draws its own mark', () => {
+  for (const [style, mark] of Object.entries(MARK)) {
+    const s = Dr.bikeMarkup(gt(style), 1, { live: false });
+    assert.match(s, new RegExp(`data-k="${mark}"`), `${style} has ${mark}`);
+    for (const other of Object.values(MARK)) {
+      if (other === mark || (style === 'kidTrike' && other === 'trike')) continue;
+      assert.doesNotMatch(s, new RegExp(`data-k="${other}"`), `${style} must not have ${other}`);
+    }
+  }
+  assert.match(Dr.bikeMarkup(gt('kidTrike'), 1, { live: false }), /data-k="trike"/);
+  const track = Dr.bikeMarkup(gt('track'), 1, { live: false });
+  assert.doesNotMatch(track, /data-k="(rim|disc)"/);
+});
+
+test('chain is drawn only where there is one', () => {
+  assert.match(Dr.bikeMarkup(gt('road'), 1, { live: false }), /data-k="chain"/);
+  for (const s of ['balance', 'kidTrike', 'special']) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /data-k="chain"/, s);
+});
+
+test('unicycle bounds are finite and narrow', () => {
+  const b = Dr.boundsOf(gt('special'), false, 1);
+  for (const v of [b.x, b.y, b.w, b.h]) assert.ok(Number.isFinite(v));
+  assert.ok(b.w < 1500, `width ${b.w}`);
+});
+
+test('every catalog style draws without ids', () => {
+  for (const s of Object.keys(M.STYLES)) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /\sid="/, s);
+});
