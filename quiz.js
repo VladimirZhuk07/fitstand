@@ -41,7 +41,65 @@ function scoreQuiz(answers, quiz, ebikeHint) {
   return { complete: true, type, motor, scores, runnerUp, reasons, notes };
 }
 
-const api = { BASE_TYPES, TIE_ORDER, scoreQuiz };
+// ---------- ход опроса с блоками здоровья ----------
+// Answers: {q1..q6: номер, gate: [id], back1: [номер], back2: номер, knee1, knee2, upper1, cushion}
+const BASE_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'];
+const BLOCK_ORDER = ['back', 'knees', 'upper'];
+const MAX_STEPS = 16;
+
+function gateBlocks(A) {
+  const gate = A && Array.isArray(A.gate) ? A.gate : [];
+  if (gate.includes('none')) return [];
+  return BLOCK_ORDER.filter(id => gate.includes(id));
+}
+
+function getQuestion(id, C) {
+  const i = BASE_IDS.indexOf(id);
+  if (i !== -1) return { id, multi: false, ...C.quiz[i] };
+  if (id === 'gate') return C.health.gate;
+  if (id === 'cushion') return C.health.cushion;
+  for (const b of C.health.blocks) for (const q of b.questions) if (q.id === id) return q;
+  return null;
+}
+
+function quizFlow(A, C) {
+  const steps = BASE_IDS.map(id => ({ kind: 'q', id }));
+  steps.push({ kind: 'q', id: 'gate' });
+  const blocks = gateBlocks(A);
+  for (const b of C.health.blocks.filter(x => blocks.includes(x.id))) {
+    for (const q of b.questions) steps.push({ kind: 'q', id: q.id });
+    steps.push({ kind: 'explain', block: b.id });
+  }
+  if (blocks.length) steps.push({ kind: 'q', id: 'cushion' });
+  return steps;
+}
+
+function isAnswered(step, A, C) {
+  if (step.kind === 'explain') return true;
+  const q = getQuestion(step.id, C), v = A ? A[step.id] : undefined;
+  if (!q) return false;
+  if (step.id === 'gate') {
+    const ok = new Set(q.answers.map(a => a.id));
+    return Array.isArray(v) && v.length > 0 && v.every(x => ok.has(x));
+  }
+  const valid = n => Number.isInteger(n) && n >= 0 && n < q.answers.length;
+  if (q.multi) return Array.isArray(v) && v.length > 0 && v.every(valid);
+  return valid(v);
+}
+
+function firstMissingStep(A, C) {
+  return quizFlow(A, C).findIndex(s => !isAnswered(s, A, C));
+}
+
+function pruneAnswers(A, C) {
+  const out = { ...(A || {}) };
+  const keep = new Set(gateBlocks(out));
+  for (const b of C.health.blocks) if (!keep.has(b.id)) for (const q of b.questions) delete out[q.id];
+  if (!keep.size) delete out.cushion;
+  return out;
+}
+
+const api = { BASE_TYPES, TIE_ORDER, scoreQuiz, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

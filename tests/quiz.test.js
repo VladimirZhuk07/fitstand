@@ -104,3 +104,77 @@ test('no hint text given, no hint note', () => {
   const r = scoreQuiz([0, 0, 0, 0, 0, 3], mk([[{ city: 3 }], FILL, FILL, FILL, FILL, FILL]));
   assert.deepEqual(r.notes, []);
 });
+
+// ---------- health flow (Task 2) ----------
+const { CONTENT: REAL } = require('../content.js');
+const Q = require('../quiz.js');
+const SIX = { q1: 0, q2: 1, q3: 0, q4: 1, q5: 1, q6: 1 };
+const ids = steps => steps.map(s => (s.kind === 'q' ? s.id : `explain:${s.block}`));
+
+test('flow without injuries', () => {
+  const f = Q.quizFlow({ ...SIX, gate: ['none'] }, REAL);
+  assert.deepEqual(ids(f), ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'gate']);
+});
+
+test('flow with back', () => {
+  const f = Q.quizFlow({ ...SIX, gate: ['back'] }, REAL);
+  assert.deepEqual(ids(f).slice(6), ['gate', 'back1', 'back2', 'explain:back', 'cushion']);
+  assert.equal(f.length, 11);
+});
+
+test('flow with all blocks', () => {
+  const f = Q.quizFlow({ ...SIX, gate: ['upper', 'back', 'knees'] }, REAL);
+  assert.deepEqual(ids(f).slice(6), ['gate', 'back1', 'back2', 'explain:back', 'knee1', 'knee2', 'explain:knees', 'upper1', 'explain:upper', 'cushion']);
+  assert.equal(f.length, Q.MAX_STEPS);
+  assert.equal(Q.MAX_STEPS, 16);
+});
+
+test('none wins in a corrupt gate', () => {
+  assert.equal(Q.quizFlow({ ...SIX, gate: ['none', 'back'] }, REAL).length, 7);
+  assert.deepEqual(Q.gateBlocks({ gate: ['none', 'back'] }), []);
+  assert.deepEqual(Q.gateBlocks({ gate: ['upper', 'back'] }), ['back', 'upper']);
+  assert.deepEqual(Q.gateBlocks(null), []);
+});
+
+test('getQuestion', () => {
+  assert.equal(Q.getQuestion('q3', REAL).q, REAL.quiz[2].q);
+  assert.equal(Q.getQuestion('q3', REAL).multi, false);
+  assert.equal(Q.getQuestion('gate', REAL).multi, true);
+  assert.equal(Q.getQuestion('knee2', REAL).id, 'knee2');
+  assert.equal(Q.getQuestion('cushion', REAL).id, 'cushion');
+});
+
+test('firstMissingStep after old six', () => {
+  assert.equal(Q.firstMissingStep({ ...SIX }, REAL), 6);
+  assert.equal(Q.firstMissingStep({}, REAL), 0);
+  assert.equal(Q.firstMissingStep(null, REAL), 0);
+  const full = { ...SIX, gate: ['back'], back1: [0], back2: 1, cushion: 2 };
+  assert.equal(Q.firstMissingStep(full, REAL), -1);
+  assert.equal(Q.firstMissingStep({ ...full, back2: undefined }, REAL), 8);
+});
+
+test('isAnswered', () => {
+  const step = id => ({ kind: 'q', id });
+  assert.equal(Q.isAnswered(step('back1'), { back1: [] }, REAL), false);
+  assert.equal(Q.isAnswered(step('back1'), { back1: [0, 9] }, REAL), false);
+  assert.equal(Q.isAnswered(step('back1'), { back1: [0, 5] }, REAL), true);
+  assert.equal(Q.isAnswered(step('back2'), { back2: 1 }, REAL), true);
+  assert.equal(Q.isAnswered(step('back2'), { back2: 4 }, REAL), false);
+  assert.equal(Q.isAnswered(step('gate'), { gate: ['back', 'x'] }, REAL), false);
+  assert.equal(Q.isAnswered(step('gate'), { gate: ['knees'] }, REAL), true);
+  assert.equal(Q.isAnswered(step('q5'), { q5: 3 }, REAL), true);
+  assert.equal(Q.isAnswered(step('q5'), { q5: 4 }, REAL), false);
+  assert.equal(Q.isAnswered({ kind: 'explain', block: 'back' }, {}, REAL), true);
+});
+
+test('pruneAnswers drops unchecked blocks', () => {
+  const p = Q.pruneAnswers({ ...SIX, gate: ['knees'], back1: [0], back2: 1, knee1: [2], cushion: 0 }, REAL);
+  assert.equal('back1' in p, false);
+  assert.equal('back2' in p, false);
+  assert.deepEqual(p.knee1, [2]);
+  assert.equal(p.cushion, 0);
+  assert.equal(p.q1, 0);
+  const none = Q.pruneAnswers({ ...SIX, gate: ['none'], cushion: 0, upper1: [1] }, REAL);
+  assert.equal('cushion' in none, false);
+  assert.equal('upper1' in none, false);
+});
