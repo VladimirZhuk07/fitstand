@@ -75,10 +75,13 @@ function bikeMarkup(g,ux,opts={}){
   const crown=sub(Hb,mul(u,14));
   // frame
   let fr=L_(R,BB,'s-frame',22)+L_(R,stayTop,'s-frame',18);
-  fr+=L_(BB,T,'s-frame',32)+L_(Tj,HtJ,'s-frame',30)+L_(BB,HbJ,'s-frame',40);
+  // top tube: from the head tube to the seat tube top, or down to a third of the seat tube on a step-through frame
+  const ttEnd=g.stepThrough?mul(sd,g.ST*0.35):Tj;
+  const tt=L_(ttEnd,HtJ,'s-frame',30);
+  fr+=L_(BB,T,'s-frame',32)+(g.stepThrough?`<g data-k="stepThrough">${tt}</g>`:tt)+L_(BB,HbJ,'s-frame',40);
   fr+=L_(sub(Hb,mul(u,8)),add(ck.Ht,mul(u,4)),'s-frame',48);
   fr+=`<circle class="s-frame nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="1" stroke-width="22"/>`;
-  if(g.hinge){const m=mul(add(Tj,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
+  if(g.hinge){const m=mul(add(ttEnd,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
   s+=part('frame',fr);
   // fork
   let fk;
@@ -113,6 +116,7 @@ function bikeMarkup(g,ux,opts={}){
   s+=part('cockpit',cp);
   // saddle + seatpost
   let sa=L_(add(S,mul(sd,-48)),T,'s-metal',24);
+  if(g.suspPost) sa+=`<g data-k="suspPost">${L_(T,add(T,mul(sd,40)),'s-ink',34)}</g>`;
   sa+=`<path class="f-ink" d="M${P(add(S,V(-118,4)))} C${P(add(S,V(-40,2)))} ${P(add(S,V(60,-2)))} ${P(add(S,V(148,-10)))} Q${P(add(S,V(156,-26)))} ${P(add(S,V(122,-28)))} L${P(add(S,V(-60,-26)))} Q${P(add(S,V(-128,-24)))} ${P(add(S,V(-128,-6)))} Z"/>`;
   s+=part('saddle',sa);
   // drivetrain: chain, cassette, chainring, guard, near crank

@@ -34,3 +34,26 @@ test('motor, disc, suspension, hinge are drawn', () => {
   assert.doesNotMatch(Dr.bikeMarkup(g('road'), 1, { live: false }), /data-k="disc"/);
   assert.match(Dr.bikeMarkup(g('road'), 1, { live: false }), /data-k="rim"/);
 });
+
+// ---------- health gear on the drawing (Task 6) ----------
+const gh = (s, health) => M.fit({ H: 178, I: 83, A: 61, W: 42, flex: 3, style: s, health }).g;
+const H0 = { upright: 0, barUp: 0, crankMax: null, stepThrough: false, gear: [] };
+
+test('suspension fork on a hybrid', () => {
+  assert.match(Dr.bikeMarkup(gh('hybrid', { ...H0, gear: ['suspFork'] }), 1, { live: false }), /data-k="susp"/);
+});
+
+test('suspension seatpost', () => {
+  const s = Dr.bikeMarkup(gh('city', { ...H0, gear: ['suspPost'] }), 1, { live: false });
+  assert.match(s, /data-part="saddle"[^]*data-k="suspPost"/);
+});
+
+test('step-through frame', () => {
+  const s = Dr.bikeMarkup(gh('hybrid', { ...H0, stepThrough: true }), 1, { live: false });
+  assert.match(s, /data-part="frame"[^]*data-k="stepThrough"/);
+});
+
+test('no gear marks without health', () => {
+  const s = Dr.bikeMarkup(gh('hybrid', null), 1, { live: false });
+  for (const k of ['susp', 'suspPost', 'stepThrough']) assert.doesNotMatch(s, new RegExp(`data-k="${k}"`));
+});
