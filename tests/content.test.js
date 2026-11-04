@@ -70,7 +70,7 @@ test('parts complete', () => {
 
 test('no brands', () => {
   const s = JSON.stringify(CONTENT).toLowerCase();
-  for (const b of ['Shimano', 'SRAM', 'Trek', 'Giant', 'Merida', 'Stels', 'Cube', 'Specialized', 'Twin', 'Fox', 'RockShox'])
+  for (const b of ['Shimano', 'SRAM', 'Trek', 'Giant', 'Merida', 'Stels', 'Cube', 'Specialized', 'Twin', 'Fox', 'RockShox', 'MIPS', 'BOA'])
     assert.ok(!s.includes(b.toLowerCase()), b);
 });
 
@@ -81,7 +81,7 @@ test('real data scores', () => {
 });
 
 test('menu items', () => {
-  assert.deepEqual(CONTENT.menu.map(m => m.id), ['quiz', 'fit', 'types', 'parts', 'erase']);
+  assert.deepEqual(CONTENT.menu.map(m => m.id), ['quiz', 'fit', 'types', 'parts', 'acc', 'erase']);
   for (const m of CONTENT.menu) assert.ok(nonEmpty(m.title) && nonEmpty(m.short), m.id);
 });
 
@@ -258,4 +258,47 @@ test('kids wheel table', () => {
   assert.deepEqual(CONTENT.kidsWheels, [
     { from: 85, to: 100, wheel: '12' }, { from: 95, to: 110, wheel: '14' }, { from: 105, to: 120, wheel: '16' },
     { from: 115, to: 135, wheel: '20' }, { from: 130, to: 150, wheel: '24' }]);
+});
+
+// ---------- accessories (sub-project B, Task 1) ----------
+const ACC_GROUPS = [
+  ['safety', '🦺', 'Безопасность и видимость'], ['repair', '🔧', 'Ремонт в дороге'], ['theft', '🔒', 'Защита от кражи'],
+  ['cargo', '🎒', 'Груз и туринг'], ['weather', '🌧️', 'Погода и одежда'], ['comfort', '🪑', 'Комфорт и посадка'],
+  ['electronics', '📱', 'Электроника и навигация'], ['care', '🧴', 'Уход и хранение'], ['transport', '🚗', 'Перевозка'],
+  ['kids', '🧒', 'Детские аксессуары']];
+const SITUATIONS = ['city', 'commute', 'rain', 'touring', 'long', 'offroad', 'kids', 'back', 'wrists', 'knees'];
+const ACC_KEYS = ['name', 'short', 'text', 'kinds', 'choose', 'check', 'weather', 'priority', 'when', 'why'];
+
+test('acc groups', () => {
+  assert.deepEqual(CONTENT.accGroups.map(g => [g.id, g.icon, g.title]), ACC_GROUPS);
+  const titles = id => CONTENT.accGroups.find(g => g.id === id).sections.map(s => s.title);
+  assert.deepEqual(titles('safety'), ['Обязательные', 'Дополнительные']);
+  assert.deepEqual(titles('repair'), ['Минимальный набор', 'Дополнительные']);
+});
+
+test('acc items', () => {
+  const A = CONTENT.accessories, seen = new Map();
+  for (const g of CONTENT.accGroups) for (const s of g.sections) for (const id of s.ids) {
+    assert.ok(!seen.has(id), `${id} in two sections`);
+    seen.set(id, g.id);
+    assert.ok(A[id], `${id} has data`);
+  }
+  assert.deepEqual([...seen.keys()].sort(), Object.keys(A).sort());
+  assert.ok(seen.size >= 65, `items: ${seen.size}`);
+  for (const [id, a] of Object.entries(A)) {
+    for (const k of Object.keys(a)) assert.ok(ACC_KEYS.includes(k), `${id}.${k}`);
+    for (const k of ['name', 'short', 'text', 'why']) assert.ok(nonEmpty(a[k]), `${id}.${k}`);
+    assert.ok(a.short.length <= 70, `${id}.short too long`);
+    assert.ok([1, 2, 3].includes(a.priority), `${id}.priority`);
+    assert.ok(a.when === 'always' || (Array.isArray(a.when) && a.when.length && a.when.every(w => SITUATIONS.includes(w))), `${id}.when`);
+    if (a.kinds) for (const k of a.kinds) assert.ok(nonEmpty(k.name) && nonEmpty(k.text), `${id} kind`);
+    if (a.choose) assert.ok(a.choose.length >= 2 && a.choose.every(nonEmpty), `${id}.choose`);
+  }
+  assert.deepEqual(Object.keys(A).filter(id => A[id].when === 'always').sort(), ['frontLight', 'helmet', 'rearLight']);
+  for (const id of ['helmet', 'frontLight', 'rearLight', 'bell', 'gloves', 'glasses', 'pump', 'bags', 'bottle', 'fenders', 'pedals', 'shoes', 'computer', 'lube', 'rack', 'childSeat', 'roofRack', 'hitchRack'])
+    assert.ok(A[id].kinds && A[id].kinds.length >= 2, `${id}.kinds`);
+  for (const id of ['helmet', 'frontLight', 'rearLight', 'shoes', 'pedals', 'childSeat', 'kidsHelmet']) assert.ok(A[id].choose, `${id}.choose`);
+  for (const id of ['rainJacket', 'overshoes', 'thermal', 'jersey', 'gilet', 'buff', 'shorts', 'windJacket', 'tights', 'winterGloves']) assert.ok(nonEmpty(A[id].weather), `${id}.weather`);
+  for (const id of ['suspPost', 'rack', 'pedals', 'fenders', 'tube', 'childSeat', 'roofRack', 'hitchRack']) assert.ok(nonEmpty(A[id].check), `${id}.check`);
+  assert.deepEqual(Object.keys(CONTENT.accSituationTitles), ['city', 'rain', 'touring', 'offroad', 'kids', 'back', 'wrists', 'knees', 'long']);
 });
