@@ -178,3 +178,112 @@ test('pruneAnswers drops unchecked blocks', () => {
   assert.equal('cushion' in none, false);
   assert.equal('upper1' in none, false);
 });
+
+// ---------- buildResult (Task 3) ----------
+const ROADIE = { q1: 3, q2: 3, q3: 1, q4: 0, q5: 2, q6: 2 };
+const kinds = r => r.variants.map(v => v.kind);
+const V = (r, kind) => r.variants.find(v => v.kind === kind);
+const healthAnswer = (id, i) => Q.getQuestion(id, REAL).answers[i];
+
+test('rankTypes keeps scoreQuiz ordering', () => {
+  const s = { city: 6, hybrid: 6, gravel: 1, mtb: 0, road: 0, folding: 0 };
+  assert.deepEqual(Q.rankTypes(s, { pts: { city: 3, hybrid: 2 } }).slice(0, 2), ['city', 'hybrid']);
+  assert.deepEqual(Q.rankTypes(s, { pts: {} }).slice(0, 2), ['hybrid', 'city']);
+});
+
+test('no injuries: balance and comfort', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['none'] }, REAL);
+  assert.equal(r.complete, true);
+  assert.deepEqual(kinds(r), ['balance', 'comfort']);
+  assert.deepEqual(V(r, 'balance').gear, []);
+  for (const g of ['suspFork', 'suspPost', 'wideTyres', 'riseBar']) assert.ok(V(r, 'comfort').gear.includes(g), g);
+  assert.equal(r.rehab, false);
+  assert.deepEqual(r.health, { upright: 0, barUp: 0, crankMax: null, stepThrough: false });
+});
+
+test('health points and warnings; comfort follows comfort order and 50% rule', () => {
+  const plain = Q.buildResult({ ...ROADIE, gate: ['none'] }, REAL);
+  const r = Q.buildResult({ ...ROADIE, gate: ['back'], back1: [1], back2: 3, cushion: 3 }, REAL);
+  assert.equal(r.scores.road, plain.scores.road - 3);
+  assert.equal(V(r, 'balance').type, 'road');
+  assert.deepEqual(V(r, 'balance').warn, [healthAnswer('back1', 1).warn.text]);
+  // city 4 and hybrid 1 are below 50% of road 13, gravel 7 is not
+  assert.equal(V(r, 'comfort').type, 'gravel');
+  assert.equal(V(r, 'comfort').warn.length, 1);
+});
+
+test('health points change the winner', () => {
+  const base = { q1: 0, q2: 1, q3: 1, q4: 2, q5: 1, q6: 2 };
+  assert.equal(Q.buildResult({ ...base, gate: ['none'] }, REAL).variants[0].type, 'gravel');
+  const r = Q.buildResult({ ...base, gate: ['knees'], knee1: [1], knee2: 2, cushion: 3 }, REAL);
+  assert.equal(V(r, 'balance').type, 'hybrid');
+  assert.equal(r.scores.hybrid, 9);
+  assert.equal(r.scores.gravel, 8);
+});
+
+test('caps', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['back', 'upper'], back1: [0, 1, 2, 3, 4, 5], back2: 0, upper1: [0, 1], cushion: 3 }, REAL);
+  assert.equal(r.health.upright, 12);
+  assert.equal(r.health.barUp, 60);
+  assert.equal(V(r, 'comfort').fit.upright, 12);
+  assert.equal(V(r, 'comfort').fit.barUp, 60);
+});
+
+test('crank and step-through', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['knees'], knee1: [1, 4], knee2: 2, cushion: 3 }, REAL);
+  assert.equal(r.health.crankMax, 155);
+  assert.equal(r.health.stepThrough, true);
+  for (const g of ['stepThrough', 'shortCranks', 'lowGears']) assert.ok(V(r, 'balance').gear.includes(g), g);
+  const order = REAL.health.gearOrder;
+  const g = V(r, 'balance').gear;
+  assert.deepEqual(g, [...g].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
+});
+
+test('simple variant drops suspension', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['upper'], upper1: [2], cushion: 3 }, REAL);
+  const s = V(r, 'simple');
+  assert.ok(s, 'simple exists');
+  assert.equal(s.type, V(r, 'balance').type);
+  assert.ok(!s.gear.includes('suspFork'));
+  assert.ok(s.gear.includes('wideTyres'));
+  assert.equal(V(Q.buildResult({ ...SIX, gate: ['none'] }, REAL), 'simple'), undefined);
+});
+
+test('offroad comfort is full suspension', () => {
+  const r = Q.buildResult({ ...SIX, q1: 2, gate: ['back'], back1: [0], back2: 1, cushion: 0 }, REAL);
+  assert.equal(Q.isOffroad({ q1: 2 }), true);
+  assert.equal(Q.isOffroad({ q1: 0, q4: 4 }), true);
+  assert.equal(Q.isOffroad({ q1: 0, q4: 1 }), false);
+  assert.equal(V(r, 'comfort').type, 'mtb');
+  assert.ok(V(r, 'comfort').gear.includes('fullSusp'));
+  assert.ok(V(r, 'balance').gear.includes('fullSusp'));
+});
+
+test('rehab', () => {
+  assert.equal(Q.buildResult({ ...SIX, gate: ['knees'], knee1: [1], knee2: 2, cushion: 3 }, REAL).rehab, true);
+  assert.equal(Q.buildResult({ ...SIX, gate: ['none'] }, REAL).rehab, false);
+});
+
+test('reasons: health first, max 4', () => {
+  const r = Q.buildResult({ ...SIX, gate: ['back', 'knees'], back1: [0, 1], back2: 3, knee1: [1], knee2: 2, cushion: 3 }, REAL);
+  assert.ok(r.reasons.length <= 4);
+  assert.deepEqual(r.reasons.slice(0, 2), [healthAnswer('back1', 0).reason, healthAnswer('back1', 1).reason]);
+});
+
+test('notes: base, then health, then e-bike hint', () => {
+  const r = Q.buildResult({ q1: 0, q2: 0, q3: 0, q4: 1, q5: 0, q6: 3, gate: ['knees'], knee1: [4], knee2: 2, cushion: 3 }, REAL);
+  assert.equal(r.notes.at(-1), REAL.ebikeHint);
+  assert.ok(r.notes.indexOf(healthAnswer('knee1', 4).note) < r.notes.length - 1);
+  assert.equal(r.notes[0], REAL.quiz[5].answers[3].note);
+});
+
+test('answers of unchecked block are ignored', () => {
+  const a = Q.buildResult({ ...SIX, gate: ['knees'], back1: [1], knee1: [3], knee2: 2, cushion: 3 }, REAL);
+  const b = Q.buildResult({ ...SIX, gate: ['knees'], knee1: [3], knee2: 2, cushion: 3 }, REAL);
+  assert.deepEqual(a.scores, b.scores);
+  assert.deepEqual(a.health, b.health);
+});
+
+test('incomplete', () => {
+  assert.deepEqual(Q.buildResult({ ...SIX }, REAL), { complete: false, firstMissing: 6 });
+});

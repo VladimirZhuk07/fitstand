@@ -6,6 +6,13 @@ const PRIORITY_Q = 2; // «Что для вас важнее всего?» ре�
 const RUNNER_UP_SHARE = 0.75;
 const MAX_REASONS = 3;
 
+// виды по убыванию баллов; ничья — по баллам ответа на «Что для вас важнее всего?», затем TIE_ORDER
+function rankTypes(scores, priorityAnswer) {
+  const pts = (a, t) => (a && a.pts && a.pts[t]) || 0;
+  return [...BASE_TYPES].sort((a, b) =>
+    scores[b] - scores[a] || pts(priorityAnswer, b) - pts(priorityAnswer, a) || TIE_ORDER.indexOf(a) - TIE_ORDER.indexOf(b));
+}
+
 // answers: номер ответа (с 0) на каждый вопрос или null; quiz: вопросы из content.js;
 // ebikeHint: текст совета про электровелосипед (CONTENT.ebikeHint), без него совет не добавляется
 function scoreQuiz(answers, quiz, ebikeHint) {
@@ -17,9 +24,7 @@ function scoreQuiz(answers, quiz, ebikeHint) {
   const scores = {};
   for (const t of BASE_TYPES) scores[t] = chosen.reduce((s, a) => s + pts(a, t), 0);
 
-  const priority = chosen[PRIORITY_Q];
-  const ranked = [...BASE_TYPES].sort((a, b) =>
-    scores[b] - scores[a] || pts(priority, b) - pts(priority, a) || TIE_ORDER.indexOf(a) - TIE_ORDER.indexOf(b));
+  const ranked = rankTypes(scores, chosen[PRIORITY_Q]);
   const allZero = scores[ranked[0]] === 0;
   const type = allZero ? 'hybrid' : ranked[0];
   const second = ranked[1];
@@ -99,7 +104,90 @@ function pruneAnswers(A, C) {
   return out;
 }
 
-const api = { BASE_TYPES, TIE_ORDER, scoreQuiz, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
+// ---------- результат с учётом здоровья: 2–3 варианта ----------
+const COMFORT_ORDER = ['city', 'hybrid', 'gravel', 'mtb', 'road'];
+const CAP = { upright: 12, barUp: 60, crankMin: 145 };
+const COMFORT_GEAR = ['suspFork', 'suspPost', 'wideTyres', 'riseBar'];
+const SUSPENSION = ['fullSusp', 'suspFork', 'suspPost'];
+
+const isOffroad = A => Boolean(A) && (A.q1 === 2 || A.q4 === 3 || A.q4 === 4);
+
+function chosenHealthAnswers(A, C) {
+  const out = [];
+  for (const s of quizFlow(A, C)) {
+    if (s.kind !== 'q' || BASE_IDS.includes(s.id) || s.id === 'gate') continue;
+    const q = getQuestion(s.id, C), v = A[s.id];
+    for (const i of (Array.isArray(v) ? v : [v])) out.push(q.answers[i]);
+  }
+  return out;
+}
+
+function buildResult(A0, C) {
+  const A = pruneAnswers(A0, C);
+  const missing = firstMissingStep(A, C);
+  if (missing !== -1) return { complete: false, firstMissing: missing };
+
+  const base = scoreQuiz(BASE_IDS.map(id => A[id]), C.quiz, C.ebikeHint);
+  const chosen = chosenHealthAnswers(A, C);
+  const offroad = isOffroad(A);
+
+  const scores = { ...base.scores };
+  for (const a of chosen) for (const [t, v] of Object.entries(a.pts || {})) scores[t] += v;
+  const ranked = rankTypes(scores, C.quiz[PRIORITY_Q].answers[A.q3]);
+  const type = Math.max(...Object.values(scores)) <= 0 ? 'hybrid' : ranked[0];
+
+  const sum = k => chosen.reduce((s, a) => s + ((a.fit && a.fit[k]) || 0), 0);
+  const cranks = chosen.map(a => a.fit && a.fit.crankMax).filter(Number.isFinite);
+  const health = {
+    upright: Math.min(CAP.upright, sum('upright')),
+    barUp: Math.min(CAP.barUp, sum('barUp')),
+    crankMax: cranks.length ? Math.max(CAP.crankMin, Math.min(...cranks)) : null,
+    stepThrough: chosen.some(a => a.fit && a.fit.stepThrough === true),
+  };
+
+  const order = C.health.gearOrder;
+  const sortGear = set => order.filter(id => set.has(id));
+  const G = new Set();
+  for (const a of chosen) {
+    for (const g of a.gear || []) G.add(g);
+    if (offroad) for (const g of a.offroadGear || []) G.add(g);
+  }
+  if (health.stepThrough) G.add('stepThrough');
+  if (health.crankMax !== null) G.add('shortCranks');
+
+  const warnFor = t => [...new Set(chosen.filter(a => a.warn && a.warn.types.includes(t)).map(a => a.warn.text))];
+  const variant = (kind, t, gear, fit) => ({ kind, type: t, motor: base.motor, gear: sortGear(gear), fit, warn: warnFor(t) });
+  const variants = [variant('balance', type, G, health)];
+
+  let comfortType;
+  if (offroad) comfortType = 'mtb';
+  else if (type === 'folding') comfortType = 'folding';
+  else comfortType = COMFORT_ORDER.find(t => scores[t] > 0 && scores[t] >= 0.5 * scores[type]) || type;
+  const comfortGear = new Set(G);
+  for (const g of COMFORT_GEAR) if (!(g === 'suspFork' && comfortType === 'mtb')) comfortGear.add(g);
+  if (offroad) comfortGear.add('fullSusp');
+  const comfortFit = { ...health, upright: Math.min(CAP.upright, health.upright + 3), barUp: Math.min(CAP.barUp, health.barUp + 20) };
+  const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+  if (!(comfortType === type && sameSet(comfortGear, G))) variants.push(variant('comfort', comfortType, comfortGear, comfortFit));
+
+  const simpleGear = new Set([...G].filter(g => !SUSPENSION.includes(g)));
+  simpleGear.add('wideTyres');
+  if ([...G].some(g => SUSPENSION.includes(g))) variants.push(variant('simple', type, simpleGear, health));
+
+  const healthReasons = [...new Set(chosen.map(a => a.reason).filter(Boolean))].slice(0, 2);
+  const motorReason = base.motor ? base.reasons[base.reasons.length - 1] : null;
+  const baseReasons = base.motor ? base.reasons.slice(0, -1) : base.reasons;
+  const reasons = [...healthReasons, ...baseReasons].slice(0, motorReason ? 3 : 4);
+  if (motorReason) reasons.push(motorReason);
+
+  const hint = C.ebikeHint && base.notes.includes(C.ebikeHint) ? C.ebikeHint : null;
+  const notes = [...base.notes.filter(n => n !== hint), ...chosen.map(a => a.note).filter(Boolean)];
+  if (hint) notes.push(hint);
+
+  return { complete: true, scores, motor: base.motor, variants, reasons, notes, rehab: chosen.some(a => a.rehab === true), health };
+}
+
+const api = { BASE_TYPES, TIE_ORDER, COMFORT_ORDER, scoreQuiz, rankTypes, isOffroad, buildResult, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
