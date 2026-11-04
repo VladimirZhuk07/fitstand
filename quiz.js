@@ -201,7 +201,40 @@ function buildResult(A0, C) {
   return { complete: true, scores, motor: base.motor, variants, reasons, notes, rehab: chosen.some(a => a.rehab === true), health };
 }
 
-const api = { BASE_TYPES, TIE_ORDER, COMFORT_ORDER, scoreQuiz, rankTypes, isOffroad, wantsFullSus, buildResult, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
+// ---------- аксессуары: ситуации по ответам и подбор 3–5 штук ----------
+function accSituations(A, C) {
+  const out = new Set();
+  if (!A) return out;
+  const blocks = gateBlocks(A);
+  if (A.q1 === 0 || A.q2 === 0) out.add('city');
+  if (A.q2 === 0) out.add('commute');
+  if (A.q2 === 0 || A.q6 === 0) out.add('rain');
+  if (A.q2 === 3 || A.q6 === 0) out.add('touring');
+  if (A.q2 === 2 || A.q2 === 3) out.add('long');
+  if (isOffroad(A)) out.add('offroad');
+  if (A.q6 === 3) out.add('kids');
+  if (blocks.includes('back')) out.add('back');
+  if (blocks.includes('knees')) out.add('knees');
+  if (blocks.includes('upper') && Array.isArray(A.upper1) && A.upper1.some(i => [2, 3, 4].includes(i))) out.add('wrists');
+  return out;
+}
+
+const MAX_ACC = 5;
+function recommendAccessories(A, C) {
+  const sit = accSituations(A, C), items = Object.entries(C.accessories);
+  const hit = a => a.when === 'always' || a.when.some(w => sit.has(w));
+  const top = items.filter(([, a]) => hit(a))
+    .map(([id, a], i) => ({ id, p: a.priority, always: a.when === 'always' ? 0 : 1, i }))
+    .sort((x, y) => x.p - y.p || x.always - y.always || x.i - y.i)
+    .slice(0, MAX_ACC).map(x => x.id);
+  const bySituation = Object.entries(C.accSituationTitles)
+    .filter(([id]) => sit.has(id))
+    .map(([id, title]) => ({ id, title, ids: items.filter(([, a]) => Array.isArray(a.when) && a.when.includes(id)).map(([k]) => k) }))
+    .filter(x => x.ids.length);
+  return { top, bySituation };
+}
+
+const api = { accSituations, recommendAccessories, BASE_TYPES, TIE_ORDER, COMFORT_ORDER, scoreQuiz, rankTypes, isOffroad, wantsFullSus, buildResult, MAX_STEPS, gateBlocks, getQuestion, quizFlow, isAnswered, firstMissingStep, pruneAnswers };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

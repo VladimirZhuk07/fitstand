@@ -339,3 +339,55 @@ test('fullsus simple is hardtail', () => {
   assert.equal(s.type, 'mtb');
   assert.ok(!s.gear.includes('suspPost'));
 });
+
+// ---------- accessories (sub-project B, Task 2) ----------
+const has = (set, ...xs) => xs.every(x => set.has(x));
+test('situations from answers', () => {
+  const S = a => Q.accSituations(a, REAL);
+  assert.ok(has(S({ q1: 0 }), 'city'));
+  assert.ok(has(S({ q2: 0 }), 'city', 'commute', 'rain'));
+  assert.ok(has(S({ q6: 0 }), 'rain', 'touring'));
+  assert.ok(has(S({ q2: 3 }), 'touring', 'long'));
+  assert.ok(has(S({ q2: 2 }), 'long'));
+  assert.ok(has(S({ q1: 2 }), 'offroad'));
+  assert.ok(has(S({ q6: 3 }), 'kids'));
+  assert.ok(has(S({ gate: ['back'] }), 'back'));
+  assert.ok(has(S({ gate: ['knees'] }), 'knees'));
+  assert.ok(has(S({ gate: ['upper'], upper1: [3] }), 'wrists'));
+  assert.ok(!S({ gate: ['upper'], upper1: [0] }).has('wrists'));
+  assert.ok(!S({ gate: ['none'], back1: [0] }).has('back'));
+  assert.equal(S({ q1: 1, q2: 1, q6: 2 }).size, 0);
+});
+test('minimal answers', () => {
+  const r = Q.recommendAccessories({ q1: 1, q2: 1, q3: 0, q4: 1, q5: 1, q6: 2, gate: ['none'] }, REAL);
+  assert.deepEqual(r.top, ['helmet', 'frontLight', 'rearLight']);
+  assert.deepEqual(r.bySituation, []);
+});
+test('safety first and 3–5 items', () => {
+  const r = Q.recommendAccessories({ q1: 0, q2: 0, q3: 0, q4: 1, q5: 0, q6: 0, gate: ['none'] }, REAL);
+  assert.ok(r.top.length >= 3 && r.top.length <= 5);
+  assert.deepEqual(r.top.slice(0, 3), ['helmet', 'frontLight', 'rearLight']);
+  const pr = r.top.map(id => REAL.accessories[id].priority);
+  assert.deepEqual(pr, [...pr].sort((a, b) => a - b));
+});
+test('luggage brings rack and bags', () => {
+  const r = Q.recommendAccessories({ q1: 1, q2: 1, q6: 0, gate: ['none'] }, REAL);
+  const touring = r.bySituation.find(s => s.id === 'touring');
+  assert.equal(touring.title, 'Для туринга');
+  assert.ok(touring.ids.includes('rack') && touring.ids.includes('bags'));
+  assert.ok(r.bySituation.find(s => s.id === 'rain').ids.includes('fenders'));
+});
+test('wrists bring grips', () => {
+  const r = Q.recommendAccessories({ q1: 1, q2: 1, q6: 2, gate: ['upper'], upper1: [2] }, REAL);
+  assert.ok(r.bySituation.find(s => s.id === 'wrists').ids.includes('ergoGrips'));
+});
+test('back brings suspension seatpost', () => {
+  const r = Q.recommendAccessories({ q1: 1, q2: 1, q6: 2, gate: ['back'], back1: [0] }, REAL);
+  assert.ok(r.bySituation.find(s => s.id === 'back').ids.includes('suspPost'));
+});
+test('child seat brings kids items', () => {
+  const r = Q.recommendAccessories({ q1: 1, q2: 1, q6: 3, gate: ['none'] }, REAL);
+  const kids = r.bySituation.find(s => s.id === 'kids');
+  assert.ok(kids.ids.includes('childSeat') && kids.ids.includes('kidsHelmet'));
+  assert.ok(r.top.includes('kidsHelmet'), 'kids helmet is a safety pick');
+});
