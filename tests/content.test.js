@@ -79,3 +79,8 @@ test('real data scores', () => {
   assert.equal(scoreQuiz([0, 0, 0, 1, 0, 3], CONTENT.quiz).type, 'city');
   assert.equal(scoreQuiz([2, 2, 2, 3, 1, 2], CONTENT.quiz).type, 'mtb');
 });
+
+test('menu items', () => {
+  assert.deepEqual(CONTENT.menu.map(m => m.id), ['quiz', 'fit', 'types', 'parts']);
+  for (const m of CONTENT.menu) assert.ok(nonEmpty(m.title) && nonEmpty(m.short), m.id);
+});

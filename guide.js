@@ -1,4 +1,4 @@
-// Фитстенд — экраны гида поверх фитстенда: опрос, результат, каталог видов, справочник узлов.
+// Фитстенд — экраны гида поверх фитстенда: меню, опрос, результат, каталог видов, справочник узлов.
 // Адрес после # определяет экран; parseRoute и backTarget — чистые функции (тестируются в Node).
 (function (root) {
 const has = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
@@ -12,6 +12,7 @@ function parseRoute(hash, content) {
     return { view: 'quiz', n: Number.isInteger(n) && n >= 1 && n <= content.quiz.length ? n : 1 };
   }
   if (head === 'result' && arg === undefined) return { view: 'result' };
+  if (head === 'menu' && arg === undefined) return { view: 'menu' };
   if (head === 'types') return arg !== undefined && has(content.types, arg) ? { view: 'type', id: arg } : { view: 'types' };
   if (head === 'parts') return arg !== undefined && has(content.parts, arg) ? { view: 'part', id: arg } : { view: 'parts' };
   return { view: 'fit' };
@@ -21,6 +22,13 @@ function parseRoute(hash, content) {
 function backTarget(historyState) {
   const fs = historyState && historyState.fs;
   return Number.isInteger(fs) && fs > 0 ? { kind: 'back', steps: fs } : { kind: 'replace' };
+}
+
+// menu «Подобрать велосипед»: first unanswered question, or the result when the quiz is complete
+function quizTarget(answers, count) {
+  if (!Array.isArray(answers)) return '#quiz/1';
+  for (let i = 0; i < count; i++) if (!Number.isInteger(answers[i])) return '#quiz/' + (i + 1);
+  return '#result';
 }
 
 // a second tap that lands on the next question within this time is a double tap, not an answer
@@ -55,6 +63,19 @@ function init() {
   const switcher = on => `<nav class="pg-switch" aria-label="Разделы гида"><a href="#types"${on === 'types' ? ' aria-current="page"' : ''}>Виды</a><a href="#parts"${on === 'parts' ? ' aria-current="page"' : ''}>Узлы</a></nav>`;
   const fitBtn = (style, motor) => `<button class="btn primary" data-action="fit" data-style="${style}"${motor ? ' data-motor="1"' : ''}>Подобрать размер</button>`;
 
+  function menuView() {
+    const answers = fsApi().getQuiz(), target = quizTarget(answers, C.quiz.length);
+    const res = target === '#result' ? root.scoreQuiz(answers, C.quiz, C.ebikeHint) : null;
+    const href = { quiz: target, types: '#types', parts: '#parts' };
+    const item = m => {
+      const short = m.id === 'quiz' && res ? `Ваш результат — ${C.types[res.type].name}${res.motor ? ' с мотором' : ''}` : m.short;
+      const inner = `<b>${esc(m.title)}</b><span>${esc(short)}</span>`;
+      return m.id === 'fit'
+        ? `<button class="menu-item" data-action="tofit">${inner}</button>`
+        : `<a class="menu-item" href="${href[m.id]}">${inner}</a>`;
+    };
+    return head('Меню') + `<nav class="menu" aria-label="Меню">${C.menu.map(item).join('')}</nav>`;
+  }
   function quizView(n) {
     const q = C.quiz[n - 1], ans = (fsApi().getQuiz() || [])[n - 1];
     return head(q.q, `Вопрос ${n} / ${C.quiz.length}`) +
@@ -104,7 +125,8 @@ function init() {
     if (wrap) wrap.inert = open;
     if (!open) { page.innerHTML = ''; return; }
     let html;
-    if (r.view === 'quiz') html = quizView(r.n);
+    if (r.view === 'menu') html = menuView();
+    else if (r.view === 'quiz') html = quizView(r.n);
     else if (r.view === 'result') {
       const res = root.scoreQuiz(fsApi().getQuiz() || [], C.quiz, C.ebikeHint);
       if (!res.complete) { history.replaceState(history.state, '', '#quiz/' + (res.firstMissing + 1)); return render(); }
@@ -134,6 +156,7 @@ function init() {
       fsApi().setQuiz(answers);
       go(n < C.quiz.length ? '#quiz/' + (n + 1) : '#result');
     } else if (b.dataset.action === 'back') back();
+    else if (b.dataset.action === 'tofit') toFit();
     else if (b.dataset.action === 'restart') { fsApi().setQuiz(null); go('#quiz/1'); }
     else if (b.dataset.action === 'fit') { fsApi().applyStyle(b.dataset.style, b.dataset.motor === '1'); fsApi().showTab('result'); toFit(); }
   });
@@ -149,7 +172,7 @@ function init() {
   render();
 }
 
-const api = { parseRoute, backTarget, answerAllowed, ANSWER_GUARD_MS };
+const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else { Object.assign(root, api); if (typeof document !== 'undefined') init(); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

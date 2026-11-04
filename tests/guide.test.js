@@ -50,3 +50,16 @@ test('guide texts live in content.js, not in code', () => {
   const q = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'quiz.js'), 'utf8');
   assert.doesNotMatch(q, /Присмотритесь/);
 });
+
+test('parseRoute: menu', () => {
+  assert.deepEqual(r('#menu'), { view: 'menu' });
+  assert.deepEqual(r('#menu/x'), { view: 'fit' });
+});
+
+test('menu «Подобрать велосипед» opens the quiz or the saved result', () => {
+  const { quizTarget } = require('../guide.js');
+  assert.equal(quizTarget(null, 6), '#quiz/1');
+  assert.equal(quizTarget([null, null, null, null, null, null], 6), '#quiz/1');
+  assert.equal(quizTarget([0, 1, null, 2, null, null], 6), '#quiz/3');
+  assert.equal(quizTarget([0, 1, 0, 2, 1, 4], 6), '#result');
+});
