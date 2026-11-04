@@ -42,13 +42,13 @@ test('matrix matches spec', () => {
 });
 
 test('types complete', () => {
-  assert.deepEqual(CONTENT.typeOrder, ['city', 'hybrid', 'gravel', 'mtb', 'road', 'folding', 'ebike']);
+  assert.equal(CONTENT.typeOrder.length, 19);
   for (const id of CONTENT.typeOrder) {
     const t = CONTENT.types[id];
     for (const k of ['name', 'short', 'purpose', 'forWhom']) assert.ok(nonEmpty(t[k]), `${id}.${k}`);
     assert.ok(t.short.length <= 60, `${id}.short too long`);
-    assert.ok(t.pros.length >= 3 && t.pros.length <= 4, `${id}.pros`);
-    assert.ok(t.cons.length >= 3 && t.cons.length <= 4, `${id}.cons`);
+    assert.ok(t.pros.length >= 3 && t.pros.length <= 5, `${id}.pros`);
+    assert.ok(t.cons.length >= 3 && t.cons.length <= 5, `${id}.cons`);
     assert.deepEqual(t.program.map(s => s.title), ['Первая неделя', 'Первый месяц', 'Дальше']);
     t.program.forEach(s => assert.ok(nonEmpty(s.text)));
   }
@@ -217,4 +217,45 @@ test('health texts', () => {
 
 test('menu does not promise a fixed number of questions', () => {
   assert.doesNotMatch(CONTENT.menu.find(m => m.id === 'quiz').short, /\d+ вопрос/);
+});
+
+// ---------- bike types (sub-project A, Task 3) ----------
+const GROUPS = {
+  adult: ['city', 'hybrid', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding', 'ebike', 'trike', 'cargo'],
+  kids: ['kidTrike', 'balance', 'kidTraining', 'kid', 'teen'],
+  special: ['bmx', 'special'],
+};
+const ALL_TYPES = [...GROUPS.adult, ...GROUPS.kids, ...GROUPS.special];
+
+test('groups cover every type once', () => {
+  assert.deepEqual(CONTENT.typeGroups.map(g => [g.id, g.title]), [['adult', 'Взрослые'], ['kids', 'Детские'], ['special', 'Трюковые и специальные']]);
+  for (const g of CONTENT.typeGroups) assert.deepEqual(g.ids, GROUPS[g.id], g.id);
+  assert.deepEqual(CONTENT.typeOrder, ALL_TYPES);
+  assert.deepEqual(Object.keys(CONTENT.types).sort(), [...ALL_TYPES].sort());
+});
+
+test('new fields per spec', () => {
+  const T = CONTENT.types;
+  for (const [gid, ids] of Object.entries(GROUPS)) for (const id of ids) assert.equal(T[id].group, gid, `${id}.group`);
+  for (const id of ['mtb', 'fullsus', 'cx', 'bmx']) assert.ok(nonEmpty(T[id].terrain), `${id}.terrain`);
+  assert.ok(nonEmpty(T.cx.compare));
+  for (const id of GROUPS.kids) {
+    assert.ok(nonEmpty(T[id].age), `${id}.age`);
+    assert.ok(Array.isArray(T[id].wheels) && T[id].wheels.length >= 1, `${id}.wheels`);
+  }
+  assert.deepEqual(GROUPS.kids.map(id => T[id].wheels), [['12'], ['12'], ['12', '14', '16'], ['16', '20'], ['24']]);
+  for (const id of ['balance', 'kidTraining', 'kid']) assert.ok(T[id].teach.length >= 3 && T[id].teach.length <= 4, `${id}.teach`);
+  assert.ok(T.kidTraining.fear.length >= 3 && T.kidTraining.fear.length <= 4);
+  for (const id of ['teen', 'kid', 'special']) assert.ok(T[id].variants.length >= 2, `${id}.variants`);
+  assert.match(T.trike.note, /электр/i);
+  assert.equal(T.mtb.name, 'MTB хардтейл');
+  assert.equal(T.fullsus.name, 'MTB двухподвес');
+  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'gravel', road: 'road', track: 'road', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'city', trike: 'city', cargo: 'city' };
+  for (const id of ALL_TYPES) assert.equal(T[id].fitAs, FIT_AS[id] ?? null, `${id}.fitAs`);
+});
+
+test('kids wheel table', () => {
+  assert.deepEqual(CONTENT.kidsWheels, [
+    { from: 85, to: 100, wheel: '12' }, { from: 95, to: 110, wheel: '14' }, { from: 105, to: 120, wheel: '16' },
+    { from: 115, to: 135, wheel: '20' }, { from: 130, to: 150, wheel: '24' }]);
 });
