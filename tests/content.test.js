@@ -55,17 +55,39 @@ test('types complete', () => {
 });
 
 test('parts complete', () => {
-  assert.deepEqual(CONTENT.partOrder, ['frame', 'fork', 'brakes', 'drivetrain', 'wheels', 'cockpit', 'saddle', 'pedals']);
+  assert.deepEqual(CONTENT.partOrder, ['frame', 'fork', 'brakes', 'drivetrain', 'rims', 'tyres', 'cockpit', 'saddle', 'pedals']);
+  assert.deepEqual(Object.keys(CONTENT.parts).sort(), [...CONTENT.partOrder].sort());
   for (const id of CONTENT.partOrder) {
     const p = CONTENT.parts[id];
     assert.ok(nonEmpty(p.name) && nonEmpty(p.short), id);
-    assert.ok(p.variants.length >= 2 && p.variants.length <= 4, `${id}.variants`);
+    assert.ok(p.variants.length >= 2 && p.variants.length <= 6, `${id}.variants`);
+    for (const m of p.more || []) {
+      assert.ok(nonEmpty(m.title), `${id}.more`);
+      assert.ok(nonEmpty(m.text) || (m.list && m.list.length) || m.table, `${id}.${m.title}: empty`);
+      if (m.list) m.list.forEach(x => assert.ok(nonEmpty(x), `${id}.${m.title}.list`));
+      if (m.table) m.table.rows.forEach(r => assert.equal(r.length, m.table.head.length, `${id}.${m.title}.row`));
+    }
     for (const v of p.variants) {
       assert.ok(nonEmpty(v.name) && nonEmpty(v.text), `${id}.${v.name}`);
       assert.ok(v.pros.length >= 1 && v.pros.length <= 3, `${id}.${v.name}.pros`);
       assert.ok(v.cons.length >= 1 && v.cons.length <= 3, `${id}.${v.name}.cons`);
     }
   }
+});
+
+test('fork, rims, tyres per spec', () => {
+  const P = CONTENT.parts;
+  for (const i of [1, 2]) assert.ok(nonEmpty(P.fork.variants[i].how), `fork ${i}.how`);
+  assert.deepEqual(P.fork.more.map(m => m.title), ['Блокировка', 'Настройки воздушной вилки']);
+  assert.equal(P.rims.variants.length, 4);
+  assert.equal(P.tyres.variants.length, 6);
+  for (const id of ['rims', 'tyres']) P[id].variants.forEach(v => assert.ok(nonEmpty(v.terrain), `${id}.${v.name}.terrain`));
+  assert.deepEqual(P.rims.more.map(m => m.title), ['Размеры', 'Ширина обода', 'Высокий профиль']);
+  assert.equal(P.rims.more[0].table.head.length, 3);
+  assert.equal(P.rims.more[0].table.rows.length, 9);
+  assert.deepEqual(P.tyres.more.map(m => m.title), ['На что влияет рисунок протектора', 'Материал: от худшего к лучшему', 'Камерные, бескамерные, трубки', 'Ширина и давление']);
+  assert.equal(P.tyres.more[1].ordered, true);
+  assert.ok(P.tyres.more[1].list.length >= 4);
 });
 
 test('no brands', () => {
