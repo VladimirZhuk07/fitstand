@@ -194,8 +194,10 @@ function init() {
   // the drawing of a type: drawAs names another style (MTB, e-bike), otherwise the type draws by its id
   const typeBike = id => { const t = C.types[id]; return [t.drawAs || id, !!t.motor]; };
   const fitOf = id => { const t = C.types[id]; return t.fitAs ? [t.fitAs, !!t.motor] : null; };
+  // a photo of the type; while it is there the card hides the drawing, without it (data-opt removes it) the drawing shows
+  const typePic = (id, cls) => pic(`img/types/${id}.webp`, cls, C.types[id].name);
   const typeCard = id => { const [s, m] = typeBike(id), t = C.types[id];
-    return `<a class="card" href="#types/${id}">${bike(s, m, null, 'card-bike')}<b>${esc(t.name)}${t.age ? `<small>${esc(t.age)}</small>` : ''}</b><span>${esc(t.short)}</span></a>`; };
+    return `<a class="card" href="#types/${id}">${typePic(id, 'type-thumb')}${bike(s, m, null, 'card-bike')}<b>${esc(t.name)}${t.age ? `<small>${esc(t.age)}</small>` : ''}</b><span>${esc(t.short)}</span></a>`; };
   function typesView() {
     return head('Виды велосипедов') + switcher('types') +
       C.typeGroups.map(g => `<h2 class="grp">${esc(g.title)}</h2><div class="cards">${g.ids.map(typeCard).join('')}</div>`).join('');
@@ -205,7 +207,7 @@ function init() {
     const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
     const kidsTable = t.wheels ? sec('Размер колеса по росту ребёнка', `<table class="kids"><tr><th>Рост</th><th>Колесо</th></tr>${C.kidsWheels.map(w =>
       `<tr${t.wheels.includes(w.wheel) ? ' class="on"' : ''}><td>${w.from}–${w.to} см</td><td>${w.wheel}″</td></tr>`).join('')}</table><p class="pg-note">Ориентир: точнее — примерка, ребёнок должен доставать до земли носками.</p>`) : '';
-    return head(t.name, t.age || (t.parent ? C.types[t.parent].name : null)) + bike(s, m) + `<p class="lead">${esc(t.purpose)}</p>` +
+    return head(t.name, t.age || (t.parent ? C.types[t.parent].name : null)) + typePic(id, 'type-photo') + bike(s, m) + `<p class="lead">${esc(t.purpose)}</p>` +
       (t.note ? `<p>${esc(t.note)}</p>` : '') +
       sec('Кому подходит', `<p>${esc(t.forWhom)}</p>`) +
       (t.terrain ? sec('Для каких трасс', `<p>${esc(t.terrain)}</p>`) : '') +

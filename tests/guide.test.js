@@ -82,3 +82,10 @@ test('parseRoute acc', () => {
   assert.deepEqual(r('#acc/safety'), { view: 'accGroup', id: 'safety' });
   assert.deepEqual(r('#acc/kids'), { view: 'accGroup', id: 'kids' });
 });
+
+test('type cards and pages show a photo, the drawing stays as a fallback', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  assert.match(src, /img\/types\/\$\{id\}\.webp/);
+  assert.match(src, /type-thumb/);
+  assert.match(src, /type-photo/);
+});

@@ -40,3 +40,7 @@ test('fork animation script loads before the guide', () => {
   const a = html.indexOf('<script src="./forkAnim.js">'), g = html.indexOf('<script src="./guide.js">');
   assert.ok(a > 0 && a < g);
 });
+
+test('a type photo hides the card drawing; without it the drawing shows', () => {
+  assert.match(html, /\.card \.type-thumb\+\.card-bike\{display:none\}/);
+});
