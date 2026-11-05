@@ -1,11 +1,12 @@
 // Фитстенд — service worker.
 // При каждом обновлении сайта увеличивайте номер версии, чтобы телефоны подхватили новые файлы.
-const VERSION = 'fitstand-v11';
+const VERSION = 'fitstand-v12';
 const CORE = [
   './',
   './index.html',
   './model.js',
   './draw.js',
+  './ride.js',
   './state.js',
   './content.js',
   './quiz.js',

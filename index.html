@@ -39,6 +39,24 @@
   --figure:#B5BDC3; --rider:#C3CAD0; --metal:#78828A; --tyre:#3B4247; --rim:#5B646B;
   --good:#55BE80; --warn:#E2B23E; --bad:#F06C61; color-scheme:dark;
 }
+/* ride scene: a calm morning; in the dark theme — dusk */
+:root{
+  --sky-top:#BCD5E6; --sky-bottom:#F4E7CF; --sun:#FFD49A; --haze:#EFE7D9;
+  --hill:#A7BE9E; --hill2:#C9D6C0; --tree:#7C9B72; --trunk:#7A6650; --bush:#93AE86;
+  --road:#8F9192; --roadedge:#BDB7AA; --speck:#77797A; --grass:#6F905F; --post:#ECE8E0; --reflector:#D9752B;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
+    --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
+    --road:#2B2E32; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+  }
+}
+:root[data-theme="dark"]{
+  --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
+  --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
+  --road:#2B2E32; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+}
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
 body{margin:0}
@@ -154,6 +172,18 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .bike .hl>[data-on] [class*="s-"]{stroke:var(--accent)}
 .bike .hl>[data-on] .f-ink,.bike .hl>[data-on] .f-metal,.bike .hl>[data-on] .f-frame{fill:var(--accent)}
 #bike.no-dims .dims{display:none}
+/* ride scene: while pedalling — the background and motion; on pause — the drawing with the grid and sizes */
+#rideBg,#bike .grid-bg,#bike .dims,#bike .ground,#bike .spokes,#bike .blur-disc{transition:opacity .3s}
+#bike:not(.riding) #rideBg{opacity:0}
+#bike.riding .grid-bg,#bike.riding .dims,#bike.riding .ground{opacity:0}
+#bike.riding .spokes{opacity:.28} #bike.riding .blur-disc{opacity:.14}
+#bike.riding .shadow{opacity:.14}
+.stage-note{transition:opacity .3s} #bike.riding~.stage-note{opacity:0}
+.rb-hill{fill:var(--hill)} .rb-hill2{fill:var(--hill2)} .rb-tree{fill:var(--tree)} .rb-tree2{opacity:.82}
+.rb-trunk{fill:var(--trunk)} .rb-bush{fill:var(--bush)} .rb-midlayer{opacity:.92}
+.rb-road{fill:var(--road)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
+.rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
+.rb-nearlayer{opacity:.85}
 
 /* guide entries */
 .cta{display:block;padding:11px 14px;border:1.5px solid var(--accent);border-radius:12px;color:var(--accent);font-weight:600;font-size:14px;text-decoration:none;background:color-mix(in srgb,var(--accent) 7%,transparent)}
@@ -380,6 +410,7 @@ body.page-open{overflow:hidden}
         <defs>
           <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path class="grid-line" d="M100 0H0V100"/></pattern>
         </defs>
+        <g id="rideBgWrap"></g>
         <g id="scene"></g>
       </svg>
       <div class="stage-tag" id="stageTag"></div>
@@ -485,6 +516,7 @@ body.page-open{overflow:hidden}
 
 <script src="./model.js"></script>
 <script src="./draw.js"></script>
+<script src="./ride.js"></script>
 <script src="./state.js"></script>
 <script src="./content.js"></script>
 <script src="./quiz.js"></script>
@@ -574,7 +606,7 @@ function selectTab(t){tabs.forEach(x=>{const on=x===t;x.setAttribute('aria-selec
 tabs.forEach((t,i)=>{t.tabIndex=i?-1:0;t.addEventListener('click',()=>selectTab(t));
   t.addEventListener('keydown',e=>{if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft')return;const n=tabs[(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];selectTab(n);n.focus();e.preventDefault();});});
 const playBtn=$('#play');
-function syncPlay(){playBtn.innerHTML=state.playing?'<svg viewBox="0 0 14 14"><rect x="2" y="1.5" width="3.6" height="11" rx="1"/><rect x="8.4" y="1.5" width="3.6" height="11" rx="1"/></svg>':'<svg viewBox="0 0 14 14"><path d="M3 1.6v10.8a.8.8 0 0 0 1.2.7l8.6-5.4a.8.8 0 0 0 0-1.4L4.2.9A.8.8 0 0 0 3 1.6z"/></svg>';
+function syncPlay(){bikeSvg.classList.toggle('riding',state.playing);playBtn.innerHTML=state.playing?'<svg viewBox="0 0 14 14"><rect x="2" y="1.5" width="3.6" height="11" rx="1"/><rect x="8.4" y="1.5" width="3.6" height="11" rx="1"/></svg>':'<svg viewBox="0 0 14 14"><path d="M3 1.6v10.8a.8.8 0 0 0 1.2.7l8.6-5.4a.8.8 0 0 0 0-1.4L4.2.9A.8.8 0 0 0 3 1.6z"/></svg>';
   playBtn.setAttribute('aria-label',state.playing?'Пауза':'Крутить педали');}
 playBtn.addEventListener('click',()=>{state.playing=!state.playing;syncPlay();});
 
@@ -676,7 +708,8 @@ function renderSpecs(F){
 }
 
 /* ---------- animation loop ---------- */
-let target=null, cur=null, curP=null, vb=null, ux=1, theta=-30, wheelA=0, dirty=true, personDirty=true, refs={};
+let target=null, cur=null, curP=null, vb=null, ux=1, rideT=0, dirty=true, personDirty=true, refs={};
+const BOTTOM_ROOM=110; // mm below the ground for the grass by the road
 const FLAGS=['brake','susp','hinge','suspPost','stepThrough'];
 const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot'];
 function changed(){
@@ -692,21 +725,35 @@ function computeUx(b){
 function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
-  refs={}; ['fCrank','fPedal','fThigh','fShin','fFoot','nCrank','nPedal','nThigh','nShin','nFoot','wR','wF'].forEach(id=>refs[id]=document.getElementById(id));
+  refs={}; ['fCrank','fPedal','fThigh','fShin','fFoot','nCrank','nPedal','nThigh','nShin','nFoot','wR','wF','uTorso','uNeck','uUpper','uFore','uHand','uHeadG','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
   refs.pts=geomPts(cur);
+  // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
+  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,cur.wheelR):'';
 }
 function setL(el,a,b){if(!el)return;el.setAttribute('x1',fx(a.x));el.setAttribute('y1',fx(-a.y));el.setAttribute('x2',fx(b.x));el.setAttribute('y2',fx(-b.y));}
 function updateDynamic(){
-  const g=cur, hip=refs.pts.hip;
-  for(const [side,th] of [['n',theta],['f',theta+180]]){
-    const l=legAt(g,hip,th);
+  const g=cur, hip=refs.pts.hip, pose=ridePose(rideT,g.wheelR), th=-30-pose.crank;
+  for (const [side,a] of [['n',th],['f',th+180]]){
+    const l=legAt(g,hip,a);
     setL(refs[side+'Crank'],V(0,0),l.pedal);
     setL(refs[side+'Pedal'],sub(l.pedal,V(48,0)),add(l.pedal,V(48,0)));
     setL(refs[side+'Thigh'],hip,l.knee);setL(refs[side+'Shin'],l.knee,l.ankle);setL(refs[side+'Foot'],l.ankle,l.toe);
   }
-  const {R,F}=refs.pts;
-  if(refs.wR)refs.wR.setAttribute('transform',`rotate(${fx(wheelA)} ${fx(R.x)} ${fx(-R.y)})`);
-  if(refs.wF)refs.wF.setAttribute('transform',`rotate(${fx(wheelA)} ${fx(F.x)} ${fx(-F.y)})`);
+  const {R,F,ck,up}=refs.pts;
+  if(refs.wR)refs.wR.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(R.x)} ${fx(-R.y)})`);
+  if(refs.wF)refs.wF.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(F.x)} ${fx(-F.y)})`);
+  // upper body: torso sway, breath, hands on the steering bar; the head moves with the shoulder without tilting
+  if(refs.uTorso){
+    const u=upperAt(g,hip,ck,pose), hr=g.headR;
+    setL(refs.uTorso,hip,u.shoulder);
+    setL(refs.uNeck,u.shoulder,add(u.shoulder,mul(nrm(sub(u.head,u.shoulder)),hr*0.6)));
+    setL(refs.uUpper,u.shoulder,u.elbow);setL(refs.uFore,u.elbow,u.hand);
+    refs.uHand.setAttribute('cx',fx(u.hand.x));refs.uHand.setAttribute('cy',fx(-u.hand.y));
+    refs.uHeadG.setAttribute('transform',`translate(${fx(u.head.x-up.head.x)} ${fx(-(u.head.y-up.head.y))})`);
+  }
+  if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
+  $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
+  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,g.wheelR).x;applyRide(bikeSvg,sh);}
 }
 let last=performance.now();
 function tick(now){
@@ -717,14 +764,14 @@ function tick(now){
     for(const key of NUM){const d=target[key]-cur[key];if(Math.abs(d)>0.02){cur[key]+=d*k;moving=true;}else cur[key]=target[key];}
     for(const key of FLAGS){if(cur[key]!==target[key]){cur[key]=target[key];dirty=true;}}
     for(const key of ['H','I','A','W']){const d=state[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==state[key]){curP[key]=state[key];personDirty=true;}}
-    const tb=boundsOf(cur,state.rider,ux);
+    const tb=boundsOf(cur,state.rider,ux); tb.h+=BOTTOM_ROOM;
     if(!vb)vb={...tb};
     let vbMove=false;
     for(const key of ['x','y','w','h']){const d=tb[key]-vb[key];if(Math.abs(d)>0.3){vb[key]+=d*k*0.8;vbMove=true;}else vb[key]=tb[key];}
     if(vbMove||moving||dirty){bikeSvg.setAttribute('viewBox',`${fx(vb.x)} ${fx(vb.y)} ${fx(vb.w)} ${fx(vb.h)}`);
       const nu=computeUx(vb); if(Math.abs(nu-ux)/ux>0.04){ux=nu;dirty=true;}}
     if(moving||dirty){rebuild();dirty=false;updateDynamic();}
-    if(state.playing){theta-=dt*360/1.5;wheelA+=dt*360/1.5*1.35;updateDynamic();}
+    if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();}
     if(personDirty){personSvg.innerHTML=personMarkup(curP);personDirty=false;}
   }
   requestAnimationFrame(tick);

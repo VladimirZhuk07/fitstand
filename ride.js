@@ -76,7 +76,8 @@ function specks(tile, h, seed) {
 // the whole background for the view b (viewBox in mm) with the ground at groundY
 function rideBgMarkup(b, groundY, wheelR) {
   const tile = id => layerShift(id, 0, wheelR).tile;
-  const X0 = b.x - b.w * 0.2, W = b.w * 1.4, Y0 = b.y - b.h * 0.2, bottom = b.y + b.h * 1.1;
+  // a wide screen shows more than the viewBox (preserveAspectRatio meet), so the background reaches far past it
+  const X0 = b.x - b.w * 3, W = b.w * 7, Y0 = b.y - b.h, bottom = b.y + b.h * 2;
   const HF = 900, HM = 700, HR = Math.max(60, bottom - groundY), HN = 170, NY = groundY + 34;
   const pat = (id, y, h, inner) => `<pattern id="rb-${id}" patternUnits="userSpaceOnUse" x="0" y="${f1(y)}" width="${f1(tile(id))}" height="${f1(h)}">${inner}</pattern>`;
   const rect = (id, y, h) => `<rect x="${f1(X0)}" y="${f1(y)}" width="${f1(W)}" height="${f1(h)}" fill="url(#rb-${id})"/>`;

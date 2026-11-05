@@ -48,3 +48,13 @@ test('a type photo hides the card drawing; without it the drawing shows', () => 
 test('on a type page the photo replaces the drawing; without it the drawing shows', () => {
   assert.match(html, /\.type-photo\+\.pg-bike\{display:none\}/);
 });
+
+test('ride scene while pedalling, drawing on pause', () => {
+  for (const sel of ['#bike.riding .grid-bg', '#bike.riding .dims', '#bike:not(.riding) #rideBg', '#bike.riding .blur-disc']) assert.ok(html.includes(sel), sel);
+  assert.ok(html.includes('<g id="rideBgWrap"></g>'), 'background slot in the drawing');
+  const dark = html.slice(html.indexOf('prefers-color-scheme: dark'));
+  assert.match(html, /--sky-top:/);
+  assert.match(dark, /--sky-top:/);
+  const at = s => html.indexOf(`<script src="./${s}">`);
+  assert.ok(at('draw.js') > 0 && at('ride.js') > at('draw.js') && at('ride.js') < html.indexOf('<script>'), 'ride.js after draw.js, before the page script');
+});
