@@ -125,13 +125,17 @@ test('every catalog style draws without ids', () => {
 });
 
 // ---------- ride scene (stage 4a) ----------
-const RIDE_IDS = ['uHip', 'uTorso', 'uNeck', 'uUpper', 'uFore', 'uHand', 'uHeadG', 'cockpitG'];
-const RIDE_CLASSES = ['spokes', 'blur-disc', 'valve', 'grid-bg'];
+const RIDE_IDS = ['riderFarSlot', 'riderSlot', 'cockpitG'];
+const RIDE_CLASSES = ['spokes', 'blur-disc', 'valve', 'grid-bg', 'hi', 'tread'];
+const OLD_IDS = ['fThigh', 'fShin', 'fFoot', 'nThigh', 'nShin', 'nFoot', 'uHip', 'uTorso', 'uNeck', 'uUpper', 'uFore', 'uHand', 'uHeadG'];
 
 test('live markup has moving upper body and ride wheels', () => {
   const live = Dr.bikeMarkup(g('hybrid'), 1), stat = Dr.bikeMarkup(g('hybrid'), 1, { live: false });
   for (const id of RIDE_IDS) { assert.match(live, new RegExp(`id="${id}"`), id); assert.doesNotMatch(stat, new RegExp(`id="${id}"`), id); }
   for (const c of RIDE_CLASSES) { assert.match(live, new RegExp(`class="${c}`), c); assert.doesNotMatch(stat, new RegExp(`class="${c}`), c); }
+  for (const id of OLD_IDS) assert.doesNotMatch(live, new RegExp(`id="${id}"`), `${id} is gone`);
+  assert.ok(live.indexOf('id="riderFarSlot"') < live.indexOf('data-part="frame"'), 'far leg behind the frame');
+  assert.ok(live.indexOf('id="riderSlot"') > live.indexOf('data-part="cockpit"'), 'the rider over the cockpit');
 });
 
 test('upperAt at rest equals upperOf', () => {

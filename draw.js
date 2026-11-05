@@ -86,7 +86,8 @@ function bikeMarkup(g,ux,opts={}){
   s+=`<line class="ground" x1="${fx(gx0)}" y1="${fx(-ground)}" x2="${fx(gx1)}" y2="${fx(-ground)}"/>`;
   // far side: crank, pedal, leg
   if(pedals&&!g.frontPedals) s+=`<g opacity=".42"><line${id('fCrank')} class="s-ink" stroke-width="24"${crankAt(pF)}/><line${id('fPedal')} class="s-ink" stroke-width="20"${pedalAt(pF)}/></g>`;
-  if(live) s+=`<g class="rider" opacity=".36"><line id="fThigh" class="s-rider" stroke-width="${fx(g.headR*0.72)}"/><line id="fShin" class="s-rider" stroke-width="${fx(g.headR*0.54)}"/><line id="fFoot" class="s-rider" stroke-width="${fx(g.headR*0.36)}"/></g>`;
+  // the rider is drawn by rider.js into two slots: the far leg behind the frame, the rest over the cockpit
+  if(live) s+='<g id="riderFarSlot"></g>';
   // wheels + fenders
   let rims='', tyres='';
   // the trike's far rear wheel: its own pair, drawn first so it stays behind the main wheels
@@ -98,6 +99,8 @@ function bikeMarkup(g,ux,opts={}){
     rims+=`<g data-k="trainingWheels">${L_(R,c,'s-metal',12)}<circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="12"/></g>`;
   }
   s+=part('rims',rims)+part('tyres',tyres);
+  // live: a hint of tread on the tyres
+  if(live) for(const c of [R,F]) s+=`<circle class="tread" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(g.wheelR-g.tyre*0.22)}" stroke-width="${fx(g.tyre*0.5)}"/>`;
   if(g.fender>0.02){
     s+=`<g opacity="${fx(g.fender)}"><polyline class="s-metal nf" stroke-width="16" points="${arcPts(R,g.wheelR+22,8,200)}"/><polyline class="s-metal nf" stroke-width="16" points="${arcPts(F,g.wheelR+22,-28,128)}"/></g>`;
   }
@@ -120,6 +123,11 @@ function bikeMarkup(g,ux,opts={}){
   }
   if(g.hinge){const m=mul(add(ttEnd,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
   s+=part('frame',fr);
+  // live: a highlight along the seat, down and top tubes — the light comes from the upper left
+  if(live) for(const [a,b,w] of [[BB,T,32],[BB,HbJ,40],[ttEnd,HtJ,30]]){
+    const d=nrm(sub(b,a)), n0=V(-d.y,d.x), n=n0.y>0?n0:mul(n0,-1), o=mul(n,w*0.22);
+    s+=L_(add(a,o),add(b,o),'hi',fx(w*0.22));
+  }
   // fork
   let fk;
   if(g.susp){
@@ -180,19 +188,7 @@ function bikeMarkup(g,ux,opts={}){
   s+=part('drivetrain',dr);
   s+=part('pedals',pd);
   if(live){
-    // near leg + upper body
-    const hr=g.headR;
-    s+=`<g class="rider"><line id="nThigh" class="s-rider" stroke-width="${fx(hr*0.72)}"/><line id="nShin" class="s-rider" stroke-width="${fx(hr*0.54)}"/><line id="nFoot" class="s-rider" stroke-width="${fx(hr*0.36)}"/>`;
-    // the upper body has ids: the ride scene moves it every frame (torso sway, breath, hands on the steering bar)
-    s+=`<circle id="uHip" class="f-rider" cx="${fx(hip.x)}" cy="${fx(-hip.y)}" r="${fx(hr*0.62)}"/>`;
-    s+=L_(hip,up.shoulder,'s-rider',fx(hr*1.0),'id="uTorso"');
-    s+=L_(up.shoulder,add(up.shoulder,mul(nrm(sub(up.head,up.shoulder)),hr*0.6)),'s-rider',fx(hr*0.42),'id="uNeck"');
-    s+=L_(up.shoulder,up.elbow,'s-rider',fx(hr*0.46),'id="uUpper"')+L_(up.elbow,up.hand,'s-rider',fx(hr*0.38),'id="uFore"');
-    s+=`<circle id="uHand" class="f-rider" cx="${fx(up.hand.x)}" cy="${fx(-up.hand.y)}" r="${fx(hr*0.26)}"/>`;
-    const tilt=(90-up.alpha)*0.55, hc=up.head, R2=hr*1.1;
-    s+=`<g id="uHeadG"><circle class="f-rider" cx="${fx(hc.x)}" cy="${fx(-hc.y)}" r="${fx(hr)}"/>`;
-    s+=`<path class="f-frame" transform="rotate(${fx(tilt)} ${fx(hc.x)} ${fx(-hc.y)})" d="M${fx(hc.x-R2-8)} ${fx(-hc.y+8)} A${fx(R2)} ${fx(R2)} 0 0 1 ${fx(hc.x+R2)} ${fx(-hc.y+2)} L${fx(hc.x+R2*0.55)} ${fx(-hc.y+16)} Z"/></g>`;
-    s+=`</g>`;
+    s+='<g id="riderSlot"></g>';
     // dimensions
     const fs=fx(12*ux), tk=6*ux;
     let d='';
