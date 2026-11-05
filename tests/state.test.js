@@ -82,3 +82,12 @@ test('old saved mtb style still loads', () => {
 test('catalog-only styles are rejected', () => {
   for (const style of ['balance', 'bmx', 'kidTrike', 'special', 'trike', 'cargo', 'teen']) assert.equal(loadSaved(JSON.stringify({ style }), DEF, FIT, COLORS).style, 'road', style);
 });
+
+test('loadSaved keeps a saved style', () => {
+  const DEF_H = { ...DEF, style: 'hybrid' };
+  const st = style => loadSaved(JSON.stringify({ style }), DEF_H, FIT, COLORS).style;
+  assert.equal(st('road'), 'road');
+  assert.equal(st('women'), 'women');
+  assert.equal(st('bmx'), 'hybrid');
+  assert.equal(loadSaved(null, DEF_H, FIT, COLORS).style, 'hybrid');
+});

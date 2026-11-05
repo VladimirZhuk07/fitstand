@@ -409,15 +409,18 @@ body.page-open{overflow:hidden}
           <div class="gtitle">Посадка</div>
           <a class="cta" href="#quiz/1">Не знаю, какой велосипед — помогите выбрать</a>
           <div class="seg" role="radiogroup" aria-label="Тип велосипеда" id="seg">
-            <button role="radio" data-style="road" aria-checked="true">Шоссе</button>
-            <button role="radio" data-style="gravel" aria-checked="false">Грэвел</button>
             <button role="radio" data-style="city" aria-checked="false">Город</button>
-            <button role="radio" data-style="hybrid" aria-checked="false">Гибрид</button>
+            <button role="radio" data-style="hybrid" aria-checked="true">Гибрид</button>
+            <button role="radio" data-style="women" aria-checked="false">Женский</button>
+            <button role="radio" data-style="gravel" aria-checked="false">Грэвел</button>
+            <button role="radio" data-style="cx" aria-checked="false">Циклокросс</button>
+            <button role="radio" data-style="road" aria-checked="false">Шоссе</button>
+            <button role="radio" data-style="track" aria-checked="false">Трековый</button>
             <button role="radio" data-style="mtb" aria-checked="false">MTB</button>
             <button role="radio" data-style="fullsus" aria-checked="false">Двухподвес</button>
             <button role="radio" data-style="folding" aria-checked="false">Складной</button>
           </div>
-          <a class="more" id="aboutType" href="#types/road">Об этом виде ›</a>
+          <a class="more" id="aboutType" href="#types/hybrid">Об этом виде ›</a>
           <div class="health-row" id="healthRow" hidden><span id="healthText"></span><label class="switch"><input type="checkbox" id="tHealth" checked> Учитывать</label></div>
           <div class="field">
             <div class="fhead"><label for="inF">Гибкость спины</label><output for="inF" id="outF"></output></div>
@@ -469,7 +472,7 @@ const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduc
 const PRESETS=[{H:160,I:74,A:54,W:37},{H:178,I:83,A:61,W:42},{H:195,I:92,A:67,W:46}];
 const COLORS=[['#2B47D6','Кобальт'],['#D44A2C','Сигнальный'],['#4F8A64','Шалфей'],['#C59A55','Песок'],['#5C656E','Графит']];
 const FLEX=['Низкая','Ниже средней','Средняя','Хорошая','Отличная'];
-const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'road',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
+const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'hybrid',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
 const SAVE_KEY='fitstand:v1';
 let saved=null; try{saved=localStorage.getItem(SAVE_KEY);}catch(e){}
 const FIT_ONLY=Object.fromEntries(FIT_STYLES.map(s=>[s,STYLES[s]]));
