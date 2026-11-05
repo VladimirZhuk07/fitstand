@@ -43,3 +43,25 @@ test('convert plan: types are 3:2, the rest square', t => {
   assert.deepEqual(by('img/parts/rims-0.webp').size, [512, 512]);
   assert.deepEqual(by('img/acc/helmet.webp').size, [512, 512]);
 });
+
+// a tall object (a unicycle) must not lose its top in the 3:2 crop; a long one is cropped around itself
+test('type crop keeps the whole object', t => {
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  try { execFileSync(py, ['-c', 'import PIL'], { stdio: 'pipe' }); } catch { t.skip('no Pillow'); return; }
+  const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-raw-')), out = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-out-'));
+  const make = `from PIL import Image, ImageDraw
+im = Image.new('RGB', (1024, 1024), 'white'); d = ImageDraw.Draw(im); d.rectangle((500, 40, 524, 1000), fill='black'); im.save(r'${raw}/type-tall.png')
+im = Image.new('RGB', (1024, 1024), 'white'); d = ImageDraw.Draw(im); d.rectangle((20, 100, 1000, 400), fill='black'); im.save(r'${raw}/type-high.png')`;
+  execFileSync(py, ['-c', make]);
+  execFileSync(py, [path.join(root, 'tools/convert-images.py'), '--raw', raw, '--out', out], { stdio: 'pipe' });
+  const check = `from PIL import Image
+for name in ('tall', 'high'):
+    im = Image.open(r'${out}/types/' + name + '.webp').convert('L'); w, h = im.size
+    rows = [y for y in range(h) if min(im.getpixel((x, y)) for x in range(0, w, 2)) < 100]
+    print(name, w, h, rows[0], h - 1 - rows[-1])`;
+  const res = execFileSync(py, ['-c', check], { encoding: 'utf8' }).trim().split('\n').map(l => l.trim().split(' '));
+  for (const [name, w, h, top, bottom] of res) {
+    assert.deepEqual([w, h], ['720', '480'], name);
+    assert.ok(Number(top) > 2 && Number(bottom) > 2, `${name}: object touches the edge (top ${top}, bottom ${bottom})`);
+  }
+});
