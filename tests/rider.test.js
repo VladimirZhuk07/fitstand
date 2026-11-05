@@ -59,3 +59,29 @@ test('cloth moves a little and loops', () => {
     assert.deepEqual(at(t).map(s => s.attrs), at(t + 9).map(s => s.attrs), `loop at ${t}`);
   }
 });
+
+// ---------- markup ----------
+test('markup has every shape once', () => {
+  const { g, j } = joints('hybrid', HEIGHTS[2], 0), shapes = R.riderShapes(g, j, {});
+  const far = R.riderMarkup(g, j, {}, 'far'), near = R.riderMarkup(g, j, {}, 'near');
+  for (const s of shapes) {
+    const n = (far.match(new RegExp(`id="${s.id}"`, 'g')) || []).length + (near.match(new RegExp(`id="${s.id}"`, 'g')) || []).length;
+    assert.equal(n, 1, s.id);
+    assert.ok((s.id.startsWith('rd-far-') ? far : near).includes(`id="${s.id}"`), `${s.id} on its side`);
+  }
+  assert.ok(near.includes('<defs>') && !far.includes('<defs>'), 'gradients once, with the near side');
+  assert.match(near, /^<g class="rider rider-v">/);
+});
+
+test('rider colours come from CSS variables', () => {
+  const { g, j } = joints('hybrid', HEIGHTS[2], 0), m = R.riderMarkup(g, j, {}, 'near') + R.riderMarkup(g, j, {}, 'far');
+  assert.doesNotMatch(m, /(fill|stroke|stop-color)="#/);
+  assert.match(m, /var\(--frame\)/);
+});
+
+test('applyRider sets attributes by id', () => {
+  const { g, j } = joints('hybrid', HEIGHTS[2], 0), shapes = R.riderShapes(g, j, { t: 1 }), got = {};
+  const svg = { querySelector: sel => ({ setAttribute: (k, v) => { (got[sel] = got[sel] || {})[k] = v; } }) };
+  R.applyRider(svg, shapes);
+  for (const s of shapes) assert.deepEqual(got['#' + s.id], s.attrs, s.id);
+});

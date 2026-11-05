@@ -79,7 +79,27 @@ function riderShapes(g, j, pose = {}) {
   ];
 }
 
-const api = { limbPath, riderShapes };
+// gradients light from the upper left, like the sun in the scene; colours are CSS variables (light and dark theme)
+const grad = (id, a, b, vertical) => `<linearGradient id="${id}" x1="0" y1="0" x2="${vertical ? 0 : 1}" y2="1"><stop offset="0" style="stop-color:${a}"/><stop offset="1" style="stop-color:${b}"/></linearGradient>`;
+const DEFS = '<defs>' + grad('rd-gSkin', 'var(--skin-1)', 'var(--skin-2)') + grad('rd-gShirt', 'var(--shirt-1)', 'var(--shirt-2)') +
+  grad('rd-gShorts', 'var(--shorts-1)', 'var(--shorts-2)') + grad('rd-gShoe', 'var(--shoe-1)', 'var(--shoe-2)', true) +
+  grad('rd-gHelmet', 'color-mix(in srgb,var(--frame) 80%,white)', 'color-mix(in srgb,var(--frame) 75%,black)') + '</defs>';
+const tagOf = s => `<${s.tag} id="${s.id}" class="${s.cls}" ${Object.entries(s.attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`;
+
+// the far leg goes before the frame, everything else after the cockpit: two pieces of markup
+function riderMarkup(g, j, pose, side) {
+  const shapes = riderShapes(g, j, pose).filter(s => (side === 'far') === s.id.startsWith('rd-far-'));
+  return side === 'far' ? `<g class="rider rider-v rider-far">${shapes.map(tagOf).join('')}</g>` : `<g class="rider rider-v">${DEFS}${shapes.map(tagOf).join('')}</g>`;
+}
+// a frame of the animation: only attributes of the existing elements change
+function applyRider(svg, shapes) {
+  for (const s of shapes) {
+    const el = svg.querySelector('#' + s.id);
+    if (el) for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
+  }
+}
+
+const api = { limbPath, riderShapes, riderMarkup, applyRider };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
