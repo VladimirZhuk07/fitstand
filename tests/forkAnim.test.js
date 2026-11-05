@@ -79,3 +79,49 @@ test('markup', () => {
   assert.doesNotMatch(a, /data-k="spring"/);
   assert.match(a, /масло &lt;гасит&gt;/);
 });
+
+// ---------- page part ----------
+const { CONTENT } = require('../content.js');
+const ANIM = CONTENT.parts.fork.anim;
+
+test('forkBlock: two scenes, pressed buttons, live caption', () => {
+  const h = F.forkBlock(ANIM);
+  assert.match(h, /<section class="fork-anim">/);
+  assert.match(h, /data-fork="spring"/);
+  assert.match(h, /data-fork="air"/);
+  assert.match(h, /data-fork-mode="bump" aria-pressed="true"/);
+  assert.match(h, /data-fork-mode="climb" aria-pressed="false"/);
+  assert.match(h, /data-fork-lock aria-pressed="false"/);
+  assert.match(h, /data-fork-play/);
+  assert.match(h, /class="fork-cap" aria-live="polite"/);
+});
+
+// a fake page: rAF callbacks are kept and run by hand
+function fakeWin(reduce) {
+  const q = [];
+  return { q, requestAnimationFrame: cb => q.push(cb), matchMedia: () => ({ matches: reduce }) };
+}
+const fakeRoot = () => ({ isConnected: true, querySelectorAll: () => [], querySelector: () => null });
+
+test('startForkAnim stops when root leaves the document', () => {
+  const win = fakeWin(false), root = fakeRoot();
+  F.startForkAnim(root, ANIM, win);
+  assert.equal(win.q.length, 1);
+  win.q.shift()(1000);
+  assert.equal(win.q.length, 1, 'keeps running while on the page');
+  root.isConnected = false;
+  win.q.shift()(1016);
+  assert.equal(win.q.length, 0, 'no new frame after leaving');
+});
+
+test('time advances, capped per frame; reduced motion starts paused', () => {
+  const win = fakeWin(false), a = F.startForkAnim(fakeRoot(), ANIM, win);
+  win.q.shift()(1000); win.q.shift()(1016);
+  assert.ok(a.state().t > 0.015 && a.state().t < 0.017);
+  win.q.shift()(61016); // a minute in the background
+  assert.ok(a.state().t < 0.07, 'no jump after the tab comes back');
+  const w2 = fakeWin(true), b = F.startForkAnim(fakeRoot(), ANIM, w2);
+  w2.q.shift()(1000); w2.q.shift()(2000);
+  assert.equal(b.state().playing, false);
+  assert.equal(b.state().t, 0);
+});

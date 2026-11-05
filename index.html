@@ -320,6 +320,29 @@ body.page-open{overflow:hidden}
 .ptable th,.ptable td{text-align:left;vertical-align:top;padding:6px 14px 6px 0;border-top:1px solid var(--line)}
 .ptable th{color:var(--muted);font-weight:500}
 .ptable td:first-child{white-space:nowrap;font-weight:600}
+.fork-anim{margin-top:18px}
+.fork-scenes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fork-scenes figure{margin:0;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--panel);text-align:center}
+.fork-scenes figcaption{font-weight:600;font-size:14px;margin-top:2px}
+.fork-scene{display:block;width:100%;max-width:260px;margin:0 auto;overflow:hidden}
+.fork-scene .fa-ground{stroke:var(--muted);stroke-width:2}
+.fork-scene .fa-bump{fill:var(--sunk);stroke:var(--muted);stroke-width:2}
+.fork-scene .fa-tyre{fill:none;stroke:var(--ink);stroke-width:8}
+.fork-scene .fa-thin{stroke:var(--muted);stroke-width:1.5}
+.fork-scene .fa-hub,.fork-scene .fa-hand{fill:var(--ink)}
+.fork-scene .fa-thick{stroke:var(--ink);stroke-width:7;stroke-linecap:round}
+.fork-scene .fa-crown{fill:var(--ink)}
+.fork-scene .fa-leg{fill:var(--panel);stroke:var(--ink);stroke-width:3;fill-opacity:.35}
+.fork-scene .fa-stanchion{fill:var(--sunk);stroke:var(--muted);stroke-width:2}
+.fork-scene .fa-spring{fill:none;stroke:var(--accent);stroke-width:3;stroke-linejoin:round}
+.fork-scene .fa-air{fill:var(--accent)}
+.fork-scene .fa-oil{fill:var(--measure);fill-opacity:.55}
+.fork-scene .fa-label{font-size:11px;fill:var(--muted)}
+.fork-scene .fa-hit{fill:none;stroke:var(--measure);stroke-width:3;stroke-linecap:round}
+.fork-scene .fa-hit-text{fill:var(--measure);font-weight:600}
+.fork-ctl{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.fork-cap{margin-top:10px;min-height:3em}
+@media (max-width:480px){.fork-scenes{grid-template-columns:1fr}.fork-scene{max-width:190px}}
 .steps{margin:0;padding-left:22px;display:grid;gap:4px}
 .pg .grp{margin:36px 0 14px;font-size:14px;color:var(--ink);padding-top:14px;border-top:1px solid var(--line)}
 .pg .pg-switch+.grp,.pg .pg-head+.grp{margin-top:6px;padding-top:0;border-top:0}
@@ -731,6 +754,7 @@ syncPlay();
 changed();
 requestAnimationFrame(tick);
 </script>
+<script src="./forkAnim.js"></script>
 <script src="./guide.js"></script>
 </body>
 </html>

@@ -39,7 +39,7 @@ function forkPose(kind, mode, t, locked) {
 
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
-// scene geometry (viewBox 0 0 240 260): fork axis x = 120, crown at y = 46, lower leg top at y = 120, axle at y = 190
+// scene geometry (viewBox 0 −52 240 296: room above for the bar jumping with a locked fork): fork axis x = 120, crown at y = 46, lower leg top at y = 120, axle at y = 190
 const X = 120, CROWN = 46, LEG_TOP = 120, AXLE = 190, WHEEL_R = 46, GROUND = AXLE + WHEEL_R;
 function springPoints(len) {
   const n = 9, top = CROWN + 6, pts = [`${X},${top}`];
@@ -57,30 +57,95 @@ function forkMarkup(kind, labels, title) {
       `<text class="fa-label" x="${X + 20}" y="${CROWN + 40}">${esc(labels.air)}</text>`;
   const oil = kind === 'air'
     ? `<g data-k="oil"><rect class="fa-oil" x="${X - 6}" y="${LEG_TOP + 26}" width="12" height="30"/>` +
-      `<text class="fa-label" x="${X + 20}" y="${LEG_TOP + 44}">${esc(labels.oil)}</text></g>`
+      `<text class="fa-label" x="${X + 20}" y="${LEG_TOP + 30}">${esc(labels.oil)}</text></g>`
     : '';
   const spokes = [0, 45, 90, 135].map(a => {
     const r = a * Math.PI / 180, dx = Math.cos(r) * (WHEEL_R - 8), dy = Math.sin(r) * (WHEEL_R - 8);
     return `<line class="fa-thin" x1="${(X - dx).toFixed(1)}" y1="${(AXLE - dy).toFixed(1)}" x2="${(X + dx).toFixed(1)}" y2="${(AXLE + dy).toFixed(1)}"/>`;
   }).join('');
-  return `<svg class="fork-scene" data-fork="${kind}" viewBox="0 0 240 260" role="img" aria-label="${esc(title)}">` +
+  return `<svg class="fork-scene" data-fork="${kind}" viewBox="0 -52 240 296" role="img" aria-label="${esc(title)}">` +
     `<line class="fa-ground" x1="0" y1="${GROUND}" x2="240" y2="${GROUND}"/>` +
     `<g data-k="bump"><path class="fa-bump" d="M-30 ${GROUND} C-12 ${GROUND} -12 ${GROUND - BUMP_H * S} 0 ${GROUND - BUMP_H * S} C12 ${GROUND - BUMP_H * S} 12 ${GROUND} 30 ${GROUND} Z"/></g>` +
-    `<g data-k="lower">` +
-      `<circle class="fa-tyre" cx="${X}" cy="${AXLE}" r="${WHEEL_R - 4}"/>${spokes}<circle class="fa-hub" cx="${X}" cy="${AXLE}" r="5"/>` +
-      `<rect class="fa-leg" x="${X - 13}" y="${LEG_TOP}" width="26" height="${AXLE - LEG_TOP}" rx="6"/>${oil}` +
-    `</g>` +
     `<g data-k="front">` +
       `<line class="fa-thick" x1="${X}" y1="${CROWN}" x2="${X}" y2="14"/>` +
       `<line class="fa-thick" x1="${X - 44}" y1="14" x2="${X + 30}" y2="14"/><circle class="fa-hand" cx="${X - 40}" cy="14" r="8"/>` +
       `<rect class="fa-crown" x="${X - 18}" y="${CROWN - 8}" width="36" height="12" rx="3"/>` +
       `<rect class="fa-stanchion" x="${X - 9}" y="${CROWN}" width="18" height="${LEG_TOP - CROWN + 30}"/>` + inner +
       `<g data-k="hands" opacity="0"><path class="fa-hit" d="M${X - 58} 0 L${X - 50} 8 M${X - 62} 14 L${X - 52} 14 M${X - 58} 28 L${X - 50} 20"/>` +
-      `<text class="fa-label fa-hit-text" x="${X - 34}" y="40">${esc(labels.hands)}</text></g>` +
-    `</g></svg>`;
+      `<text class="fa-label fa-hit-text" x="${X + 36}" y="18">${esc(labels.hands)}</text></g>` +
+    `</g>` +
+    `<g data-k="lower">` +
+      `<circle class="fa-tyre" cx="${X}" cy="${AXLE}" r="${WHEEL_R - 4}"/>${spokes}<circle class="fa-hub" cx="${X}" cy="${AXLE}" r="5"/>` +
+      `<rect class="fa-leg" x="${X - 13}" y="${LEG_TOP}" width="26" height="${AXLE - LEG_TOP}" rx="6"/>${oil}` +
+    `</g>` +
+    `</svg>`;
 }
 
-const api = { FORK_PERIOD, forkPose, forkMarkup };
+// ---------- page ----------
+function applyPose(svg, pose, bumpX) {
+  const k = name => svg.querySelector(`[data-k="${name}"]`);
+  k('front').setAttribute('transform', `translate(0 ${(-pose.front * S).toFixed(2)})`);
+  k('lower').setAttribute('transform', `translate(0 ${(-pose.wheel * S).toFixed(2)})`);
+  const len = SPRING_LEN - pose.c * S;
+  const sp = k('spring'); if (sp) sp.setAttribute('points', springPoints(len));
+  const air = k('air');
+  if (air) { air.setAttribute('height', len.toFixed(2)); air.setAttribute('fill-opacity', (0.25 + 0.5 * Math.max(pose.c, 0)).toFixed(3)); }
+  const b = k('bump');
+  if (bumpX === null) b.setAttribute('opacity', '0');
+  else { b.setAttribute('opacity', '1'); b.setAttribute('transform', `translate(${bumpX.toFixed(1)} 0)`); }
+  k('hands').setAttribute('opacity', pose.hands.toFixed(3));
+}
+
+// where the bump is drawn: it rolls from the right edge to the left one and is under the axle at the crest
+const bumpXAt = t => X + (CREST - wrap(t)) * 200;
+
+function forkBlock(anim) {
+  const btn = (attr, val, label, on) => `<button class="chip" ${attr}${val !== null ? `="${val}"` : ''} aria-pressed="${on}">${esc(label)}</button>`;
+  return `<section class="fork-anim"><h2>${esc(anim.title)}</h2><div class="fork-scenes">` +
+    ['spring', 'air'].map(k => `<figure>${forkMarkup(k, anim.labels, anim.kinds[k])}<figcaption>${esc(anim.kinds[k])}</figcaption></figure>`).join('') +
+    `</div><div class="fork-ctl">${btn('data-fork-mode', 'bump', anim.modes.bump, true)}${btn('data-fork-mode', 'climb', anim.modes.climb, false)}` +
+    `${btn('data-fork-lock', null, anim.lock, false)}<button class="chip" data-fork-play>${esc(anim.pause)}</button></div>` +
+    `<p class="fork-cap" aria-live="polite">${esc(anim.captions.bump.off)}</p></section>`;
+}
+
+function startForkAnim(rootEl, anim, win = typeof window !== 'undefined' ? window : null) {
+  const reduce = !!(win && win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const st = { mode: 'bump', locked: false, playing: !reduce, t: 0 };
+  const scenes = [...rootEl.querySelectorAll('svg[data-fork]')];
+  const cap = rootEl.querySelector('.fork-cap'), play = rootEl.querySelector('[data-fork-play]');
+  let last = null, stopped = false;
+  function sync() {
+    rootEl.querySelectorAll('[data-fork-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.forkMode === st.mode)));
+    const lock = rootEl.querySelector('[data-fork-lock]'); if (lock) lock.setAttribute('aria-pressed', String(st.locked));
+    if (play) play.textContent = st.playing ? anim.pause : anim.play;
+    if (cap) cap.textContent = anim.captions[st.mode][st.locked ? 'on' : 'off'];
+  }
+  function draw() {
+    for (const svg of scenes) applyPose(svg, forkPose(svg.dataset.fork, st.mode, st.t, st.locked), st.mode === 'bump' ? bumpXAt(st.t) : null);
+  }
+  if (rootEl.addEventListener) rootEl.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.forkMode) st.mode = b.dataset.forkMode;
+    else if (b.hasAttribute('data-fork-lock')) st.locked = !st.locked;
+    else if (b.hasAttribute('data-fork-play')) { st.playing = !st.playing; last = null; }
+    else return;
+    sync(); draw();
+  });
+  function frame(now) {
+    if (stopped || !rootEl.isConnected) return;
+    if (st.playing) {
+      if (last !== null) st.t = wrap(st.t + Math.min(0.05, (now - last) / 1000)); // a tab back from the background does not jump
+      last = now;
+      draw();
+    }
+    win.requestAnimationFrame(frame);
+  }
+  sync(); draw();
+  if (win) win.requestAnimationFrame(frame);
+  return { stop() { stopped = true; }, state: () => ({ ...st }) };
+}
+
+const api = { FORK_PERIOD, forkPose, forkMarkup, applyPose, forkBlock, startForkAnim };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

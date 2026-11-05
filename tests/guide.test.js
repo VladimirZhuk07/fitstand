@@ -54,6 +54,7 @@ test('guide texts live in content.js, not in code', () => {
   assert.doesNotMatch(src, /электровелосипед/i);
   assert.doesNotMatch(src, /'ebike'/);
   assert.doesNotMatch(src, /Хардтейл/i);
+  assert.doesNotMatch(src, /Блокировка|Кочка/);
   const q = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'quiz.js'), 'utf8');
   assert.doesNotMatch(q, /Присмотритесь/);
 });

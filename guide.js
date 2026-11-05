@@ -233,6 +233,7 @@ function init() {
       (m.list ? (m.ordered ? `<ol class="steps">${m.list.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : list(m.list, 'why')) : '') +
       (m.text ? `<p>${esc(m.text)}</p>` : '') + (m.table ? table(m.table) : '') + `</section>`;
     return head(p.name) + bike(st.style, st.motor, id) + `<p class="lead">${esc(p.short)}</p>` +
+      (p.anim ? root.forkBlock(p.anim) : '') +
       p.variants.map((v, i) => `<article class="var">${pic(`img/parts/${id}-${i}.webp`, 'var-photo', v.name)}<h2>${esc(v.name)}</h2><p>${esc(v.text)}</p>` +
         line('Как работает', v.how) + line('Для каких трасс', v.terrain) + `${prosCons(v.pros, v.cons)}</article>`).join('') +
       (p.more || []).map(more).join('');
@@ -267,6 +268,7 @@ function init() {
       fsApi().drawBike(svg, { style: svg.dataset.style, motor: svg.dataset.motor === '1', highlight: svg.dataset.hl || null,
         health: v ? { ...v.fit, gear: v.gear } : null });
     });
+    if (r.view === 'part' && C.parts[r.id].anim) root.startForkAnim(page.querySelector('.fork-anim'), C.parts[r.id].anim);
     page.scrollTop = 0;
     const h = page.querySelector('h1'); if (h) h.focus({ preventScroll: true });
   }

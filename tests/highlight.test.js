@@ -35,3 +35,8 @@ test('ten fit buttons in FIT_STYLES order, hybrid by default', () => {
   assert.deepEqual(found, FIT_STYLES.map(s => [s, LABELS[s]]));
   assert.match(html, /const DEFAULTS=\{[^}]*style:'hybrid'/);
 });
+
+test('fork animation script loads before the guide', () => {
+  const a = html.indexOf('<script src="./forkAnim.js">'), g = html.indexOf('<script src="./guide.js">');
+  assert.ok(a > 0 && a < g);
+});
