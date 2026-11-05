@@ -10,10 +10,13 @@ function wheel(c,g,id){
   let sp='';
   for(let i=0;i<20;i++){const a=i*18*D, a2=a+(i%2?0.35:-0.35);
     const h=V(c.x+26*Math.cos(a2),c.y+26*Math.sin(a2)), e=V(c.x+rimR*Math.cos(a),c.y+rimR*Math.sin(a));sp+=L_(h,e,'s-metal',2.6);}
-  return `<g${id?` id="${id}"`:''}>${sp}</g>
+  // rim: spokes, rim, hub; tyre: the rubber — two parts on the drawing
+  return {
+    rim:`<g${id?` id="${id}"`:''}>${sp}</g>
   <circle class="s-rim nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
-  <circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>
-  <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`;
+  <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`,
+    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`,
+  };
 }
 function geomPts(g){
   const sta=g.STA*D, hta=g.HTA*D;
@@ -54,7 +57,8 @@ function unicycleMarkup(g,hl){
   let s=`<ellipse class="shadow" cx="0" cy="${fx(-ground)}" rx="${fx(g.wheelR*0.9)}" ry="18"/>`;
   s+=`<line class="ground" x1="${fx(-g.wheelR-600)}" y1="${fx(-ground)}" x2="${fx(g.wheelR+600)}" y2="${fx(-ground)}"/>`;
   s+=`<g opacity=".42">${L_(C,pF,'s-ink',24)}${L_(add(pF,V(-48,0)),add(pF,V(48,0)),'s-ink',20)}</g>`;
-  s+=part('wheels',wheel(C,g,null));
+  const w=wheel(C,g,null);
+  s+=part('rims',w.rim)+part('tyres',w.tyre);
   s+=part('frame',`<g data-k="unicycle">${L_(add(C,V(-34,0)),add(top,V(-34,0)),'s-frame',22)}${L_(add(C,V(34,0)),add(top,V(34,0)),'s-frame',22)}${L_(add(top,V(-40,0)),add(top,V(40,0)),'s-frame',26)}</g>`);
   s+=part('fork','')+part('brakes','')+part('cockpit','');
   s+=part('saddle',L_(top,S,'s-metal',24)+`<path class="f-ink" d="M${P(add(S,V(-110,4)))} C${P(add(S,V(-40,8)))} ${P(add(S,V(40,8)))} ${P(add(S,V(110,4)))} Q${P(add(S,V(118,-22)))} ${P(add(S,V(80,-26)))} L${P(add(S,V(-80,-26)))} Q${P(add(S,V(-118,-22)))} ${P(add(S,V(-110,4)))} Z"/>`);
@@ -83,14 +87,15 @@ function bikeMarkup(g,ux,opts={}){
   if(pedals&&!g.frontPedals) s+=`<g opacity=".42"><line${id('fCrank')} class="s-ink" stroke-width="24"${crankAt(pF)}/><line${id('fPedal')} class="s-ink" stroke-width="20"${pedalAt(pF)}/></g>`;
   if(live) s+=`<g class="rider" opacity=".36"><line id="fThigh" class="s-rider" stroke-width="${fx(g.headR*0.72)}"/><line id="fShin" class="s-rider" stroke-width="${fx(g.headR*0.54)}"/><line id="fFoot" class="s-rider" stroke-width="${fx(g.headR*0.36)}"/></g>`;
   // wheels + fenders
-  let wh='';
-  if(g.trike) wh+=`<g data-k="trike" opacity=".45">${wheel(add(R,V(-46,0)),g,null)}</g>`;
-  wh+=wheel(R,g,live?'wR':null)+wheel(F,g,live?'wF':null);
+  let rims='', tyres='';
+  if(g.trike){const w=wheel(add(R,V(-46,0)),g,null);tyres+=`<g data-k="trike" opacity=".45">${w.tyre}</g>`;rims+=`<g opacity=".45">${w.rim}</g>`;}
+  for(const [c,id] of [[R,'wR'],[F,'wF']]){const w=wheel(c,g,live?id:null);tyres+=w.tyre;rims+=w.rim;}
   if(g.trainingWheels){
     const r=g.wheelR*0.42, c=V(R.x-40,ground+r);
-    wh+=`<g data-k="trainingWheels">${L_(R,c,'s-metal',12)}<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-9)}" stroke-width="18"/><circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="12"/></g>`;
+    tyres+=`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-9)}" stroke-width="18"/>`;
+    rims+=`<g data-k="trainingWheels">${L_(R,c,'s-metal',12)}<circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="12"/></g>`;
   }
-  s+=part('wheels',wh);
+  s+=part('rims',rims)+part('tyres',tyres);
   if(g.fender>0.02){
     s+=`<g opacity="${fx(g.fender)}"><polyline class="s-metal nf" stroke-width="16" points="${arcPts(R,g.wheelR+22,8,200)}"/><polyline class="s-metal nf" stroke-width="16" points="${arcPts(F,g.wheelR+22,-28,128)}"/></g>`;
   }

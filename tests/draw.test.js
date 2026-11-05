@@ -5,13 +5,40 @@ Object.assign(globalThis, M);
 const Dr = require('../draw.js');
 
 const g = s => M.fit({ H: 178, I: 83, A: 61, W: 42, flex: 3, style: s }).g;
-const PARTS = ['frame', 'fork', 'brakes', 'drivetrain', 'wheels', 'cockpit', 'saddle', 'pedals'];
+const PARTS = ['frame', 'fork', 'brakes', 'drivetrain', 'rims', 'tyres', 'cockpit', 'saddle', 'pedals'];
 
 test('static markup has no ids, no rider, no dims, all parts', () => {
   const s = Dr.bikeMarkup(g('road'), 1, { live: false });
   assert.doesNotMatch(s, /\sid="/);
   assert.doesNotMatch(s, /class="rider"|class="dims"/);
   for (const p of PARTS) assert.match(s, new RegExp(`data-part="${p}"`));
+});
+
+// the inside of <g data-part="name"…>…</g>, nested groups included
+function partBody(s, name) {
+  const at = s.indexOf(`data-part="${name}"`);
+  assert.ok(at >= 0, name);
+  let i = s.indexOf('>', at) + 1, depth = 1;
+  const start = i;
+  while (depth) {
+    const open = s.indexOf('<g', i), close = s.indexOf('</g>', i);
+    if (open !== -1 && open < close) { depth++; i = open + 2; } else { depth--; i = close + 4; }
+  }
+  return s.slice(start, i - 4);
+}
+
+test('rims and tyres are separate parts', () => {
+  for (const style of ['hybrid', 'trike', 'kidTraining', 'special']) {
+    const s = Dr.bikeMarkup(g(style), 1, { live: false, highlight: 'tyres' });
+    assert.doesNotMatch(s, /data-part="wheels"/, style);
+    assert.match(s, /data-part="tyres" data-on/, style);
+    assert.match(partBody(s, 'tyres'), /class="s-tyre/, `${style}: tyres`);
+    assert.doesNotMatch(partBody(s, 'rims'), /class="s-tyre/, `${style}: rims`);
+    assert.match(partBody(s, 'rims'), /class="s-rim/, `${style}: rim`);
+  }
+  const live = Dr.bikeMarkup(g('hybrid'), 1);
+  assert.match(partBody(live, 'rims'), /id="wR"/);
+  assert.match(partBody(live, 'rims'), /id="wF"/);
 });
 
 test('live markup keeps animation ids', () => {
