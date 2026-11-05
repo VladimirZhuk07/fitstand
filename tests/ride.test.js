@@ -66,3 +66,29 @@ test('layers', () => {
   assert.ok(Math.abs(speed('road') - R.speedOf(311)) < 1, 'road moves with the wheel');
   assert.ok(speed('near') > speed('road') && speed('road') > speed('mid') && speed('mid') > speed('far') && speed('far') > 0);
 });
+
+// ---------- background ----------
+test('background covers the view', () => {
+  const b = { x: -900, y: -1900, w: 2400, h: 2300 }, groundY = 241, r = 311;
+  const m = R.rideBgMarkup(b, groundY, r);
+  assert.match(m, /^<g id="rideBg"/);
+  for (const { id } of R.LAYERS) {
+    const tile = R.layerShift(id, 0, r).tile;
+    assert.match(m, new RegExp(`<pattern id="rb-${id}"[^>]*width="${tile.toFixed(1)}"`), id);
+    assert.ok(m.includes(`fill="url(#rb-${id})"`), `${id} used`);
+  }
+  // the sky reaches past every edge of the view and down to the ground
+  const sky = m.match(/<rect class="rb-sky" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
+  assert.ok(sky[0] < b.x && sky[0] + sky[2] > b.x + b.w && sky[1] < b.y && sky[1] + sky[3] >= groundY, 'sky');
+  const road = m.match(/<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="url\(#rb-road\)"/).slice(1).map(Number);
+  assert.ok(road[1] <= groundY + 1 && road[1] + road[3] >= b.y + b.h, 'road from the ground to the bottom');
+  assert.doesNotMatch(m, /(fill|stroke|stop-color)="#/, 'colours come from CSS variables');
+});
+
+test('applyRide shifts the four patterns', () => {
+  const set = {};
+  const svg = { querySelector: sel => ({ setAttribute: (k, v) => { set[sel] = [k, v]; } }) };
+  R.applyRide(svg, { far: -10, mid: -20.5, near: -30, road: -40 });
+  assert.deepEqual(Object.keys(set).sort(), ['#rb-far', '#rb-mid', '#rb-near', '#rb-road']);
+  assert.deepEqual(set['#rb-mid'], ['patternTransform', 'translate(-20.5 0)']);
+});
