@@ -78,4 +78,6 @@ test('parseRoute acc', () => {
   assert.deepEqual(r('#acc'), { view: 'acc' });
   assert.deepEqual(r('#acc/helmet'), { view: 'accItem', id: 'helmet' });
   assert.deepEqual(r('#acc/xyz'), { view: 'acc' });
+  assert.deepEqual(r('#acc/safety'), { view: 'accGroup', id: 'safety' });
+  assert.deepEqual(r('#acc/kids'), { view: 'accGroup', id: 'kids' });
 });

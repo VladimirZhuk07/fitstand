@@ -15,7 +15,11 @@ function parseRoute(hash, content) {
   }
   if (head === 'result' && arg === undefined) return { view: 'result' };
   if (head === 'menu' && arg === undefined) return { view: 'menu' };
-  if (head === 'acc') return arg !== undefined && has(content.accessories, arg) ? { view: 'accItem', id: arg } : { view: 'acc' };
+  if (head === 'acc') {
+    if (arg !== undefined && has(content.accessories, arg)) return { view: 'accItem', id: arg };
+    if (arg !== undefined && content.accGroups.some(g => g.id === arg)) return { view: 'accGroup', id: arg };
+    return { view: 'acc' };
+  }
   if (head === 'types') return arg !== undefined && has(content.types, arg) ? { view: 'type', id: arg } : { view: 'types' };
   if (head === 'parts') {
     const id = arg === 'wheels' ? 'rims' : arg; // «Колёса и покрышки» became «Обода» and «Покрышки»
@@ -147,10 +151,18 @@ function init() {
     const sits = rec.bySituation.length ? `<section><h2>По ситуациям</h2>${rec.bySituation.map(s => `<p class="acc-sit"><b>${esc(s.title)}:</b> ${s.ids.map(accLink).join(', ')}</p>`).join('')}<p><a href="#acc">Все аксессуары</a></p></section>` : `<p><a href="#acc">Все аксессуары</a></p>`;
     return top + sits;
   }
+  const plural = (n, [one, few, many]) => { const d = n % 10, h = n % 100;
+    return d === 1 && h !== 11 ? one : d >= 2 && d <= 4 && (h < 12 || h > 14) ? few : many; };
+  const groupIds = g => g.sections.flatMap(sec => sec.ids);
   function accView() {
-    return head('Аксессуары') + C.accGroups.map(g => `<h2 class="grp">${g.icon} ${esc(g.title)}</h2>` + g.sections.map(sec =>
+    return head('Аксессуары') + `<div class="cards acc-groups">${C.accGroups.map(g => { const ids = groupIds(g);
+      return `<a class="card" href="#acc/${g.id}">${accPic(ids[0], 'acc-thumb')}<b>${g.icon} ${esc(g.title)}</b><span>${ids.length} ${plural(ids.length, ['позиция', 'позиции', 'позиций'])}</span></a>`; }).join('')}</div>`;
+  }
+  function accGroupView(gid) {
+    const g = C.accGroups.find(x => x.id === gid);
+    return head(`${g.icon} ${g.title}`, 'Аксессуары') + g.sections.map(sec =>
       (sec.title ? `<h3 class="acc-sec">${esc(sec.title)}</h3>` : '') +
-      `<div class="cards">${sec.ids.map(id => `<a class="card" href="#acc/${id}">${accPic(id, 'acc-thumb')}<b>${esc(C.accessories[id].name)}</b><span>${esc(C.accessories[id].short)}</span></a>`).join('')}</div>`).join('')).join('');
+      `<div class="cards">${sec.ids.map(id => `<a class="card" href="#acc/${id}">${accPic(id, 'acc-thumb')}<b>${esc(C.accessories[id].name)}</b><span>${esc(C.accessories[id].short)}</span></a>`).join('')}</div>`).join('');
   }
   function accItemView(id) {
     const a = C.accessories[id], g = C.accGroups.find(x => x.sections.some(s => s.ids.includes(id)));
@@ -160,7 +172,7 @@ function init() {
       (a.choose ? sec('Как выбрать', list(a.choose, 'why')) : '') +
       (a.weather ? sec('Под какую погоду', `<p>${esc(a.weather)}</p>`) : '') +
       (a.check ? sec('Проверьте совместимость', `<p class="v-warn">${esc(a.check)}</p>`) : '') +
-      `<div class="pg-actions"><a class="btn" href="#acc">Все аксессуары</a></div>`;
+      `<div class="pg-actions"><a class="btn" href="#acc/${g.id}">Все в группе «${esc(g.title)}»</a></div>`;
   }
   function resultView(r) {
     shownResult = r;
@@ -246,6 +258,7 @@ function init() {
     else if (r.view === 'type') html = typeView(r.id);
     else if (r.view === 'parts') html = partsView();
     else if (r.view === 'acc') html = accView();
+    else if (r.view === 'accGroup') html = accGroupView(r.id);
     else if (r.view === 'accItem') html = accItemView(r.id);
     else html = partView(r.id);
     page.innerHTML = `<div class="pg">${html}</div>`;

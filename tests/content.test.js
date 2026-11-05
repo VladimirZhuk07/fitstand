@@ -363,3 +363,7 @@ test('kids types list their own accessories', () => {
   assert.ok(T.kidTraining.acc.includes('trainingWheels'));
   for (const id of ['kidTrike', 'balance', 'kidTraining', 'kid']) assert.ok(T[id].acc.includes('kidsHelmet'), `${id} helmet`);
 });
+
+test('acc ids do not clash with group ids', () => {
+  for (const g of CONTENT.accGroups) assert.ok(!Object.prototype.hasOwnProperty.call(CONTENT.accessories, g.id), g.id);
+});
