@@ -368,3 +368,16 @@ test('kids types list their own accessories', () => {
 test('acc ids do not clash with group ids', () => {
   for (const g of CONTENT.accGroups) assert.ok(!Object.prototype.hasOwnProperty.call(CONTENT.accessories, g.id), g.id);
 });
+
+test('fork animation texts', () => {
+  const A = CONTENT.parts.fork.anim;
+  for (const v of [A.title, A.kinds.spring, A.kinds.air, A.modes.bump, A.modes.climb, A.lock, A.play, A.pause, ...Object.values(A.labels)]) assert.ok(nonEmpty(v));
+  assert.deepEqual(Object.keys(A.labels).sort(), ['air', 'hands', 'oil', 'spring']);
+  assert.deepEqual(Object.keys(A.captions).sort(), ['bump', 'climb']);
+  for (const m of ['bump', 'climb']) {
+    assert.deepEqual(Object.keys(A.captions[m]).sort(), ['off', 'on']);
+    for (const k of ['off', 'on']) assert.ok(nonEmpty(A.captions[m][k]), `${m}.${k}`);
+  }
+  assert.match(A.captions.bump.on, /рук/);
+  assert.match(A.captions.climb.on, /подъём/i);
+});
