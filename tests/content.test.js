@@ -380,4 +380,5 @@ test('fork animation texts', () => {
   }
   assert.match(A.captions.bump.on, /рук/);
   assert.match(A.captions.climb.on, /подъём/i);
+  assert.match(A.captions.bump.off, /Недорогая пружинная/, 'only cheap spring forks have almost no damping');
 });

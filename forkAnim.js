@@ -2,45 +2,54 @@
 // forkPose и forkMarkup — чистые функции (тестируются в Node); applyPose, forkBlock, startForkAnim — для страницы.
 (function (root) {
 const FORK_PERIOD = 3;            // seconds per loop
-const BUMP = [0.5, 0.8], BUMP_H = 0.7, CREST = 0.65, PEAK = 0.55;
+const BUMP_H = 0.7, CREST = 0.65;  // bump height (of full travel); the bump is under the axle at CREST
 const S = 60;                      // px of full travel on the drawing
 const TAU = 2 * Math.PI;
+const K = 0.55 / BUMP_H;           // share of the bump the fork swallows; the rest lifts the bar a little
+const AXLE_X = 120, WHEEL_OUT = 46, BUMP_HALF = 30, BUMP_SPEED = 240; // px, px, px, px/s
 
 const wrap = t => ((t % FORK_PERIOD) + FORK_PERIOD) % FORK_PERIOD;
-// the bump under the wheel: a raised cosine
-function bumpAt(t) {
-  const ph = (t - BUMP[0]) / (BUMP[1] - BUMP[0]);
-  return ph >= 0 && ph <= 1 ? BUMP_H * (1 - Math.cos(TAU * ph)) / 2 : 0;
-}
-// compression after the bump crest: the spring fork rocks (little damping, top-out keeps extension short),
-// the air fork comes back smoothly (oil damps the rebound)
-function afterCrest(kind, tau) {
-  if (kind === 'spring') {
-    const w = TAU * 1.4, z = 0.2, k = Math.sqrt(1 - z * z), wd = w * k;
-    const x = PEAK * Math.exp(-z * w * tau) * (Math.cos(wd * tau) + (z / k) * Math.sin(wd * tau));
-    return x < 0 ? x * 0.3 : x;
+// the bump: a raised cosine BUMP_HALF px to each side, BUMP_H·S px high
+const bumpHeight = dx => (Math.abs(dx) <= BUMP_HALF ? (BUMP_H * S * (1 + Math.cos((Math.PI * dx) / BUMP_HALF))) / 2 : 0);
+// it rolls from beyond the right edge to beyond the left one
+const bumpCenter = t => AXLE_X + (CREST - wrap(t)) * BUMP_SPEED;
+// how high the bump lifts a round tyre: the tyre rests on the highest point of the bump under it
+function wheelLift(bx) {
+  let lift = 0;
+  for (let dx = -BUMP_HALF; dx <= BUMP_HALF; dx += 0.25) {
+    const x = bx + dx - AXLE_X;
+    if (Math.abs(x) >= WHEEL_OUT) continue;
+    lift = Math.max(lift, bumpHeight(dx) - (WHEEL_OUT - Math.sqrt(WHEEL_OUT * WHEEL_OUT - x * x)));
   }
-  const w = TAU * 0.9;
-  return PEAK * (1 + w * tau) * Math.exp(-w * tau);
+  return lift / S;
+}
+// the bar after the crest: the spring fork rocks it a little, the air fork lets it dip once and glide back (oil damps the rebound)
+function barAfterCrest(kind, tau) {
+  if (kind === 'spring') {
+    const w = TAU * 1.4, z = 0.2, wd = w * Math.sqrt(1 - z * z);
+    return -0.2 * Math.exp(-z * w * tau) * Math.sin(wd * tau);
+  }
+  const w = TAU * 0.9, x = w * tau;
+  return (-0.1 * x * x * Math.exp(-x)) / (4 * Math.exp(-2));
 }
 
 function forkPose(kind, mode, t, locked) {
   const tt = wrap(t);
   if (mode === 'climb') {
     if (locked) return { c: 0, wheel: 0, front: 0, hands: 0 };
-    const c = (kind === 'spring' ? 0.18 : 0.1) * (1 - Math.cos(TAU * 2.5 * tt)) / 2; // 2.5 pushes a second — cadence 75
+    const c = (kind === 'spring' ? 0.18 : 0.1) * (1 - Math.cos((TAU * 7 * tt) / FORK_PERIOD)) / 2; // 7 pushes a loop — cadence 70
     return { c, wheel: 0, front: -c, hands: 0 };
   }
-  const u = bumpAt(tt);
+  const u = wheelLift(bumpCenter(tt));
   if (locked) return { c: 0, wheel: u, front: u, hands: u / BUMP_H };
-  const c = tt < BUMP[0] ? 0 : tt < CREST ? u * PEAK / BUMP_H : afterCrest(kind, tt - CREST);
-  return { c, wheel: u, front: u - c, hands: 0 };
+  const front = (1 - K) * u + (tt > CREST ? barAfterCrest(kind, tt - CREST) : 0);
+  return { c: u - front, wheel: u, front, hands: 0 };
 }
 
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
 // scene geometry (viewBox 0 −52 240 296: room above for the bar jumping with a locked fork): fork axis x = 120, crown at y = 46, lower leg top at y = 120, axle at y = 190
-const X = 120, CROWN = 46, LEG_TOP = 120, AXLE = 190, WHEEL_R = 46, GROUND = AXLE + WHEEL_R;
+const X = AXLE_X, CROWN = 46, LEG_TOP = 120, AXLE = 190, WHEEL_R = WHEEL_OUT, GROUND = AXLE + WHEEL_R;
 function springPoints(len) {
   const n = 9, top = CROWN + 6, pts = [`${X},${top}`];
   for (let i = 1; i < n; i++) pts.push(`${X + (i % 2 ? -8 : 8)},${(top + (len * i) / n).toFixed(1)}`);
@@ -49,15 +58,22 @@ function springPoints(len) {
 }
 const SPRING_LEN = LEG_TOP - CROWN - 6;
 
+// the bump drawn from the same profile the wheel rides on, centred at x = 0
+function bumpPath() {
+  const pts = [];
+  for (let dx = -BUMP_HALF; dx <= BUMP_HALF; dx += 3) pts.push(`${dx} ${(GROUND - bumpHeight(dx)).toFixed(1)}`);
+  return `M${pts.join(' L')} Z`;
+}
+
 function forkMarkup(kind, labels, title) {
   const inner = kind === 'spring'
     ? `<polyline data-k="spring" class="fa-spring" points="${springPoints(SPRING_LEN)}"/>` +
       `<text class="fa-label" x="${X + 20}" y="${CROWN + 40}">${esc(labels.spring)}</text>`
     : `<rect data-k="air" class="fa-air" x="${X - 7}" y="${CROWN + 6}" width="14" height="${SPRING_LEN}" fill-opacity=".25"/>` +
-      `<text class="fa-label" x="${X + 20}" y="${CROWN + 40}">${esc(labels.air)}</text>`;
+      `<text class="fa-label" x="${X + 20}" y="${CROWN + 22}">${esc(labels.air)}</text>`;
   const oil = kind === 'air'
     ? `<g data-k="oil"><rect class="fa-oil" x="${X - 6}" y="${LEG_TOP + 26}" width="12" height="30"/>` +
-      `<text class="fa-label" x="${X + 20}" y="${LEG_TOP + 30}">${esc(labels.oil)}</text></g>`
+      `<text class="fa-label" x="${X + 20}" y="${LEG_TOP + 8}">${esc(labels.oil)}</text></g>`
     : '';
   const spokes = [0, 45, 90, 135].map(a => {
     const r = a * Math.PI / 180, dx = Math.cos(r) * (WHEEL_R - 8), dy = Math.sin(r) * (WHEEL_R - 8);
@@ -65,7 +81,7 @@ function forkMarkup(kind, labels, title) {
   }).join('');
   return `<svg class="fork-scene" data-fork="${kind}" viewBox="0 -52 240 296" role="img" aria-label="${esc(title)}">` +
     `<line class="fa-ground" x1="0" y1="${GROUND}" x2="240" y2="${GROUND}"/>` +
-    `<g data-k="bump"><path class="fa-bump" d="M-30 ${GROUND} C-12 ${GROUND} -12 ${GROUND - BUMP_H * S} 0 ${GROUND - BUMP_H * S} C12 ${GROUND - BUMP_H * S} 12 ${GROUND} 30 ${GROUND} Z"/></g>` +
+    `<g data-k="bump"><path class="fa-bump" d="${bumpPath()}"/></g>` +
     `<g data-k="front">` +
       `<line class="fa-thick" x1="${X}" y1="${CROWN}" x2="${X}" y2="14"/>` +
       `<line class="fa-thick" x1="${X - 44}" y1="14" x2="${X + 30}" y2="14"/><circle class="fa-hand" cx="${X - 40}" cy="14" r="8"/>` +
@@ -96,8 +112,6 @@ function applyPose(svg, pose, bumpX) {
   k('hands').setAttribute('opacity', pose.hands.toFixed(3));
 }
 
-// where the bump is drawn: it rolls from the right edge to the left one and is under the axle at the crest
-const bumpXAt = t => X + (CREST - wrap(t)) * 200;
 
 function forkBlock(anim) {
   const btn = (attr, val, label, on) => `<button class="chip" ${attr}${val !== null ? `="${val}"` : ''} aria-pressed="${on}">${esc(label)}</button>`;
@@ -110,7 +124,7 @@ function forkBlock(anim) {
 
 function startForkAnim(rootEl, anim, win = typeof window !== 'undefined' ? window : null) {
   const reduce = !!(win && win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const st = { mode: 'bump', locked: false, playing: !reduce, t: 0 };
+  const st = { mode: 'bump', locked: false, playing: !reduce, t: reduce ? CREST : 0 }; // paused on a moment that shows something
   const scenes = [...rootEl.querySelectorAll('svg[data-fork]')];
   const cap = rootEl.querySelector('.fork-cap'), play = rootEl.querySelector('[data-fork-play]');
   let last = null, stopped = false;
@@ -121,7 +135,7 @@ function startForkAnim(rootEl, anim, win = typeof window !== 'undefined' ? windo
     if (cap) cap.textContent = anim.captions[st.mode][st.locked ? 'on' : 'off'];
   }
   function draw() {
-    for (const svg of scenes) applyPose(svg, forkPose(svg.dataset.fork, st.mode, st.t, st.locked), st.mode === 'bump' ? bumpXAt(st.t) : null);
+    for (const svg of scenes) applyPose(svg, forkPose(svg.dataset.fork, st.mode, st.t, st.locked), st.mode === 'bump' ? bumpCenter(st.t) : null);
   }
   if (rootEl.addEventListener) rootEl.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -145,7 +159,7 @@ function startForkAnim(rootEl, anim, win = typeof window !== 'undefined' ? windo
   return { stop() { stopped = true; }, state: () => ({ ...st }) };
 }
 
-const api = { FORK_PERIOD, forkPose, forkMarkup, applyPose, forkBlock, startForkAnim };
+const api = { FORK_PERIOD, FORK_S: S, AXLE_X, WHEEL_OUT, BUMP_HALF, bumpHeight, bumpCenter, forkPose, forkMarkup, applyPose, forkBlock, startForkAnim };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

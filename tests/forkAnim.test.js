@@ -20,9 +20,35 @@ test('spring rocks, air settles', () => {
   assert.ok(peaks >= 1, 'spring compresses again after the bump');
   assert.ok(Math.min(...s) > -0.2, 'top-out keeps the spring from extending far');
   assert.ok(Math.min(...a) >= 0, 'air never extends past rest');
-  const ac = a.indexOf(Math.max(...a));
-  for (let i = ac + 1; i < a.length; i++) assert.ok(a[i] <= a[i - 1] + 1e-12, 'air returns without rocking');
   for (const k of KINDS) assert.ok(Math.abs(F.forkPose(k, 'bump', 2.99, false).c) < 0.02, `${k} settles`);
+});
+
+// the bar is what the rider feels: the fork keeps it almost still, the spring one rocks, the air one glides back
+test('bar stays almost still over the bump', () => {
+  const fr = k => frames().map(t => F.forkPose(k, 'bump', t, false).front);
+  const minima = xs => { let n = 0; for (let i = 1; i < xs.length - 1; i++) if (xs[i] < xs[i - 1] && xs[i] <= xs[i + 1] && xs[i] < -0.01) n++; return n; };
+  for (const k of KINDS) assert.ok(Math.max(...fr(k).map(Math.abs)) <= 0.2, `${k}: bar moves at most 0.2 of travel`);
+  assert.ok(minima(fr('spring')) >= 2, 'spring bar rocks');
+  assert.equal(minima(fr('air')), 1, 'air bar dips once and glides back');
+});
+
+test('the wheel rides over the bump, not through it', () => {
+  for (const t of frames()) {
+    const bx = F.bumpCenter(t), lift = F.forkPose('air', 'bump', t, true).wheel * F.FORK_S;
+    for (let dx = -F.BUMP_HALF; dx <= F.BUMP_HALF; dx += 1) {
+      const x = bx + dx, h = F.bumpHeight(dx), gap = F.WHEEL_OUT ** 2 - (x - F.AXLE_X) ** 2;
+      if (gap <= 0) continue;
+      const tyreBottom = F.WHEEL_OUT - Math.sqrt(gap) + lift; // height of the tyre underside above the ground at x
+      assert.ok(tyreBottom >= h - 0.6, `t=${t.toFixed(3)} x=${x.toFixed(0)}: tyre ${tyreBottom.toFixed(1)} under bump ${h.toFixed(1)}`);
+    }
+  }
+});
+
+test('the bump enters and leaves out of sight', () => {
+  for (const t of [0, F.FORK_PERIOD - 1e-6]) {
+    const bx = F.bumpCenter(t);
+    assert.ok(bx - F.BUMP_HALF >= 240 || bx + F.BUMP_HALF <= 0, `t=${t}: bump at ${bx}`);
+  }
 });
 
 test('lockout', () => {
@@ -52,9 +78,11 @@ test('pose invariants', () => {
       assert.ok(Math.abs(p.c - (p.wheel - p.front)) < 1e-9, `c = wheel − front ${k} ${m} ${t}`);
       const q = F.forkPose(k, m, t + F.FORK_PERIOD, locked);
       for (const key of ['c', 'wheel', 'front', 'hands']) assert.ok(Math.abs(p[key] - q[key]) < 1e-9, `period ${key}`);
-      if (prev) assert.ok(Math.abs(p.c - prev.c) < 0.15, `smooth ${k} ${m} ${t}`);
+      if (prev) assert.ok(Math.abs(p.c - prev.c) < 0.15 && Math.abs(p.front - prev.front) < 0.15, `smooth ${k} ${m} ${t}`);
       prev = p;
     }
+    const end = F.forkPose(k, m, F.FORK_PERIOD - 1 / 60, locked), start = F.forkPose(k, m, 0, locked);
+    assert.ok(Math.abs(end.c - start.c) < 0.05 && Math.abs(end.front - start.front) < 0.05, `loop seam ${k} ${m} ${locked}`);
     const a = F.forkPose(k, m, -0.5, locked), b = F.forkPose(k, m, 2.5, locked);
     assert.ok(Math.abs(a.c - b.c) < 1e-9 && Math.abs(a.front - b.front) < 1e-9, 'negative t');
   }
@@ -123,5 +151,5 @@ test('time advances, capped per frame; reduced motion starts paused', () => {
   const w2 = fakeWin(true), b = F.startForkAnim(fakeRoot(), ANIM, w2);
   w2.q.shift()(1000); w2.q.shift()(2000);
   assert.equal(b.state().playing, false);
-  assert.equal(b.state().t, 0);
+  assert.ok(F.forkPose('air', 'bump', b.state().t, false).c > 0.4, 'paused on a moment that shows something');
 });
