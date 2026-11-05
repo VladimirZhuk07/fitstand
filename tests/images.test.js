@@ -16,11 +16,18 @@ test('every accessory has a compressed picture', () => {
   for (const id of Object.keys(CONTENT.accessories)) check(`img/acc/${id}.webp`);
 });
 
-// pictures for these parts come in stage 3 of the third feedback
-const PENDING = ['rims', 'tyres'];
-
 test('every part variant has a compressed picture', () => {
-  for (const [id, p] of Object.entries(CONTENT.parts)) if (!PENDING.includes(id)) p.variants.forEach((_, i) => check(`img/parts/${id}-${i}.webp`));
+  for (const [id, p] of Object.entries(CONTENT.parts)) p.variants.forEach((_, i) => check(`img/parts/${id}-${i}.webp`));
+});
+
+test('every bike type has a picture', () => {
+  for (const id of Object.keys(CONTENT.types)) check(`img/types/${id}.webp`);
+});
+
+test('no pictures of types that are gone', () => {
+  for (const f of fs.readdirSync(path.join(root, 'img/types'))) {
+    assert.ok(Object.prototype.hasOwnProperty.call(CONTENT.types, f.replace(/\.webp$/, '')), f);
+  }
 });
 
 test('no pictures of parts that are gone', () => {
