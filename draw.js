@@ -88,7 +88,8 @@ function bikeMarkup(g,ux,opts={}){
   if(live) s+=`<g class="rider" opacity=".36"><line id="fThigh" class="s-rider" stroke-width="${fx(g.headR*0.72)}"/><line id="fShin" class="s-rider" stroke-width="${fx(g.headR*0.54)}"/><line id="fFoot" class="s-rider" stroke-width="${fx(g.headR*0.36)}"/></g>`;
   // wheels + fenders
   let rims='', tyres='';
-  if(g.trike){const w=wheel(add(R,V(-46,0)),g,null);tyres+=`<g data-k="trike" opacity=".45">${w.tyre}</g>`;rims+=`<g opacity=".45">${w.rim}</g>`;}
+  // the trike's far rear wheel: its own pair, drawn first so it stays behind the main wheels
+  if(g.trike){const w=wheel(add(R,V(-46,0)),g,null);s+=part('rims',`<g opacity=".45">${w.rim}</g>`)+part('tyres',`<g data-k="trike" opacity=".45">${w.tyre}</g>`);}
   for(const [c,id] of [[R,'wR'],[F,'wF']]){const w=wheel(c,g,live?id:null);tyres+=w.tyre;rims+=w.rim;}
   if(g.trainingWheels){
     const r=g.wheelR*0.42, c=V(R.x-40,ground+r);

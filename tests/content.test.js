@@ -299,6 +299,7 @@ test('MTB overview and women per spec', () => {
   assert.equal(T.women.name, 'Женский');
   assert.ok(T.women.variants.length >= 3);
   assert.ok(nonEmpty(T.women.note));
+  assert.match(T.women.specs.join(' '), /передач/, 'women: light gears (spec 2.2)');
   assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', 'city', true]);
   for (const id of ALL_TYPES) if (T[id].drawAs !== undefined) assert.ok(STYLES[T[id].drawAs], `${id}.drawAs`);
   for (const id of ALL_TYPES) if (!T[id].drawAs) assert.ok(STYLES[id], `${id}: drawn by its id`);

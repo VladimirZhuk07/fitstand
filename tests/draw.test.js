@@ -41,6 +41,12 @@ test('rims and tyres are separate parts', () => {
   assert.match(partBody(live, 'rims'), /id="wF"/);
 });
 
+test('the trike third wheel stays behind the main wheels', () => {
+  const order = s => [...s.matchAll(/data-part="(rims|tyres)"/g)].map(m => m[1]);
+  assert.deepEqual(order(Dr.bikeMarkup(g('trike'), 1, { live: false })), ['rims', 'tyres', 'rims', 'tyres']);
+  assert.deepEqual(order(Dr.bikeMarkup(g('hybrid'), 1, { live: false })), ['rims', 'tyres']);
+});
+
 test('live markup keeps animation ids', () => {
   const s = Dr.bikeMarkup(g('road'), 1);
   for (const id of ['nCrank', 'fCrank', 'nPedal', 'wR', 'wF']) assert.match(s, new RegExp(`id="${id}"`));

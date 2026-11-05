@@ -1,6 +1,7 @@
 // Builds info/image-prompts.md for image generation in Cursor (or any generator).
-// usage (from the repo root): node tools/make-image-prompts.js   -> info/image-prompts.md
+// usage (from the repo root): node tools/make-image-prompts.js [repo] [out]   -> info/image-prompts.md
 const repo = process.argv[2] || require('path').join(__dirname, '..');
+const out = process.argv[3] || repo + '/info/image-prompts.md';
 const { CONTENT: C } = require(repo + '/content.js');
 const fs = require('fs');
 
@@ -89,7 +90,8 @@ const PARTS = {
   fork: ['a rigid bicycle fork', 'a simple suspension bicycle fork for a city or trekking bike: two silver stanchions sliding into black lower legs, preload knob on top', 'an air suspension mountain bike fork'],
   brakes: ['a bicycle rim brake caliper on a wheel rim', 'a mechanical disc brake caliper with a rotor and cable', 'a hydraulic disc brake caliper with a rotor and hose', 'a rear bicycle hub with a coaster brake arm'],
   drivetrain: ['a single-speed bicycle chainring, chain and single cog', 'an internal gear hub rear wheel hub', 'a 1x mountain bike drivetrain: single chainring and wide cassette', 'a 2x road bicycle drivetrain: double chainring, front and rear derailleurs'],
-  wheels: ['a small 20 inch bicycle wheel with tyre', 'a 27.5 inch mountain bike wheel with a knobby tyre', 'a 29 inch bicycle wheel with tyre'],
+  rims: ['a plain steel bicycle wheel rim with spokes, chrome finish', 'a light single-wall aluminium bicycle rim with spokes', 'a deep double-wall aluminium bicycle rim with eyelets and spokes', 'a deep-section carbon bicycle rim with spokes, matte black'],
+  tyres: ['a smooth slick road bicycle tyre', 'a semi-slick city bicycle tyre: smooth centre and small side knobs', 'an all-round gravel bicycle tyre with a fine dense tread', 'a wide knobby mountain bike tyre', 'a narrow mud bicycle tyre with tall widely spaced knobs', 'a studded winter bicycle tyre with metal spikes'],
   cockpit: ['a flat mountain bike handlebar with grips', 'a swept-back city bicycle handlebar', 'a road bicycle drop handlebar', 'a flared gravel drop handlebar'],
   saddle: ['a wide padded comfort bicycle saddle', 'a narrow sport bicycle saddle', 'a dropper seatpost with a remote lever'],
   pedals: ['a flat platform bicycle pedal', 'a small road bike clipless pedal: narrow aerodynamic body with a spring-loaded cleat binding at the front and rear, no pins, no flat platform, with a matching triangular shoe cleat beside it'],
@@ -123,5 +125,5 @@ for (let i = 0; i * 18 < rest.length; i++) L.push(`## Партия ${i + 1}`, ''
 const all = [...accItems, ...partItems];
 L.push('## Партия 7 — переделки и пропущенные', '', 'Перегенерировать (заменить, если файл есть):', '', ...head, ...REDO.map(f => row(all.find(x => x.file === f))), '');
 L.push(`Всего: ${accItems.length + partItems.length} картинок (${accItems.length} аксессуаров, ${partItems.length} вариантов узлов).`, '');
-fs.writeFileSync(repo + '/info/image-prompts.md', L.join('\n'), 'utf8');
+fs.writeFileSync(out, L.join('\n'), 'utf8');
 console.log('written', accItems.length + partItems.length, 'prompts; trial', trial.length);
