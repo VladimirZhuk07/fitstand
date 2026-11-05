@@ -31,6 +31,9 @@ test('parseRoute: parts', () => {
   assert.deepEqual(r('#parts'), { view: 'parts' });
   assert.deepEqual(r('#parts/brakes'), { view: 'part', id: 'brakes' });
   assert.deepEqual(r('#parts/xyz'), { view: 'parts' });
+  assert.deepEqual(r('#parts/wheels'), { view: 'part', id: 'rims' });
+  assert.deepEqual(r('#parts/tyres'), { view: 'part', id: 'tyres' });
+  assert.deepEqual(r('#types/mountain'), { view: 'type', id: 'mountain' });
 });
 
 test('backTarget', () => {
@@ -49,6 +52,8 @@ test('answer taps right after a new question are ignored (double tap)', () => {
 test('guide texts live in content.js, not in code', () => {
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
   assert.doesNotMatch(src, /электровелосипед/i);
+  assert.doesNotMatch(src, /'ebike'/);
+  assert.doesNotMatch(src, /Хардтейл/i);
   const q = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'quiz.js'), 'utf8');
   assert.doesNotMatch(q, /Присмотритесь/);
 });
