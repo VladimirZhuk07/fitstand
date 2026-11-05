@@ -104,6 +104,17 @@ function upperOf(g,hip,hand){
   const head=add(add(shoulder,mul(dirv(a),g.headR*0.9)),V(g.headR*0.8,g.headR*0.75));
   return {shoulder,elbow:el.j,hand:el.e,alpha:a,head,over:s.over};
 }
+// rotate a vector by deg (counter-clockwise, y up)
+function rot(v,deg){const a=deg*D,c=Math.cos(a),s=Math.sin(a);return V(v.x*c-v.y*s,v.x*s+v.y*c);}
+// the upper body in motion: the torso turns about the hip, the chest rises with a breath,
+// the hands follow the grips as the bar steers about the stem clamp, the head moves with the shoulder but does not tilt
+function upperAt(g,hip,ck,pose){
+  const base=upperOf(g,hip,ck.hand);
+  const shoulder=add(add(hip,rot(sub(base.shoulder,hip),pose.torso||0)),V(0,pose.breath||0));
+  const grip=add(ck.C,rot(sub(ck.hand,ck.C),pose.bar||0));
+  const el=ik2(shoulder,grip,g.arm*0.52,g.arm*0.48,-1);
+  return {shoulder,elbow:el.j,hand:el.e,alpha:angOf(sub(shoulder,hip)),head:add(base.head,sub(shoulder,base.shoulder))};
+}
 function kneeFlex(l,hip){
   const a=nrm(sub(hip,l.knee)), b=nrm(sub(l.ankle,l.knee));
   return 180-Math.acos(clamp(a.x*b.x+a.y*b.y,-1,1))/D;
@@ -182,7 +193,7 @@ function fit(p){
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, FIT_STYLES, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,
-  summaryOf, sizesFor, bodyOf, saddlePt, barGeom, cockpit, legAt, upperOf, kneeFlex, evalSize, fit };
+  summaryOf, sizesFor, bodyOf, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

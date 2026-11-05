@@ -123,3 +123,31 @@ test('unicycle bounds are finite and narrow', () => {
 test('every catalog style draws without ids', () => {
   for (const s of Object.keys(M.STYLES)) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /\sid="/, s);
 });
+
+// ---------- ride scene (stage 4a) ----------
+const RIDE_IDS = ['uHip', 'uTorso', 'uNeck', 'uUpper', 'uFore', 'uHand', 'uHeadG', 'cockpitG'];
+const RIDE_CLASSES = ['spokes', 'blur-disc', 'valve', 'grid-bg'];
+
+test('live markup has moving upper body and ride wheels', () => {
+  const live = Dr.bikeMarkup(g('hybrid'), 1), stat = Dr.bikeMarkup(g('hybrid'), 1, { live: false });
+  for (const id of RIDE_IDS) { assert.match(live, new RegExp(`id="${id}"`), id); assert.doesNotMatch(stat, new RegExp(`id="${id}"`), id); }
+  for (const c of RIDE_CLASSES) { assert.match(live, new RegExp(`class="${c}`), c); assert.doesNotMatch(stat, new RegExp(`class="${c}`), c); }
+});
+
+test('upperAt at rest equals upperOf', () => {
+  for (const s of ['road', 'city', 'mtb', 'women']) {
+    const G = g(s), { hip, ck } = Dr.geomPts(G);
+    const a = M.upperOf(G, hip, ck.hand), b = M.upperAt(G, hip, ck, { torso: 0, breath: 0, bar: 0 });
+    for (const k of ['shoulder', 'hand', 'head', 'elbow']) assert.ok(M.len(M.sub(a[k], b[k])) < 0.5, `${s}.${k}`);
+  }
+});
+
+test('arms reach the bar while the body sways', () => {
+  const G = g('hybrid'), { hip, ck } = Dr.geomPts(G);
+  for (const torso of [-1.2, 1.2]) for (const bar of [-1.35, 1.35]) for (const breath of [0, 6]) {
+    const u = M.upperAt(G, hip, ck, { torso, breath, bar });
+    assert.ok(M.len(M.sub(u.hand, u.shoulder)) <= G.arm + 0.5, 'arm length'); // AEK is the bend at rest; swaying may straighten it a little
+    const grip = M.add(ck.C, M.rot ? M.rot(M.sub(ck.hand, ck.C), bar) : M.sub(ck.hand, ck.C));
+    if (M.len(M.sub(grip, u.shoulder)) < G.arm - 1) assert.ok(M.len(M.sub(u.hand, grip)) < 1, 'hand on the grip');
+  }
+});

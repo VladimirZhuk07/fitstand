@@ -12,7 +12,8 @@ function wheel(c,g,id){
     const h=V(c.x+26*Math.cos(a2),c.y+26*Math.sin(a2)), e=V(c.x+rimR*Math.cos(a),c.y+rimR*Math.sin(a));sp+=L_(h,e,'s-metal',2.6);}
   // rim: spokes, rim, hub; tyre: the rubber — two parts on the drawing
   return {
-    rim:`<g${id?` id="${id}"`:''}>${sp}</g>
+    // live wheels: spokes fade at speed under a translucent disc, a small valve mark shows the turning
+    rim:(id?`<g id="${id}"><g class="spokes">${sp}</g><circle class="blur-disc" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR-6)}"/><circle class="valve" cx="${fx(c.x)}" cy="${fx(-c.y+rimR-14)}" r="7"/></g>`:`<g>${sp}</g>`)+`
   <circle class="s-rim nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
   <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`,
     tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`,
@@ -80,7 +81,7 @@ function bikeMarkup(g,ux,opts={}){
   let s='';
   // grid + ground
   const gx0=R.x-g.wheelR-2000, gx1=F.x+g.wheelR+2000;
-  if(live) s+=`<rect x="${fx(gx0)}" y="-4000" width="${fx(gx1-gx0)}" height="${fx(4000-ground+400)}" fill="url(#grid)" />`;
+  if(live) s+=`<rect class="grid-bg" x="${fx(gx0)}" y="-4000" width="${fx(gx1-gx0)}" height="${fx(4000-ground+400)}" fill="url(#grid)" />`;
   s+=`<ellipse class="shadow" cx="${fx((R.x+F.x)/2)}" cy="${fx(-ground)}" rx="${fx((F.x-R.x)/2+g.wheelR*0.8)}" ry="18"/>`;
   s+=`<line class="ground" x1="${fx(gx0)}" y1="${fx(-ground)}" x2="${fx(gx1)}" y2="${fx(-ground)}"/>`;
   // far side: crank, pedal, leg
@@ -153,7 +154,7 @@ function bikeMarkup(g,ux,opts={}){
     cp+=`<g opacity="${fx(dk)}"><path class="f-ink" d="M${P(add(G,V(-14,-4)))} Q${P(add(G,V(-6,38*dk)))} ${P(add(G,V(28*dk,34*dk)))} Q${P(add(G,V(56*dk,30*dk)))} ${P(add(G,V(48*dk,-26*dk)))} L${P(add(G,V(26*dk,-30*dk)))} Z"/>${L_(add(G,V(40*dk,-24*dk)),add(G,V(30*dk,-108*dk)),'s-ink',12)}</g>`;
   }
   if(sk>0.02) cp+=`<g opacity="${fx(sk)}">${L_(add(G,V(30*sk,-2*sk)),add(G,V(-75*sk,4*sk)),'s-rider',40)}</g>`;
-  s+=part('cockpit',cp);
+  s+=live?`<g id="cockpitG">${part('cockpit',cp)}</g>`:part('cockpit',cp);
   // saddle + seatpost
   let sa=L_(add(S,mul(sd,-48)),T,'s-metal',24);
   if(g.suspPost) sa+=`<g data-k="suspPost">${L_(T,add(T,mul(sd,40)),'s-ink',34)}</g>`;
@@ -182,14 +183,15 @@ function bikeMarkup(g,ux,opts={}){
     // near leg + upper body
     const hr=g.headR;
     s+=`<g class="rider"><line id="nThigh" class="s-rider" stroke-width="${fx(hr*0.72)}"/><line id="nShin" class="s-rider" stroke-width="${fx(hr*0.54)}"/><line id="nFoot" class="s-rider" stroke-width="${fx(hr*0.36)}"/>`;
-    s+=`<circle class="f-rider" cx="${fx(hip.x)}" cy="${fx(-hip.y)}" r="${fx(hr*0.62)}"/>`;
-    s+=L_(hip,up.shoulder,'s-rider',fx(hr*1.0));
-    s+=L_(up.shoulder,add(up.shoulder,mul(nrm(sub(up.head,up.shoulder)),hr*0.6)),'s-rider',fx(hr*0.42));
-    s+=L_(up.shoulder,up.elbow,'s-rider',fx(hr*0.46))+L_(up.elbow,up.hand,'s-rider',fx(hr*0.38));
-    s+=`<circle class="f-rider" cx="${fx(up.hand.x)}" cy="${fx(-up.hand.y)}" r="${fx(hr*0.26)}"/>`;
-    s+=`<circle class="f-rider" cx="${fx(up.head.x)}" cy="${fx(-up.head.y)}" r="${fx(hr)}"/>`;
+    // the upper body has ids: the ride scene moves it every frame (torso sway, breath, hands on the steering bar)
+    s+=`<circle id="uHip" class="f-rider" cx="${fx(hip.x)}" cy="${fx(-hip.y)}" r="${fx(hr*0.62)}"/>`;
+    s+=L_(hip,up.shoulder,'s-rider',fx(hr*1.0),'id="uTorso"');
+    s+=L_(up.shoulder,add(up.shoulder,mul(nrm(sub(up.head,up.shoulder)),hr*0.6)),'s-rider',fx(hr*0.42),'id="uNeck"');
+    s+=L_(up.shoulder,up.elbow,'s-rider',fx(hr*0.46),'id="uUpper"')+L_(up.elbow,up.hand,'s-rider',fx(hr*0.38),'id="uFore"');
+    s+=`<circle id="uHand" class="f-rider" cx="${fx(up.hand.x)}" cy="${fx(-up.hand.y)}" r="${fx(hr*0.26)}"/>`;
     const tilt=(90-up.alpha)*0.55, hc=up.head, R2=hr*1.1;
-    s+=`<path class="f-frame" transform="rotate(${fx(tilt)} ${fx(hc.x)} ${fx(-hc.y)})" d="M${fx(hc.x-R2-8)} ${fx(-hc.y+8)} A${fx(R2)} ${fx(R2)} 0 0 1 ${fx(hc.x+R2)} ${fx(-hc.y+2)} L${fx(hc.x+R2*0.55)} ${fx(-hc.y+16)} Z"/>`;
+    s+=`<g id="uHeadG"><circle class="f-rider" cx="${fx(hc.x)}" cy="${fx(-hc.y)}" r="${fx(hr)}"/>`;
+    s+=`<path class="f-frame" transform="rotate(${fx(tilt)} ${fx(hc.x)} ${fx(-hc.y)})" d="M${fx(hc.x-R2-8)} ${fx(-hc.y+8)} A${fx(R2)} ${fx(R2)} 0 0 1 ${fx(hc.x+R2)} ${fx(-hc.y+2)} L${fx(hc.x+R2*0.55)} ${fx(-hc.y+16)} Z"/></g>`;
     s+=`</g>`;
     // dimensions
     const fs=fx(12*ux), tk=6*ux;
