@@ -42,7 +42,7 @@ test('matrix matches spec', () => {
 });
 
 test('types complete', () => {
-  assert.equal(CONTENT.typeOrder.length, 19);
+  assert.equal(CONTENT.typeOrder.length, 21);
   for (const id of CONTENT.typeOrder) {
     const t = CONTENT.types[id];
     for (const k of ['name', 'short', 'purpose', 'forWhom']) assert.ok(nonEmpty(t[k]), `${id}.${k}`);
@@ -221,22 +221,31 @@ test('menu does not promise a fixed number of questions', () => {
 
 // ---------- bike types (sub-project A, Task 3) ----------
 const GROUPS = {
-  adult: ['city', 'hybrid', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding', 'ebike', 'trike', 'cargo'],
+  adult: ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mountain', 'folding', 'ebike', 'trike', 'cargo'],
   kids: ['kidTrike', 'balance', 'kidTraining', 'kid', 'teen'],
   special: ['bmx', 'special'],
 };
-const ALL_TYPES = [...GROUPS.adult, ...GROUPS.kids, ...GROUPS.special];
+const BRANCHES = ['mtb', 'fullsus']; // reached from the MTB card, not listed in a group
+const ALL_TYPES = [...GROUPS.adult.flatMap(id => (id === 'mountain' ? [id, ...BRANCHES] : [id])), ...GROUPS.kids, ...GROUPS.special];
 
 test('groups cover every type once', () => {
   assert.deepEqual(CONTENT.typeGroups.map(g => [g.id, g.title]), [['adult', 'Взрослые'], ['kids', 'Детские'], ['special', 'Трюковые и специальные']]);
   for (const g of CONTENT.typeGroups) assert.deepEqual(g.ids, GROUPS[g.id], g.id);
   assert.deepEqual(CONTENT.typeOrder, ALL_TYPES);
   assert.deepEqual(Object.keys(CONTENT.types).sort(), [...ALL_TYPES].sort());
+  const listed = CONTENT.typeGroups.flatMap(g => g.ids);
+  for (const id of ALL_TYPES) {
+    const t = CONTENT.types[id];
+    const inGroup = listed.filter(x => x === id).length;
+    const asBranch = t.parent ? CONTENT.types[t.parent].branches.includes(id) : false;
+    assert.equal(inGroup + (asBranch ? 1 : 0), 1, `${id}: one group or one parent`);
+  }
 });
 
 test('new fields per spec', () => {
   const T = CONTENT.types;
   for (const [gid, ids] of Object.entries(GROUPS)) for (const id of ids) assert.equal(T[id].group, gid, `${id}.group`);
+  for (const id of BRANCHES) assert.equal(T[id].group, 'adult', `${id}.group`);
   for (const id of ['mtb', 'fullsus', 'cx', 'bmx']) assert.ok(nonEmpty(T[id].terrain), `${id}.terrain`);
   assert.ok(nonEmpty(T.cx.compare));
   for (const id of GROUPS.kids) {
@@ -250,8 +259,27 @@ test('new fields per spec', () => {
   assert.match(T.trike.note, /электр/i);
   assert.equal(T.mtb.name, 'MTB хардтейл');
   assert.equal(T.fullsus.name, 'MTB двухподвес');
-  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'gravel', road: 'road', track: 'road', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'city', trike: 'city', cargo: 'city' };
+  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'cx', road: 'road', track: 'track', women: 'women', mountain: 'mtb', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'city', trike: 'city', cargo: 'city' };
   for (const id of ALL_TYPES) assert.equal(T[id].fitAs, FIT_AS[id] ?? null, `${id}.fitAs`);
+});
+
+test('MTB overview and women per spec', () => {
+  const T = CONTENT.types;
+  const { STYLES } = require('../model.js');
+  assert.equal(T.mountain.name, 'MTB');
+  assert.ok(nonEmpty(T.mountain.terrain));
+  assert.deepEqual(T.mountain.branches, BRANCHES);
+  for (const id of BRANCHES) assert.equal(T[id].parent, 'mountain', `${id}.parent`);
+  for (const id of ['mountain', 'women']) {
+    assert.ok(T[id].specs.length >= 5 && T[id].specs.length <= 7, `${id}.specs`);
+    T[id].specs.forEach(x => assert.ok(nonEmpty(x), `${id}.specs`));
+  }
+  assert.equal(T.women.name, 'Женский');
+  assert.ok(T.women.variants.length >= 3);
+  assert.ok(nonEmpty(T.women.note));
+  assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', 'city', true]);
+  for (const id of ALL_TYPES) if (T[id].drawAs !== undefined) assert.ok(STYLES[T[id].drawAs], `${id}.drawAs`);
+  for (const id of ALL_TYPES) if (!T[id].drawAs) assert.ok(STYLES[id], `${id}: drawn by its id`);
 });
 
 test('kids wheel table', () => {
