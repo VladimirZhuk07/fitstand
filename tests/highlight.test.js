@@ -44,3 +44,7 @@ test('fork animation script loads before the guide', () => {
 test('a type photo hides the card drawing; without it the drawing shows', () => {
   assert.match(html, /\.card \.type-thumb\+\.card-bike\{display:none\}/);
 });
+
+test('on a type page the photo replaces the drawing; without it the drawing shows', () => {
+  assert.match(html, /\.type-photo\+\.pg-bike\{display:none\}/);
+});

@@ -8,7 +8,7 @@ const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const core = [...sw.match(/const CORE = \[([\s\S]*?)\]/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
 
-test('cache version is v10', () => assert.match(sw, /const VERSION = 'fitstand-v10'/));
+test('cache version is v11', () => assert.match(sw, /const VERSION = 'fitstand-v11'/));
 
 test('every script of the page is cached for offline', () => {
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
