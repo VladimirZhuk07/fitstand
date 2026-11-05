@@ -68,6 +68,10 @@ def fit_frame(image, size):
     margin = round(h * 0.04)
     top, bottom = max(0, box[1] - margin), min(h, box[3] + margin)
     want = round(w / ratio)
+    if want > h:  # wider than the target: white bands above and below, nothing cut
+        canvas = Image.new('RGB', (w, want), 'white')
+        canvas.paste(image, (0, (want - h) // 2))
+        return canvas
     if bottom - top <= want:
         centre = (top + bottom) // 2
         top = min(max(0, centre - want // 2), h - want)

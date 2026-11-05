@@ -65,3 +65,17 @@ for name in ('tall', 'high'):
     assert.ok(Number(top) > 2 && Number(bottom) > 2, `${name}: object touches the edge (top ${top}, bottom ${bottom})`);
   }
 });
+
+test('a source wider than 3:2 gets white, not black, bands', t => {
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  try { execFileSync(py, ['-c', 'import PIL'], { stdio: 'pipe' }); } catch { t.skip('no Pillow'); return; }
+  const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-raw-')), out = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-out-'));
+  execFileSync(py, ['-c', `from PIL import Image, ImageDraw
+im = Image.new('RGB', (1792, 1024), 'white'); ImageDraw.Draw(im).rectangle((100, 300, 1700, 700), fill='black'); im.save(r'${raw}/type-wide.png')`]);
+  execFileSync(py, [path.join(root, 'tools/convert-images.py'), '--raw', raw, '--out', out], { stdio: 'pipe' });
+  const corners = execFileSync(py, ['-c', `from PIL import Image
+im = Image.open(r'${out}/types/wide.webp').convert('L'); w, h = im.size
+print(w, h, min(im.getpixel(p) for p in ((2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3))))`], { encoding: 'utf8' }).trim().split(' ').map(Number);
+  assert.deepEqual(corners.slice(0, 2), [720, 480]);
+  assert.ok(corners[2] > 230, `corner brightness ${corners[2]}`);
+});
