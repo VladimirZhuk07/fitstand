@@ -121,8 +121,26 @@ test('summary bar height includes the riser bar rise', () => {
 const CATALOG = ['cx', 'track', 'trike', 'cargo', 'bmx', 'special', 'kidTrike', 'balance', 'kidTraining', 'kid', 'teen'];
 
 test('FIT_STYLES', () => {
-  assert.deepEqual(M.FIT_STYLES, ['road', 'gravel', 'city', 'hybrid', 'mtb', 'fullsus', 'folding']);
+  assert.deepEqual(M.FIT_STYLES, ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding']);
   for (const s of M.FIT_STYLES) assert.ok(M.STYLES[s], s);
+});
+
+test('women: low frame, short cranks, hybrid sizes', () => {
+  assert.equal(M.STYLES.women.name, 'Женский');
+  assert.deepEqual(M.sizesFor('women'), M.sizesFor('hybrid'));
+  const F = M.fit({ H: 195, I: 92, A: 67, W: 46, flex: 3, style: 'women' });
+  assert.equal(F.g.stepThrough, true);
+  assert.ok(F.g.crank <= 170, `crank ${F.g.crank}`);
+  assert.ok(F.barW >= 540 && F.barW <= 640, `bar ${F.barW}`);
+  assert.equal(M.fit({ ...PRESETS[1], flex: 3, style: 'hybrid' }).g.stepThrough, false);
+});
+
+test('cx and track fit with finite numbers', () => {
+  for (const style of ['cx', 'track', 'women']) for (const p of PRESETS) {
+    const F = M.fit({ ...p, flex: 3, style });
+    assert.ok(F.best && F.best.sz, style);
+    for (const [k, v] of Object.entries(F.g)) if (typeof v === 'number') assert.ok(Number.isFinite(v), `${style}.${k}`);
+  }
 });
 
 test('fullsus uses mtb sizes', () => {

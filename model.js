@@ -31,7 +31,7 @@ const STYLES={
   mtb:   {name:'MTB',   STA:75,HTA:66,drop:40,cs:435,tyre:58,rake:44,stemIdeal:50,stemMin:35,stemMax:80,stemAng:0,stemAngs:[0,-6,6],spMax:30,barReach:0,barDrop:0,sweep:30,fender:0,guard:0,ring:32,saddleK:0.883,alpha:50,alphaFlex:3,beta:80,torsoNorm:[42,58],reachAdj:-40,heightAdj:0,crankMax:175,expoMax:380,barAdd:340,barMin:720,barMax:800,flat:true,brake:'disc',susp:true,hinge:false,oneSize:false},
   folding:{name:'Складной',STA:70,HTA:72,drop:-40,cs:400,tyre:35,rake:40,stemIdeal:60,stemMin:40,stemMax:100,stemAng:10,stemAngs:[10],spMax:250,barReach:0,barDrop:0,sweep:120,fender:1,guard:1,ring:52,saddleK:0.875,alpha:65,alphaFlex:2.5,beta:65,torsoNorm:[58,78],reachAdj:-40,heightAdj:0,crankMax:170,expoMax:9999,barAdd:140,barMin:540,barMax:600,flat:true,brake:'rim',susp:false,hinge:true,oneSize:true}
 };
-// Новые виды. fullsus — для подбора размера; остальные — только для схем в каталоге:
+// Новые виды. fullsus, cx, track, women — и для подбора размера; остальные — только для схем в каталоге:
 // parent — берут размеры родителя; size — один размер; rider — манекен для схемы (детские, BMX, одноколёсный).
 const KID = {STA:70,HTA:70,drop:-20,cs:280,tyre:40,rake:25,stemIdeal:40,stemMin:20,stemMax:60,stemAng:20,stemAngs:[20,35,7],spMax:60,barReach:0,barDrop:0,sweep:60,fender:0,guard:1,ring:28,saddleK:0.875,alpha:68,alphaFlex:2,beta:62,torsoNorm:[60,80],reachAdj:0,heightAdj:0,expoMax:9999,barAdd:0,barMin:300,barMax:560,flat:true,brake:'rim',susp:false,hinge:false,oneSize:true};
 Object.assign(STYLES,{
@@ -40,6 +40,7 @@ Object.assign(STYLES,{
   track:  {...STYLES.road,name:'Трековый',brake:'none',parent:'road'},
   trike:  {...STYLES.city,name:'Трицикл',trike:true,parent:'city'},
   cargo:  {...STYLES.city,name:'Грузовой',cargoBox:true,parent:'city'},
+  women:  {...STYLES.hybrid,name:'Женский',stepThrough:true,crankMax:170,barMin:540,barMax:640,parent:'hybrid'},
   bmx:    {...KID,name:'BMX',drop:-30,cs:360,tyre:55,rake:30,HTA:74.5,STA:71,stemIdeal:50,stemMin:40,stemMax:60,stemAngs:[0,20],spMax:20,sweep:30,rise:60,saddleK:0.62,alpha:40,beta:85,crankMax:175,barMin:700,barMax:740,brake:'rim',
            size:{n:'Один',st:230,reach:540,stack:200,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   special:{...KID,name:'Одноколёсный',unicycle:true,crankMax:125,size:{n:'Один',st:400,reach:300,stack:500,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
@@ -49,7 +50,7 @@ Object.assign(STYLES,{
   kid:        {...KID,name:'Детский',crankMax:114,size:{n:'20″',st:300,reach:330,stack:460,ht:110,wheel:'20'},rider:{H:125,I:55,A:41,W:30}},
   teen:       {...KID,name:'Подростковый',crankMax:152,susp:true,brake:'disc',size:{n:'24″',st:360,reach:360,stack:520,ht:110,wheel:'24'},rider:{H:145,I:66,A:49,W:34}},
 });
-const FIT_STYLES=['road','gravel','city','hybrid','mtb','fullsus','folding'];
+const FIT_STYLES=['city','hybrid','women','gravel','cx','road','track','mtb','fullsus','folding'];
 const WHEEL_R={'700c':311,'650b':292,'29':311,'27.5':292,'24':253.5,'20':203,'16':152.5,'14':127,'12':101.5};
 const FOLDING_RANGE=[150,195];
 const CITY={reach:30,stack:5,ht:20};
@@ -116,7 +117,7 @@ function evalSize(p,st,b,sz,i,alpha,crank){
   const g={STA:st.STA,HTA:st.HTA,drop:st.drop,cs:st.cs,tyre,rake:st.rake,
     wheelR:WHEEL_R[sz.wheel]+tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
     saddleH:p.I*10*st.saddleK-(crank-172.5*p.H/178),crank,stemAng:st.stemAng,barReach:st.barReach,barDrop:st.barDrop,sweep:st.sweep,
-    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(h&&h.stepThrough),rise:(st.rise||0)+(riser?30:0),
+    fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(st.stepThrough||(h&&h.stepThrough)),rise:(st.rise||0)+(riser?30:0),
     rearShock:!!st.rearShock,trike:!!st.trike,cargoBox:!!st.cargoBox,noPedals:!!st.noPedals,trainingWheels:!!st.trainingWheels,frontPedals:!!st.frontPedals,unicycle:!!st.unicycle,hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
     torso:b.torso,thigh:b.thigh,shin:b.shin,arm:b.arm,headR:b.headR,foot:b.foot};
   const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));

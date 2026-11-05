@@ -80,5 +80,5 @@ test('old saved mtb style still loads', () => {
   assert.equal(loadSaved(JSON.stringify({ style: 'fullsus' }), DEF, FIT, COLORS).style, 'fullsus');
 });
 test('catalog-only styles are rejected', () => {
-  for (const style of ['balance', 'bmx', 'cx', 'kidTrike', 'special']) assert.equal(loadSaved(JSON.stringify({ style }), DEF, FIT, COLORS).style, 'road', style);
+  for (const style of ['balance', 'bmx', 'kidTrike', 'special', 'trike', 'cargo', 'teen']) assert.equal(loadSaved(JSON.stringify({ style }), DEF, FIT, COLORS).style, 'road', style);
 });
