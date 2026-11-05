@@ -8,11 +8,11 @@ const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const core = [...sw.match(/const CORE = \[([\s\S]*?)\]/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
 
-test('cache version is v12', () => assert.match(sw, /const VERSION = 'fitstand-v12'/));
+test('cache version is v13', () => assert.match(sw, /const VERSION = 'fitstand-v13'/));
 
 test('every script of the page is cached for offline', () => {
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
-  assert.ok(scripts.length === 8, `scripts: ${scripts}`);
+  assert.ok(scripts.length === 9, `scripts: ${scripts}`);
   assert.ok(core.includes('./forkAnim.js'), 'forkAnim.js in CORE');
   for (const s of scripts) assert.ok(core.includes(s), `${s} missing in CORE`);
 });

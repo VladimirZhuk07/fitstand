@@ -44,18 +44,27 @@
   --sky-top:#BCD5E6; --sky-bottom:#F4E7CF; --sun:#FFD49A; --haze:#EFE7D9;
   --hill:#A7BE9E; --hill2:#C9D6C0; --tree:#7C9B72; --trunk:#7A6650; --bush:#93AE86;
   --road:#8F9192; --verge:#B9C7A4; --roadedge:#BDB7AA; --speck:#77797A; --grass:#6F905F; --post:#ECE8E0; --reflector:#D9752B;
+  --skin-1:#EBC3A0; --skin-2:#C99372; --ear:#D19F7C; --shirt-1:#5E9399; --shirt-2:#3D6A70; --fold:#2F5458;
+  --shorts-1:#3B4350; --shorts-2:#262C35; --sock:#F1F1EE; --shoe-1:#FAFAF8; --shoe-2:#C9CDD0; --sole:#2C3035;
+  --visor:#1E2226; --hi:rgba(255,255,255,.35); --tread:#3A3F44;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
     --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
     --road:#2B2E32; --verge:#283327; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+  --skin-1:#C9A083; --skin-2:#9E7458; --ear:#A87F63; --shirt-1:#4A7A80; --shirt-2:#2E5257; --fold:#203B3E;
+  --shorts-1:#2C323C; --shorts-2:#1B2027; --sock:#C9CBC6; --shoe-1:#D8DADB; --shoe-2:#9EA3A7; --sole:#16191C;
+  --visor:#0E1012; --hi:rgba(255,255,255,.18); --tread:#2A2E32;
   }
 }
 :root[data-theme="dark"]{
   --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
   --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
   --road:#2B2E32; --verge:#283327; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+  --skin-1:#C9A083; --skin-2:#9E7458; --ear:#A87F63; --shirt-1:#4A7A80; --shirt-2:#2E5257; --fold:#203B3E;
+  --shorts-1:#2C323C; --shorts-2:#1B2027; --sock:#C9CBC6; --shoe-1:#D8DADB; --shoe-2:#9EA3A7; --sole:#16191C;
+  --visor:#0E1012; --hi:rgba(255,255,255,.18); --tread:#2A2E32;
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
@@ -184,6 +193,14 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-road{fill:var(--road)} .rb-verge{fill:var(--verge)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
 .rb-nearlayer{opacity:.85}
+/* the volumetric rider (rider.js): light from the upper left; the far leg darker */
+.rd-skin{fill:url(#rd-gSkin)} .rd-skin-far{fill:var(--skin-2)} .rd-ear{fill:var(--ear)}
+.rd-shirt{fill:url(#rd-gShirt)} .rd-fold{fill:none;stroke:var(--fold);stroke-opacity:.45;stroke-linecap:round}
+.rd-shorts{fill:url(#rd-gShorts)} .rd-shorts-far{fill:var(--shorts-2)}
+.rd-sock,.rd-sock-far{fill:var(--sock)} .rd-shoe,.rd-shoe-far{fill:url(#rd-gShoe)} .rd-sole,.rd-sole-far{fill:var(--sole)}
+.rd-helmet{fill:url(#rd-gHelmet)} .rd-vent,.rd-visor{fill:var(--visor)} .rd-strap{stroke:var(--visor);fill:none;stroke-linecap:round}
+.rider-far{opacity:.72}
+.bike .hi{stroke:var(--hi);fill:none} .bike .tread{fill:none;stroke:var(--tread);stroke-dasharray:6 10}
 
 /* guide entries */
 .cta{display:block;padding:11px 14px;border:1.5px solid var(--accent);border-radius:12px;color:var(--accent);font-weight:600;font-size:14px;text-decoration:none;background:color-mix(in srgb,var(--accent) 7%,transparent)}
@@ -517,6 +534,7 @@ body.page-open{overflow:hidden}
 <script src="./model.js"></script>
 <script src="./draw.js"></script>
 <script src="./ride.js"></script>
+<script src="./rider.js"></script>
 <script src="./state.js"></script>
 <script src="./content.js"></script>
 <script src="./quiz.js"></script>
@@ -725,33 +743,32 @@ function computeUx(b){
 function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
-  refs={}; ['fCrank','fPedal','fThigh','fShin','fFoot','nCrank','nPedal','nThigh','nShin','nFoot','wR','wF','uTorso','uNeck','uUpper','uFore','uHand','uHeadG','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
+  refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
   refs.pts=geomPts(cur);
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
   $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR):'';
+  // the rider: the far leg behind the frame, the rest over the cockpit
+  const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR));
+  $('#riderFarSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'far');
+  $('#riderSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'near');
 }
 function setL(el,a,b){if(!el)return;el.setAttribute('x1',fx(a.x));el.setAttribute('y1',fx(-a.y));el.setAttribute('x2',fx(b.x));el.setAttribute('y2',fx(-b.y));}
+// the rider's joints at a moment of the ride: legs on the pedals, hands on the steering bar
+function riderJoints(g,pts,pose){
+  const th=-30-pose.crank;
+  return {hip:pts.hip,near:legAt(g,pts.hip,th),far:legAt(g,pts.hip,th+180),up:upperAt(g,pts.hip,pts.ck,pose)};
+}
 function updateDynamic(){
   // the scene runs at the speed of the target wheel: it does not change while the drawing tweens to a new size
-  const g=cur, hip=refs.pts.hip, pose=ridePose(rideT,target.wheelR), th=-30-pose.crank;
-  for (const [side,a] of [['n',th],['f',th+180]]){
-    const l=legAt(g,hip,a);
+  const g=cur, pose=ridePose(rideT,target.wheelR), j=riderJoints(g,refs.pts,pose);
+  for (const [side,l] of [['n',j.near],['f',j.far]]){
     setL(refs[side+'Crank'],V(0,0),l.pedal);
     setL(refs[side+'Pedal'],sub(l.pedal,V(48,0)),add(l.pedal,V(48,0)));
-    setL(refs[side+'Thigh'],hip,l.knee);setL(refs[side+'Shin'],l.knee,l.ankle);setL(refs[side+'Foot'],l.ankle,l.toe);
   }
-  const {R,F,ck,up}=refs.pts;
+  const {R,F,ck}=refs.pts;
   if(refs.wR)refs.wR.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(R.x)} ${fx(-R.y)})`);
   if(refs.wF)refs.wF.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(F.x)} ${fx(-F.y)})`);
-  // upper body: torso sway, breath, hands on the steering bar; the head moves with the shoulder without tilting
-  if(refs.uTorso){
-    const u=upperAt(g,hip,ck,pose), hr=g.headR;
-    setL(refs.uTorso,hip,u.shoulder);
-    setL(refs.uNeck,u.shoulder,add(u.shoulder,mul(nrm(sub(u.head,u.shoulder)),hr*0.6)));
-    setL(refs.uUpper,u.shoulder,u.elbow);setL(refs.uFore,u.elbow,u.hand);
-    refs.uHand.setAttribute('cx',fx(u.hand.x));refs.uHand.setAttribute('cy',fx(-u.hand.y));
-    refs.uHeadG.setAttribute('transform',`translate(${fx(u.head.x-up.head.x)} ${fx(-(u.head.y-up.head.y))})`);
-  }
+  applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
   if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR).x;applyRide(bikeSvg,sh);}

@@ -58,3 +58,11 @@ test('ride scene while pedalling, drawing on pause', () => {
   const at = s => html.indexOf(`<script src="./${s}">`);
   assert.ok(at('draw.js') > 0 && at('ride.js') > at('draw.js') && at('ride.js') < html.indexOf('<script>'), 'ride.js after draw.js, before the page script');
 });
+
+test('the volumetric rider: clothes colours and the script', () => {
+  const dark = html.slice(html.indexOf('prefers-color-scheme: dark'));
+  for (const v of ['--skin-1', '--shirt-1', '--shorts-1', '--shoe-1', '--sole']) { assert.ok(html.includes(v + ':'), v); assert.ok(dark.includes(v + ':'), `${v} dark`); }
+  const at = s => html.indexOf(`<script src="./${s}">`);
+  assert.ok(at('rider.js') > at('ride.js') && at('rider.js') < html.indexOf('<script>'), 'rider.js after ride.js, before the page script');
+  assert.ok(html.includes('riderMarkup(') && html.includes('applyRider('), 'the page draws and moves the rider');
+});
