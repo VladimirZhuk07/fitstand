@@ -97,6 +97,32 @@ const PARTS = {
   pedals: ['a flat platform bicycle pedal', 'a small road bike clipless pedal: narrow aerodynamic body with a spring-loaded cleat binding at the front and rear, no pins, no flat platform, with a matching triangular shoe cleat beside it'],
 };
 
+// bike types (content.js types keys), stage 3 of the third feedback
+const TYPE_STYLE = 'Strict side view (profile) of the whole bicycle, front wheel on the right, the bicycle spans the full width of the frame and sits in the vertical centre with empty white space above and below, both wheels fully visible, no rider, no kickstand.';
+const TYPES = {
+  city: 'a city bicycle: upright swept-back handlebar, full fenders, rear rack, chain guard, step-over frame, 28 inch wheels, dark blue',
+  hybrid: 'a hybrid bicycle: flat handlebar, 700c wheels with 38 mm tyres with a light tread, aluminium frame, rigid fork, disc brakes, grey',
+  women: "a women's hybrid bicycle with a low step-through frame, flat handlebar, 700c wheels, wide comfortable saddle, teal",
+  gravel: 'a gravel bicycle: flared drop handlebar, 700c wheels with 42 mm tyres with a fine tread, disc brakes, olive green',
+  cx: 'a cyclocross bicycle: drop handlebar, 700c wheels with narrow 33 mm knobby tyres, high bottom bracket, no fenders, red',
+  road: 'a road racing bicycle: drop handlebar, 700c wheels with narrow 28 mm slick tyres, lightweight frame, black',
+  track: 'a track bicycle: single fixed gear, no brakes at all, no derailleurs, low drop handlebar, 700c wheels, white',
+  mountain: 'a trail hardtail mountain bike: 140 mm suspension fork, no rear shock, wide 2.4 inch knobby tyres, 29 inch wheels, wide flat handlebar, dropper seatpost, orange',
+  mtb: 'a cross-country hardtail mountain bike: 100 mm suspension fork, no rear shock, 29 inch wheels with knobby tyres, flat handlebar, dark green',
+  fullsus: 'a full-suspension mountain bike: suspension fork and a rear shock with a rear swingarm, 29 inch wheels with knobby tyres, wide flat handlebar, charcoal',
+  folding: 'a folding bicycle (unfolded, ready to ride): 20 inch wheels, hinge in the middle of the frame, long seatpost, tall handlebar stem, silver',
+  ebike: 'a city electric bicycle: battery mounted on the down tube, motor at the bottom bracket, upright handlebar, fenders, rear rack, 28 inch wheels, dark grey',
+  trike: 'an adult tricycle: one front wheel and two rear wheels on a rear axle, large basket between the rear wheels, low step-through frame, upright handlebar, light blue',
+  cargo: 'a front-loader cargo bicycle: long wheelbase, large open wooden box in front of the rider between the handlebar and a small front wheel, 20 inch front wheel, 26 inch rear wheel',
+  kidTrike: "a toddler's tricycle with pedals on the front wheel, small seat with a backrest and a long detachable parent push handle behind, bright red",
+  balance: "a toddler's balance bike without pedals and without a chain, 12 inch wheels, low saddle, metal frame, yellow",
+  kidTraining: "a child's 16 inch bicycle with two small training wheels at the back, chain guard, bright blue",
+  kid: "a child's 20 inch bicycle without training wheels, flat handlebar, V-brakes, green",
+  teen: "a teenager's 24 inch mountain bike with a suspension fork, disc brakes and gears, purple",
+  bmx: 'a BMX bicycle: 20 inch wheels, small strong frame, high-rise handlebar with crossbar, axle pegs, chrome',
+  special: 'a circus unicycle: one 20 inch wheel, pedals on the wheel axle, saddle on a long post, no handlebar, black and chrome',
+};
+
 const TRIAL = ['helmet', 'uLock', 'rack', 'brakes-2', 'childSeat'];
 const REDO = ['acc-uLock.png', 'acc-firstAid.png', 'part-pedals-1.png', 'acc-gpsTracker.png', 'acc-bags.png', 'acc-barEnds.png', 'acc-shoes.png', 'acc-pressureSensor.png', 'part-fork-1.png'];
 const L = [];
@@ -112,6 +138,9 @@ L.push('# Картинки для Фитстенда — промпты', '',
 const accItems = Object.keys(C.accessories).map(id => ({ file: `acc-${id}.png`, ru: C.accessories[id].name, en: ACC[id] }));
 const partItems = [];
 for (const [pid, list] of Object.entries(PARTS)) list.forEach((en, i) => partItems.push({ file: `part-${pid}-${i}.png`, ru: `${C.parts[pid].name}: ${C.parts[pid].variants[i].name}`, en, key: `${pid}-${i}` }));
+const typeItems = Object.keys(C.types).map(id => ({ file: `type-${id}.png`, ru: `Вид: ${C.types[id].name}`, en: TYPES[id] }));
+const noType = Object.keys(C.types).filter(id => !TYPES[id]);
+if (noType.length) throw new Error('no prompt for type ' + noType.join(', '));
 const missing = Object.keys(C.accessories).filter(id => !ACC[id]);
 if (missing.length) throw new Error('no prompt for ' + missing.join(', '));
 for (const [pid, list] of Object.entries(PARTS)) if (list.length !== C.parts[pid].variants.length) throw new Error('variants mismatch ' + pid);
@@ -125,5 +154,10 @@ for (let i = 0; i * 18 < rest.length; i++) L.push(`## Партия ${i + 1}`, ''
 const all = [...accItems, ...partItems];
 L.push('## Партия 7 — переделки и пропущенные', '', 'Перегенерировать (заменить, если файл есть):', '', ...head, ...REDO.map(f => row(all.find(x => x.file === f))), '');
 L.push(`Всего: ${accItems.length + partItems.length} картинок (${accItems.length} аксессуаров, ${partItems.length} вариантов узлов).`, '');
+const stage3 = [...typeItems, ...partItems.filter(x => /^part-(rims|tyres)-/.test(x.file))];
+L.push('## Этап 3: виды, обода, покрышки', '',
+  `${stage3.length} картинок по третьему отзыву. Агенту Cursor: «Сгенерируй картинки по разделу „Этап 3“ файла \`info/image-prompts.md\`. Для каждой: общий стиль + промпт (для видов ещё дополнение для видов), PNG 1024×1024, сохрани в \`img/raw/\` под указанным именем. Без текста и логотипов».`, '',
+  'Дополнение к общему стилю — только для видов (`type-*.png`):', '', '```', TYPE_STYLE, '```', '',
+  ...head, ...stage3.map(row), '');
 fs.writeFileSync(out, L.join('\n'), 'utf8');
 console.log('written', accItems.length + partItems.length, 'prompts; trial', trial.length);

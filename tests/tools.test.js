@@ -14,6 +14,20 @@ test('image prompts cover every part variant', () => {
   const { CONTENT } = require('../content.js');
   for (const [id, p] of Object.entries(CONTENT.parts)) p.variants.forEach((_, i) => assert.match(md, new RegExp(`part-${id}-${i}\.png`), `${id}-${i}`));
   assert.doesNotMatch(md, /part-wheels-/);
+  const stage = md.slice(md.indexOf('## Этап 3'));
+  assert.ok(md.includes('## Этап 3'), 'stage 3 section');
+  for (const id of Object.keys(CONTENT.types)) assert.match(stage, new RegExp(`type-${id}\.png`), id);
+  for (const id of ['rims', 'tyres']) CONTENT.parts[id].variants.forEach((_, i) => assert.match(stage, new RegExp(`part-${id}-${i}\.png`), `${id}-${i}`));
+});
+
+test('prompts fail on a type without a prompt', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-repo-'));
+  const src = fs.readFileSync(path.join(root, 'content.js'), 'utf8').replace('  types: {', "  types: { xyz: { name: 'X' },");
+  fs.writeFileSync(path.join(dir, 'content.js'), src);
+  let err = '';
+  try { execFileSync(process.execPath, [path.join(root, 'tools/make-image-prompts.js'), dir, path.join(dir, 'out.md')], { stdio: 'pipe' }); }
+  catch (e) { err = String(e.stderr); }
+  assert.match(err, /no prompt for type xyz/);
 });
 
 test('convert plan: types are 3:2, the rest square', t => {
