@@ -194,12 +194,12 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
 .rb-nearlayer{opacity:.85}
 /* the volumetric rider (rider.js): light from the upper left; the far leg darker */
-.rd-skin{fill:url(#rd-gSkin)} .rd-skin-far{fill:var(--skin-2)} .rd-ear{fill:var(--ear)}
+.rd-skin{fill:url(#rd-gSkin)} .rd-skin-far{fill:color-mix(in srgb,var(--skin-2) 82%,black)} .rd-ear{fill:var(--ear)}
 .rd-shirt{fill:url(#rd-gShirt)} .rd-fold{fill:none;stroke:var(--fold);stroke-opacity:.45;stroke-linecap:round}
-.rd-shorts{fill:url(#rd-gShorts)} .rd-shorts-far{fill:var(--shorts-2)}
-.rd-sock,.rd-sock-far{fill:var(--sock)} .rd-shoe,.rd-shoe-far{fill:url(#rd-gShoe)} .rd-sole,.rd-sole-far{fill:var(--sole)}
+.rd-shorts{fill:url(#rd-gShorts)} .rd-shorts-far{fill:color-mix(in srgb,var(--shorts-2) 85%,black)}
+.rd-sock,.rd-sock-far{fill:var(--sock)} .rd-shoe{fill:url(#rd-gShoe)} .rd-shoe-far{fill:color-mix(in srgb,var(--shoe-2) 80%,black)} .rd-sole,.rd-sole-far{fill:var(--sole)}
 .rd-helmet{fill:url(#rd-gHelmet)} .rd-vent,.rd-visor{fill:var(--visor)} .rd-strap{stroke:var(--visor);fill:none;stroke-linecap:round}
-.rider-far{opacity:.72}
+.rider-far{opacity:.9}
 .bike .hi{stroke:var(--hi);fill:none} .bike .tread{fill:none;stroke:var(--tread);stroke-dasharray:6 10}
 
 /* guide entries */

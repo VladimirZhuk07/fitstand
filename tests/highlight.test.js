@@ -66,3 +66,8 @@ test('the volumetric rider: clothes colours and the script', () => {
   assert.ok(at('rider.js') > at('ride.js') && at('rider.js') < html.indexOf('<script>'), 'rider.js after ride.js, before the page script');
   assert.ok(html.includes('riderMarkup(') && html.includes('applyRider('), 'the page draws and moves the rider');
 });
+
+test('the far leg is in shadow: darker, a little see-through', () => {
+  assert.match(html, /\.rider-far\{opacity:\.9\}/);
+  for (const c of ['rd-skin-far', 'rd-shorts-far', 'rd-shoe-far']) assert.match(html, new RegExp(String.raw`\.${c}\{fill:color-mix\(in srgb,var\(--[a-z]+-2\) \d+%,black\)\}`), c);
+});

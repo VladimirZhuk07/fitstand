@@ -26,7 +26,11 @@ const phase = t => (((Math.round(t * 1000) % 9000) + 9000) % 9000) / 9000;
 function leg(l, hip, hr, far) {
   const s = far ? '-far' : '', id = n => far ? `rd-far-${n}` : `rd-${n}`, skin = 'rd-skin' + s;
   const back = unit(sub(l.ankle, l.toe));                              // towards the heel
-  const heel = add(l.ankle, V(-hr * 0.28, -hr * 0.2)), toe = add(l.toe, V(hr * 0.05, -hr * 0.06)), top = add(l.ankle, V(hr * 0.05, hr * 0.12));
+  let heel = add(l.ankle, V(-hr * 0.28, -hr * 0.2)), toe = add(l.toe, V(hr * 0.05, -hr * 0.06)), top = add(l.ankle, V(hr * 0.05, hr * 0.12));
+  // the sole rests on the pedal: move the shoe so its bottom edge passes the top of the pedal bar (22 mm, centred on the pedal)
+  const hb = add(heel, V(0, -hr * 0.09)), tb = add(toe, V(hr * 0.02, -hr * 0.09));
+  const k = (l.pedal.x - hb.x) / ((tb.x - hb.x) || 1), lift = V(0, l.pedal.y + 11 - (hb.y + (tb.y - hb.y) * k));
+  heel = add(heel, lift); toe = add(toe, lift); top = add(top, lift);
   return [
     { id: id('thigh'), tag: 'path', cls: skin, attrs: { d: limbPath(hip, l.knee, hr * 1.25, hr * 0.78, hr * 0.12 * sideOf(hip, l.knee, V(0, 1)), 0.4) } },
     { id: id('shin'), tag: 'path', cls: skin, attrs: { d: limbPath(l.knee, l.ankle, hr * 0.74, hr * 0.42, hr * 0.16 * sideOf(l.knee, l.ankle, back), 0.3) } },

@@ -85,3 +85,13 @@ test('applyRider sets attributes by id', () => {
   R.applyRider(svg, shapes);
   for (const s of shapes) assert.deepEqual(got['#' + s.id], s.attrs, s.id);
 });
+
+// the sole rests on the pedal: its bottom edge passes the top of the pedal bar (22 mm thick, centred on the pedal)
+test('the sole sits on the pedal, not above it', () => {
+  for (const style of ['road', 'city', 'mtb', 'folding']) for (const h of HEIGHTS) for (let k = 0; k < 12; k++) {
+    const { g, j } = joints(style, h, k * 0.75), sole = R.riderShapes(g, j, {}).find(s => s.id === 'rd-sole').attrs.d.match(/-?[\d.]+ -?[\d.]+/g).map(pt);
+    const [tb, hb] = [sole[2], sole[3]].map(([x, y]) => [x, -y]);       // bottom edge: toe, heel (model y up)
+    const k2 = (j.near.pedal.x - hb[0]) / (tb[0] - hb[0]), y = hb[1] + (tb[1] - hb[1]) * k2;
+    assert.ok(Math.abs(y - (j.near.pedal.y + 11)) <= 5, `${style} ${h[0]} t=${k * 0.75}: sole ${y.toFixed(1)} vs pedal top ${(j.near.pedal.y + 11).toFixed(1)}`);
+  }
+});
