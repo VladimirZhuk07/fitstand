@@ -43,19 +43,19 @@
 :root{
   --sky-top:#BCD5E6; --sky-bottom:#F4E7CF; --sun:#FFD49A; --haze:#EFE7D9;
   --hill:#A7BE9E; --hill2:#C9D6C0; --tree:#7C9B72; --trunk:#7A6650; --bush:#93AE86;
-  --road:#8F9192; --roadedge:#BDB7AA; --speck:#77797A; --grass:#6F905F; --post:#ECE8E0; --reflector:#D9752B;
+  --road:#8F9192; --verge:#B9C7A4; --roadedge:#BDB7AA; --speck:#77797A; --grass:#6F905F; --post:#ECE8E0; --reflector:#D9752B;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
     --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
-    --road:#2B2E32; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+    --road:#2B2E32; --verge:#283327; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
   }
 }
 :root[data-theme="dark"]{
   --sky-top:#18213B; --sky-bottom:#4C3F57; --sun:#E0895A; --haze:#3B3651;
   --hill:#2B3246; --hill2:#3A3E55; --tree:#222A34; --trunk:#1D2229; --bush:#27303A;
-  --road:#2B2E32; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
+  --road:#2B2E32; --verge:#283327; --roadedge:#3B3E42; --speck:#1F2225; --grass:#2F3B30; --post:#5B5E64; --reflector:#B5652B;
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
@@ -181,7 +181,7 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .stage-note{transition:opacity .3s} #bike.riding~.stage-note{opacity:0}
 .rb-hill{fill:var(--hill)} .rb-hill2{fill:var(--hill2)} .rb-tree{fill:var(--tree)} .rb-tree2{opacity:.82}
 .rb-trunk{fill:var(--trunk)} .rb-bush{fill:var(--bush)} .rb-midlayer{opacity:.92}
-.rb-road{fill:var(--road)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
+.rb-road{fill:var(--road)} .rb-verge{fill:var(--verge)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
 .rb-nearlayer{opacity:.85}
 
@@ -728,11 +728,12 @@ function rebuild(){
   refs={}; ['fCrank','fPedal','fThigh','fShin','fFoot','nCrank','nPedal','nThigh','nShin','nFoot','wR','wF','uTorso','uNeck','uUpper','uFore','uHand','uHeadG','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
   refs.pts=geomPts(cur);
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
-  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,cur.wheelR):'';
+  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR):'';
 }
 function setL(el,a,b){if(!el)return;el.setAttribute('x1',fx(a.x));el.setAttribute('y1',fx(-a.y));el.setAttribute('x2',fx(b.x));el.setAttribute('y2',fx(-b.y));}
 function updateDynamic(){
-  const g=cur, hip=refs.pts.hip, pose=ridePose(rideT,g.wheelR), th=-30-pose.crank;
+  // the scene runs at the speed of the target wheel: it does not change while the drawing tweens to a new size
+  const g=cur, hip=refs.pts.hip, pose=ridePose(rideT,target.wheelR), th=-30-pose.crank;
   for (const [side,a] of [['n',th],['f',th+180]]){
     const l=legAt(g,hip,a);
     setL(refs[side+'Crank'],V(0,0),l.pedal);
@@ -753,7 +754,7 @@ function updateDynamic(){
   }
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
-  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,g.wheelR).x;applyRide(bikeSvg,sh);}
+  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR).x;applyRide(bikeSvg,sh);}
 }
 let last=performance.now();
 function tick(now){

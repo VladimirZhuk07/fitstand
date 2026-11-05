@@ -113,7 +113,8 @@ function upperAt(g,hip,ck,pose){
   const shoulder=add(add(hip,rot(sub(base.shoulder,hip),pose.torso||0)),V(0,pose.breath||0));
   const grip=add(ck.C,rot(sub(ck.hand,ck.C),pose.bar||0));
   const el=ik2(shoulder,grip,g.arm*0.52,g.arm*0.48,-1);
-  return {shoulder,elbow:el.j,hand:el.e,alpha:angOf(sub(shoulder,hip)),head:add(base.head,sub(shoulder,base.shoulder))};
+  // the head holds steady: only the breath lifts it
+  return {shoulder,elbow:el.j,hand:el.e,alpha:angOf(sub(shoulder,hip)),head:add(base.head,V(0,pose.breath||0))};
 }
 function kneeFlex(l,hip){
   const a=nrm(sub(hip,l.knee)), b=nrm(sub(l.ankle,l.knee));

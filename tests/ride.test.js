@@ -81,7 +81,7 @@ test('background covers the view', () => {
   const sky = m.match(/<rect class="rb-sky" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
   assert.ok(sky[0] < b.x && sky[0] + sky[2] > b.x + b.w && sky[1] < b.y && sky[1] + sky[3] >= groundY, 'sky');
   const road = m.match(/<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="url\(#rb-road\)"/).slice(1).map(Number);
-  assert.ok(road[1] <= groundY + 1 && road[1] + road[3] >= b.y + b.h, 'road from the ground to the bottom');
+  assert.ok(road[1] <= groundY && road[1] + road[3] >= groundY, 'the road runs under the wheels'); // the verge below it: see the band test
   assert.doesNotMatch(m, /(fill|stroke|stop-color)="#/, 'colours come from CSS variables');
 });
 
@@ -91,4 +91,42 @@ test('applyRide shifts the four patterns', () => {
   R.applyRide(svg, { far: -10, mid: -20.5, near: -30, road: -40 });
   assert.deepEqual(Object.keys(set).sort(), ['#rb-far', '#rb-mid', '#rb-near', '#rb-road']);
   assert.deepEqual(set['#rb-mid'], ['patternTransform', 'translate(-20.5 0)']);
+});
+
+// ---------- review fixes ----------
+test('the head holds steady: only the breath moves it', () => {
+  const M = require('../model.js'); Object.assign(globalThis, M); const Dr = require('../draw.js');
+  for (const style of ['road', 'hybrid', 'city']) {
+    const G = M.fit({ H: 178, I: 83, A: 61, W: 42, flex: 3, style }).g, { hip, ck } = Dr.geomPts(G), base = M.upperOf(G, hip, ck.hand);
+    for (let t = 0; t < R.RIDE.PERIOD; t += 1 / 30) {
+      const p = R.ridePose(t, 311), u = M.upperAt(G, hip, ck, p);
+      assert.ok(Math.abs(u.head.x - base.head.x) < 0.5 && Math.abs(u.head.y - base.head.y - p.breath) < 0.5, `${style} t=${t}`);
+      assert.ok(M.len(M.sub(u.shoulder, M.add(base.shoulder, M.V(0, p.breath)))) < 4, `${style}: shoulder sways a few mm at most`);
+    }
+  }
+});
+
+test('the scene speed follows the target wheel, not the tweening one', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /ridePose\(rideT,target\.wheelR\)/);
+  assert.match(html, /layerShift\(id,rideT,target\.wheelR\)/);
+});
+
+test('the road is a band under the wheels, the grass is on the verge below it', () => {
+  const b = { x: -900, y: -1900, w: 2400, h: 2300 }, groundY = 241, m = R.rideBgMarkup(b, groundY, 311);
+  const road = m.match(/<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" fill="url\(#rb-road\)"/).slice(1).map(Number);
+  assert.ok(road[1] < groundY && road[1] + road[3] > groundY && road[3] <= 200, `road band ${road[1]}..${road[1] + road[3]}`);
+  const verge = m.match(/<rect class="rb-verge" x="[-\d.]+" y="([-\d.]+)" width="[\d.]+" height="([\d.]+)"/).slice(1).map(Number);
+  assert.ok(Math.abs(verge[0] - (road[1] + road[3])) < 1 && verge[0] + verge[1] >= b.y + b.h, 'verge from the road down to the bottom');
+  const near = Number(m.match(/<pattern id="rb-near"[^>]* y="([-\d.]+)"/)[1]);
+  assert.ok(near >= road[1] + road[3] - 1, 'grass and posts stand on the verge');
+});
+
+test('pattern content stays inside its tile (no seams, no clipped crowns)', () => {
+  const m = R.rideBgMarkup({ x: -900, y: -1900, w: 2400, h: 2300 }, 241, 311);
+  for (const id of ['mid', 'near']) {
+    const p = m.match(new RegExp(String.raw`<pattern id="rb-${id}"[^>]* height="([\d.]+)">(.*?)</pattern>`)), h = Number(p[1]);
+    for (const e of p[2].matchAll(/<ellipse[^>]* cy="([-\d.]+)"[^>]* ry="([\d.]+)"/g)) assert.ok(Number(e[1]) - Number(e[2]) >= 2 && Number(e[1]) + Number(e[2]) <= h, `${id}: ellipse ${e[1]}±${e[2]} in ${h}`);
+    for (const e of p[2].matchAll(/<rect class="rb-(?:trunk|post)" x="[-\d.]+" y="([-\d.]+)"/g)) assert.ok(Number(e[1]) >= 2, `${id}: rect at ${e[1]}`);
+  }
 });

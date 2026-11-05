@@ -16,7 +16,7 @@ function ridePose(t, wheelR) {
     crank: 360 * RIDE.CRANK_REVS * tau,
     wheel: 360 * wheelRevs(wheelR) * tau,
     ground: speedOf(wheelR) * RIDE.PERIOD * tau,
-    torso: 1.2 * s(2 * RIDE.CRANK_REVS),                    // a little towards each pushing leg
+    torso: 0.35 * s(2 * RIDE.CRANK_REVS),                   // a hint towards each pushing leg; more reads as a saddle set too high
     breath: 3 * (1 - Math.cos(TAU * 3 * tau)),             // 3 breaths a loop
     bar: 0.6 * s(2, 0.3) + 0.45 * s(5, 1.1) + 0.3 * s(7, 2), // small steering corrections
     bounce: 1.5 * s(13) + 1.5 * s(29, 0.7),                 // the tyres on a not quite smooth road
@@ -49,21 +49,22 @@ function trees(tile, h, seed) {
   let out = '';
   for (let i = 0; i < n; i++) {
     const x = ((i + 0.2 + r() * 0.6) * tile) / n, th = 140 + r() * 120, cw = 110 + r() * 90, ch = 150 + r() * 130;
-    if (r() < 0.3) { out += `<ellipse class="rb-bush" cx="${f1(x)}" cy="${f1(h - 40)}" rx="${f1(cw * 1.1)}" ry="${f1(ch * 0.35)}"/>`; continue; }
+    if (r() < 0.3) { out += `<ellipse class="rb-bush" cx="${f1(x)}" cy="${f1(h - ch * 0.35 - 2)}" rx="${f1(cw * 1.1)}" ry="${f1(ch * 0.35)}"/>`; continue; }
     out += `<rect class="rb-trunk" x="${f1(x - 14)}" y="${f1(h - th)}" width="28" height="${f1(th)}"/>`;
     out += `<ellipse class="rb-tree" cx="${f1(x)}" cy="${f1(h - th - ch * 0.6)}" rx="${f1(cw)}" ry="${f1(ch)}"/>`;
     out += `<ellipse class="rb-tree rb-tree2" cx="${f1(x - cw * 0.35)}" cy="${f1(h - th - ch * 0.3)}" rx="${f1(cw * 0.7)}" ry="${f1(ch * 0.7)}"/>`;
   }
   return out;
 }
-function grass(tile, seed) {
+// grass tufts and posts on the verge; h is the tile height, everything stands on its bottom
+function grass(tile, seed, h) {
   const r = rng(seed);
   let out = '';
   for (let x = 20; x < tile - 20; x += 40 + r() * 70) {
-    const hgt = 50 + r() * 70;
-    out += `<path class="rb-grass" d="M${f1(x - 14)} 170 Q${f1(x - 10)} ${f1(170 - hgt * 0.6)} ${f1(x - 22)} ${f1(170 - hgt)} M${f1(x)} 170 Q${f1(x + 2)} ${f1(170 - hgt * 0.7)} ${f1(x + 6)} ${f1(170 - hgt * 1.1)} M${f1(x + 12)} 170 Q${f1(x + 14)} ${f1(170 - hgt * 0.5)} ${f1(x + 26)} ${f1(170 - hgt * 0.8)}"/>`;
+    const hgt = 40 + r() * 50, b = h - 2;
+    out += `<path class="rb-grass" d="M${f1(x - 14)} ${b} Q${f1(x - 10)} ${f1(b - hgt * 0.6)} ${f1(x - 22)} ${f1(b - hgt)} M${f1(x)} ${b} Q${f1(x + 2)} ${f1(b - hgt * 0.7)} ${f1(x + 6)} ${f1(b - hgt * 1.1)} M${f1(x + 12)} ${b} Q${f1(x + 14)} ${f1(b - hgt * 0.5)} ${f1(x + 26)} ${f1(b - hgt * 0.8)}"/>`;
   }
-  for (const px of [tile * 0.31, tile * 0.81]) out += `<rect class="rb-post" x="${f1(px)}" y="40" width="34" height="130" rx="6"/><rect class="rb-reflector" x="${f1(px + 6)}" y="56" width="22" height="16" rx="3"/>`;
+  for (const px of [tile * 0.31, tile * 0.81]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 102)}" width="30" height="100" rx="6"/><rect class="rb-reflector" x="${f1(px + 5)}" y="${f1(h - 90)}" width="20" height="14" rx="3"/>`;
   return out;
 }
 function specks(tile, h, seed) {
@@ -78,28 +79,32 @@ function rideBgMarkup(b, groundY, wheelR) {
   const tile = id => layerShift(id, 0, wheelR).tile;
   // a wide screen shows more than the viewBox (preserveAspectRatio meet), so the background reaches far past it
   const X0 = b.x - b.w * 3, W = b.w * 7, Y0 = b.y - b.h, bottom = b.y + b.h * 2;
-  const HF = 900, HM = 700, HR = Math.max(60, bottom - groundY), HN = 170, NY = groundY + 34;
+  // the road is a band under the wheels; below it a verge with grass and posts
+  const HF = 900, HM = 900, RY = groundY - 25, HR = 80, VY = RY + HR, HN = 125, NY = VY;
   const pat = (id, y, h, inner) => `<pattern id="rb-${id}" patternUnits="userSpaceOnUse" x="0" y="${f1(y)}" width="${f1(tile(id))}" height="${f1(h)}">${inner}</pattern>`;
-  const rect = (id, y, h) => `<rect x="${f1(X0)}" y="${f1(y)}" width="${f1(W)}" height="${f1(h)}" fill="url(#rb-${id})"/>`;
+  // the rect starts a little inside its pattern: a pattern drawn right to its tile edge leaves a hairline there
+  const rect = (id, y, h) => `<rect x="${f1(X0)}" y="${f1(y + 4)}" width="${f1(W)}" height="${f1(h - 4)}" fill="url(#rb-${id})"/>`;
   const tf = tile('far'), tm = tile('mid'), tr = tile('road'), tn = tile('near');
   const defs = '<defs>' +
     '<linearGradient id="rb-skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky-top)"/><stop offset="1" style="stop-color:var(--sky-bottom)"/></linearGradient>' +
     '<radialGradient id="rb-sunG" cx="0.12" cy="0.25" r="0.75"><stop offset="0" style="stop-color:var(--sun);stop-opacity:.55"/><stop offset="1" style="stop-color:var(--sun);stop-opacity:0"/></radialGradient>' +
-    '<linearGradient id="rb-hazeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--haze);stop-opacity:0"/><stop offset="1" style="stop-color:var(--haze);stop-opacity:.6"/></linearGradient>' +
+    '<linearGradient id="rb-hazeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--haze);stop-opacity:0"/><stop offset="0.75" style="stop-color:var(--haze);stop-opacity:0"/><stop offset="1" style="stop-color:var(--haze);stop-opacity:.6"/></linearGradient>' +
     pat('far', groundY - HF, HF,
       `<path class="rb-hill2" d="${hillPath(tf, HF, HF * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/>` +
       `<path class="rb-hill" d="${hillPath(tf, HF, HF * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`) +
     pat('mid', groundY - HM, HM, trees(tm, HM, 7)) +
-    pat('road', groundY, HR, `<rect class="rb-road" x="0" y="0" width="${f1(tr)}" height="${f1(HR)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tr)}" height="6"/>${specks(tr, Math.min(HR, 120), 11)}`) +
-    pat('near', NY, HN, grass(tn, 23)) +
+    pat('road', RY, HR, `<rect class="rb-road" x="0" y="0" width="${f1(tr)}" height="${f1(HR)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tr)}" height="5"/>${specks(tr, HR, 11)}`) +
+    pat('near', NY, HN, grass(tn, 23, HN)) +
     '</defs>';
   return `<g id="rideBg">${defs}` +
     `<rect class="rb-sky" x="${f1(X0)}" y="${f1(Y0)}" width="${f1(W)}" height="${f1(groundY - Y0)}" fill="url(#rb-skyG)"/>` +
     `<rect x="${f1(X0)}" y="${f1(Y0)}" width="${f1(W)}" height="${f1(groundY - Y0)}" fill="url(#rb-sunG)"/>` +
     rect('far', groundY - HF, HF) +
-    `<rect x="${f1(X0)}" y="${f1(groundY - HF)}" width="${f1(W)}" height="${HF}" fill="url(#rb-hazeG)"/>` +
+    // the haze starts far above the view, so its top edge is never on screen
+    `<rect x="${f1(X0)}" y="${f1(Y0)}" width="${f1(W)}" height="${f1(groundY - Y0)}" fill="url(#rb-hazeG)"/>` +
     `<g class="rb-midlayer">${rect('mid', groundY - HM, HM)}</g>` +
-    rect('road', groundY, HR) +
+    `<rect class="rb-verge" x="${f1(X0)}" y="${f1(VY)}" width="${f1(W)}" height="${f1(bottom - VY)}"/>` +
+    rect('road', RY, HR) +
     `<g class="rb-nearlayer">${rect('near', NY, HN)}</g>` +
     '</g>';
 }
