@@ -67,12 +67,36 @@ function unicycleMarkup(g,hl){
   s+=part('pedals',L_(add(pN,V(-48,0)),add(pN,V(48,0)),'s-ink',22));
   return hl?`<g class="hl" data-hl="${hl}">${s}</g>`:s;
 }
+// the gear-change details for the guide's drawings, each its own drivetrain detail group:
+// the cable, the front derailleur on the seat tube, the rear derailleur under the cassette, the shifter at the hand
+function gearDetails(R,sd,ck,HbJ,rc,rg,part){
+  const {G,dk,Ht,u}=ck, drop=dk>0.5;
+  // rear derailleur: the body hangs down and back from the axle, a cage with two jockey wheels
+  const rdTop=add(R,V(-30,-14)), up=add(R,V(-6,-rg-28)), lo=add(R,mul(dirv(-104),110));
+  const rd=L_(rdTop,up,'s-ink',20)+L_(up,lo,'s-ink',12)
+    +`<circle class="f-metal" cx="${fx(up.x)}" cy="${fx(-up.y)}" r="14"/><circle class="f-metal" cx="${fx(lo.x)}" cy="${fx(-lo.y)}" r="14"/>`;
+  // front derailleur: a clamp on the seat tube just above the chainring, the cage plate over the chain
+  const f0=mul(sd,rc+30), f1=mul(sd,rc+90);
+  const fd=L_(f0,f1,'s-ink',24)+`<polyline class="s-metal nf" stroke-width="12" points="${arcPts(V(0,0),rc+16,80,128,8)}"/>`;
+  // shifter: on a drop bar a paddle behind the brake lever at the hoods; on a flat bar a pod under the bar by the grip
+  const sh=drop
+    ? L_(add(G,V(30,-18)),add(G,V(16,-84)),'s-metal',10)
+    : L_(add(G,V(10,-12)),add(G,V(22,-52)),'s-metal',26)+L_(add(G,V(22,-52)),add(G,V(62,-48)),'s-ink',8);
+  const sh0=drop?add(G,V(28,-30)):add(G,V(24,-40));
+  // cable: from the shifter in a loop past the head tube, under the down tube, along the chain stay to the derailleur
+  const dtN=nrm(HbJ), dtOff=V(dtN.y*26,-dtN.x*26), csN=nrm(R), csOff=V(-csN.y*18,csN.x*18);
+  const loop=add(Ht,add(mul(u,-40),V(150,40))), hb=add(add(HbJ,mul(dtN,-30)),dtOff);
+  const bb=add(mul(dtN,70),dtOff), cs0=add(mul(csN,70),csOff), cs1=add(mul(csN,len(R)-90),csOff);
+  const cab=`<path class="s-metal nf" stroke-width="6" d="M${P(sh0)} Q${P(loop)} ${P(hb)} L${P(bb)} Q${P(V(0,-70))} ${P(cs0)} L${P(cs1)} Q${P(add(R,V(-20,-40)))} ${P(rdTop)}"/>`;
+  return part('drivetrain',cab,'cables')+part('drivetrain',fd,'fd')+part('drivetrain',rd,'rd')+part('drivetrain',sh,'shifters');
+}
 function bikeMarkup(g,ux,opts={}){
-  const live=opts.live!==false, motor=!!opts.motor, hl=opts.highlight||null;
+  const live=opts.live!==false, motor=!!opts.motor, hl=opts.highlight||null, details=!live&&!!opts.details;
   if(g.unicycle&&!live) return unicycleMarkup(g,hl);
   const {sd,R,ck,Hb,F,S,hip,up,ground,hta}=geomPts(g);
   const BB=V(0,0), u=ck.u;
-  const part=(name,inner)=>`<g data-part="${name}"${hl===name?' data-on':''}>${inner}</g>`;
+  // d: a detail inside a part (the drivetrain); highlight 'part' lights all of it, 'part:d' one detail
+  const part=(name,inner,d)=>`<g data-part="${name}"${d?` data-d="${d}"`:''}${hl===name||(d&&hl===name+':'+d)?' data-on':''}>${inner}</g>`;
   const id=n=>live?` id="${n}"`:'';
   const th=-30, pN=mul(dirv(th),g.crank), pF=mul(dirv(th+180),g.crank);
   const crankAt=(p,w)=>live?'':` x1="0" y1="0" x2="${fx(p.x)}" y2="${fx(-p.y)}"`;
@@ -168,25 +192,31 @@ function bikeMarkup(g,ux,opts={}){
   if(g.suspPost) sa+=`<g data-k="suspPost">${L_(T,add(T,mul(sd,40)),'s-ink',34)}</g>`;
   sa+=`<path class="f-ink" d="M${P(add(S,V(-118,4)))} C${P(add(S,V(-40,2)))} ${P(add(S,V(60,-2)))} ${P(add(S,V(148,-10)))} Q${P(add(S,V(156,-26)))} ${P(add(S,V(122,-28)))} L${P(add(S,V(-60,-26)))} Q${P(add(S,V(-128,-24)))} ${P(add(S,V(-128,-6)))} Z"/>`;
   s+=part('saddle',sa);
-  // drivetrain: chain, cassette, chainring, guard, near crank
+  // drivetrain: chain, cassette, chainring + guard, bottom bracket, near crank — each its own detail group
   const rc=g.ring*12.7/(2*Math.PI), rg=34;
-  let dr='', pd='';
+  let pd='';
   if(chain){
-    dr+=`<g data-k="chain">${L_(V(0,rc),V(R.x,R.y+rg),'s-metal',7)}${L_(V(0,-rc),V(R.x,R.y-rg),'s-metal',7)}</g>`;
-    dr+=`<circle class="s-ink nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="${rg}" stroke-width="9"/>`;
-    dr+=`<circle class="s-ink nf" cx="0" cy="0" r="${fx(rc)}" stroke-width="11"/><circle class="f-metal" cx="0" cy="0" r="38"/>`;
-    if(g.guard>0.02&&g.brake!=='none') dr+=`<polyline class="s-frame nf" opacity="${fx(g.guard*0.9)}" stroke-width="30" points="${arcPts(V(0,0),rc+20,-25,205)}"/>`;
-    dr+=`<line${id('nCrank')} class="s-ink" stroke-width="28"${crankAt(pN)}/><circle class="f-metal" cx="0" cy="0" r="16"/>`;
+    const dt=(d,inner)=>part('drivetrain',inner,d);
+    s+=dt('chain',`<g data-k="chain">${L_(V(0,rc),V(R.x,R.y+rg),'s-metal',7)}${L_(V(0,-rc),V(R.x,R.y-rg),'s-metal',7)}</g>`);
+    s+=dt('cassette',`<circle class="s-ink nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="${rg}" stroke-width="9"/>`);
+    let ring=`<circle class="s-ink nf" cx="0" cy="0" r="${fx(rc)}" stroke-width="11"/>`;
+    if(g.guard>0.02&&g.brake!=='none') ring+=`<polyline class="s-frame nf" opacity="${fx(g.guard*0.9)}" stroke-width="30" points="${arcPts(V(0,0),rc+20,-25,205)}"/>`;
+    s+=dt('cranks',ring);
+    s+=dt('bb','<circle class="f-metal" cx="0" cy="0" r="38"/>');
+    s+=dt('cranks',`<line${id('nCrank')} class="s-ink" stroke-width="28"${crankAt(pN)}/><circle class="f-metal" cx="0" cy="0" r="16"/>`);
     pd=`<line${id('nPedal')} class="s-ink" stroke-width="22"${pedalAt(pN)}/>`;
-  }else if(g.frontPedals){
-    const a=add(F,pN), b=add(F,pF);
-    dr+=`<g data-k="frontPedals"><g opacity=".42">${L_(F,b,'s-ink',20)}</g>${L_(F,a,'s-ink',24)}<circle class="f-metal" cx="${fx(F.x)}" cy="${fx(-F.y)}" r="14"/></g>`;
-    pd=L_(add(a,V(-36,0)),add(a,V(36,0)),'s-ink',18);
   }else{
-    dr+='<g data-k="noPedals"></g>';
+    let dr;
+    if(g.frontPedals){
+      const a=add(F,pN), b=add(F,pF);
+      dr=`<g data-k="frontPedals"><g opacity=".42">${L_(F,b,'s-ink',20)}</g>${L_(F,a,'s-ink',24)}<circle class="f-metal" cx="${fx(F.x)}" cy="${fx(-F.y)}" r="14"/></g>`;
+      pd=L_(add(a,V(-36,0)),add(a,V(36,0)),'s-ink',18);
+    }else dr='<g data-k="noPedals"></g>';
+    s+=part('drivetrain',dr);
   }
-  s+=part('drivetrain',dr);
   s+=part('pedals',pd);
+  // guide drawings only: the parts that change gears — cable, front and rear derailleurs, shifter
+  if(details&&chain) s+=gearDetails(R,sd,ck,HbJ,rc,rg,part);
   if(live){
     s+='<g id="riderSlot"></g>';
     // dimensions

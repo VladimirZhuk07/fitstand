@@ -114,6 +114,41 @@ test('chain is drawn only where there is one', () => {
   for (const s of ['balance', 'kidTrike', 'special']) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /data-k="chain"/, s);
 });
 
+// ---------- drivetrain details (feedback 4, spec 6) ----------
+const DT = ['chain', 'cassette', 'cranks', 'bb'], EXTRA = ['rd', 'fd', 'shifters', 'cables'];
+const dGroups = (s, d) => s.match(new RegExp(`<g data-part="drivetrain" data-d="${d}"( data-on)?>`, 'g')) || [];
+
+test('drivetrain sub-groups; extra details only on a static drawing with details (spec 6)', () => {
+  const base = Dr.bikeMarkup(g('hybrid'), 1, { live: false });
+  for (const d of DT) assert.ok(dGroups(base, d).length >= 1, d);
+  for (const d of EXTRA) assert.equal(dGroups(base, d).length, 0, d);
+  const det = Dr.bikeMarkup(g('hybrid'), 1, { live: false, details: true });
+  for (const d of [...DT, ...EXTRA]) assert.ok(dGroups(det, d).length >= 1, d);
+  const live = Dr.bikeMarkup(g('hybrid'), 1, { details: true });
+  for (const d of EXTRA) assert.equal(dGroups(live, d).length, 0, `live ${d}`);
+});
+
+test('highlight one drivetrain detail, or the whole drivetrain', () => {
+  const one = Dr.bikeMarkup(g('road'), 1, { live: false, details: true, highlight: 'drivetrain:chain' });
+  const on = [...one.matchAll(/<g data-part="(\w+)"(?: data-d="(\w+)")? data-on>/g)].map(m => `${m[1]}:${m[2]}`);
+  assert.ok(on.length >= 1 && on.every(x => x === 'drivetrain:chain'), on.join());
+  const all = Dr.bikeMarkup(g('road'), 1, { live: false, details: true, highlight: 'drivetrain' });
+  const groups = all.match(/<g data-part="drivetrain"[^>]*>/g);
+  assert.ok(groups.length >= 8 && groups.every(x => x.endsWith(' data-on>')));
+});
+
+test('details on bikes without a chain; new shapes use theme classes', () => {
+  for (const s of ['balance', 'kidTrike', 'special']) {
+    const m = Dr.bikeMarkup(gt(s), 1, { live: false, details: true });
+    for (const d of EXTRA) assert.equal(dGroups(m, d).length, 0, `${s} ${d}`);
+  }
+  const det = Dr.bikeMarkup(g('mtb'), 1, { live: false, details: true });
+  for (const d of EXTRA) {
+    const at = det.indexOf(`data-d="${d}"`), body = det.slice(at, det.indexOf('</g>', at));
+    assert.doesNotMatch(body, /(fill|stroke)="#/, d);
+  }
+});
+
 test('unicycle bounds are finite and narrow', () => {
   const b = Dr.boundsOf(gt('special'), false, 1);
   for (const v of [b.x, b.y, b.w, b.h]) assert.ok(Number.isFinite(v));
