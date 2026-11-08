@@ -75,3 +75,8 @@ test('the far leg is in shadow: darker, a little see-through', () => {
 test('drawBike passes the details flag to the drawing', () => {
   assert.match(html, /details:!!opts\.details/);
 });
+
+test('variant titles styled, pros/cons headings untouched', () => {
+  assert.match(html, /\.var>h2,\.var>h3\{/);
+  assert.doesNotMatch(html, /\.var h3/);
+});
