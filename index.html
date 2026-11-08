@@ -811,7 +811,7 @@ window.fitstand={
     const body=(STYLES[opts.style]&&STYLES[opts.style].rider)||{}; // kids, BMX: a dummy of their own size
     const g=fit({...state,...body,style:opts.style,health:opts.health||null}).g, b=boundsOf(g,false,1);
     svg.setAttribute('viewBox',`${fx(b.x)} ${fx(b.y)} ${fx(b.w)} ${fx(b.h)}`);
-    svg.innerHTML=bikeMarkup(g,1,{live:false,motor:!!opts.motor,highlight:opts.highlight||null});
+    svg.innerHTML=bikeMarkup(g,1,{live:false,motor:!!opts.motor,highlight:opts.highlight||null,details:!!opts.details});
   },
   getQuiz:()=>state.quiz?JSON.parse(JSON.stringify(state.quiz)):null,
   setQuiz(q){state.quiz=q?JSON.parse(JSON.stringify(q)):null;save();},

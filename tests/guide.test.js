@@ -99,3 +99,9 @@ test('parseRoute: part details (spec 5)', () => {
   assert.deepEqual(r('#parts/xyz/chain'), { view: 'parts' });
   for (const h of ['#types/mtb/x', '#acc/helmet/x', '#parts/drivetrain/chain/x']) assert.deepEqual(r(h), { view: 'fit' }, h);
 });
+
+test('detail page plumbing: details flag reaches the drawing', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  assert.match(src, /details: svg\.dataset\.details === '1'/);
+  assert.match(src, /r\.view === 'detail'/);
+});

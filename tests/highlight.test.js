@@ -71,3 +71,7 @@ test('the far leg is in shadow: darker, a little see-through', () => {
   assert.match(html, /\.rider-far\{opacity:\.9\}/);
   for (const c of ['rd-skin-far', 'rd-shorts-far', 'rd-shoe-far']) assert.match(html, new RegExp(String.raw`\.${c}\{fill:color-mix\(in srgb,var\(--[a-z]+-2\) \d+%,black\)\}`), c);
 });
+
+test('drawBike passes the details flag to the drawing', () => {
+  assert.match(html, /details:!!opts\.details/);
+});
