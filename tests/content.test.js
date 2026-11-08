@@ -392,3 +392,48 @@ test('drivetrain variants and usage per spec 2, 4', () => {
   assert.deepEqual(T.more.map(m => m.title), ['Как переключать на разных трассах', 'Как не испортить трансмиссию', 'Частые ошибки новичков', 'Как выбрать трансмиссию новичку', 'Уход за трансмиссией']);
   T.more.forEach(m => assert.ok(m.list && m.list.length >= 3, m.title));
 });
+
+const DETAILS = [
+  ['bb', 'Каретка', ['text', 'breaks', 'care'], []],
+  ['cranks', 'Шатуны и звёзды', ['text', 'kinds'], ['Из чего делают', 'Какие для каких целей']],
+  ['chain', 'Цепь', ['text', 'kinds', 'care'], []],
+  ['fd', 'Передний переключатель', ['text', 'how', 'breaks', 'care'], []],
+  ['rd', 'Задний переключатель', ['text', 'how', 'breaks', 'care'], []],
+  ['cassette', 'Кассета / трещотка', ['text', 'kinds'], ['Под какие трассы', 'Что надёжнее']],
+  ['shifters', 'Манетки', ['text', 'kinds'], ['Манетка или велошифт']],
+  ['cables', 'Тросики и рубашки', ['text'], ['Как проводят тросики', 'Какая проводка лучше']],
+];
+const strs = (a, n, label) => { assert.ok(Array.isArray(a) && a.length >= n, label); a.forEach(x => assert.ok(nonEmpty(x), label)); };
+
+test('drivetrain details per spec 3', () => {
+  const D = CONTENT.parts.drivetrain.details;
+  assert.deepEqual(D.map(d => [d.id, d.name]), DETAILS.map(([id, name]) => [id, name]));
+  assert.deepEqual(CONTENT.parts.drivetrain.related, ['pedals']);
+  for (const [id, , req, more] of DETAILS) {
+    const d = D.find(x => x.id === id);
+    assert.ok(nonEmpty(d.short) && d.short.length <= 60, `${id}.short`);
+    for (const k of req) assert.ok(d[k] !== undefined, `${id}.${k} required`);
+    for (const k of ['text', 'how']) if (d[k] !== undefined) assert.ok(nonEmpty(d[k]), `${id}.${k}`);
+    if (d.kinds) {
+      assert.ok(d.kinds.length >= 2, `${id}.kinds`);
+      d.kinds.forEach(k => {
+        assert.ok(nonEmpty(k.name) && nonEmpty(k.text), `${id}.kinds.${k.name}`);
+        assert.ok(k.pros.length >= 1 && k.pros.length <= 3 && k.cons.length >= 1 && k.cons.length <= 3, `${id}.kinds.${k.name} pros/cons`);
+      });
+    }
+    if (d.breaks) { assert.ok(d.breaks.length >= 2, `${id}.breaks`); d.breaks.forEach(b => assert.ok(nonEmpty(b.name) && nonEmpty(b.text), `${id}.breaks`)); }
+    if (d.care) strs(d.care, 2, `${id}.care`);
+    const titles = (d.more || []).map(m => m.title);
+    for (const t of more) assert.ok(titles.includes(t), `${id}: ${t}`);
+    for (const m of d.more || []) {
+      assert.ok(nonEmpty(m.text) || (m.list && m.list.length) || m.table, `${id}.${m.title}: empty`);
+      if (m.list) strs(m.list, 1, `${id}.${m.title}`);
+      if (m.table) m.table.rows.forEach(r => assert.equal(r.length, m.table.head.length, `${id}.${m.title}.row`));
+    }
+  }
+  const S = D.find(x => x.id === 'shifters');
+  for (const n of ['Триггерные манетки', 'Велошифт (поворотная ручка)']) assert.ok(S.kinds.some(k => k.name === n), n);
+  const cmp = S.more.find(m => m.title === 'Манетка или велошифт').table;
+  assert.deepEqual(cmp.head, ['', 'Манетка', 'Велошифт']);
+  assert.ok(cmp.rows.length >= 4);
+});
