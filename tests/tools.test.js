@@ -79,3 +79,28 @@ print(w, h, min(im.getpixel(p) for p in ((2, 2), (w - 3, 2), (2, h - 3), (w - 3,
   assert.deepEqual(corners.slice(0, 2), [720, 480]);
   assert.ok(corners[2] > 230, `corner brightness ${corners[2]}`);
 });
+
+test('image prompts cover every drivetrain detail and kind', () => {
+  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'fs-prompts-')), 'prompts.md');
+  execFileSync(process.execPath, [path.join(root, 'tools/make-image-prompts.js'), root, out], { stdio: 'pipe' });
+  const md = fs.readFileSync(out, 'utf8');
+  const stage = md.slice(md.indexOf('## Отзыв 4: детали трансмиссии'));
+  assert.ok(md.includes('## Отзыв 4: детали трансмиссии'), 'feedback 4 section');
+  const { CONTENT } = require('../content.js');
+  for (const d of CONTENT.parts.drivetrain.details) {
+    assert.match(stage, new RegExp(`detail-${d.id}\.png`), d.id);
+    (d.kinds || []).forEach((_, i) => assert.match(stage, new RegExp(`detail-${d.id}-${i}\.png`), `${d.id}-${i}`));
+  }
+});
+
+test('convert plan: detail pictures go to img/details, square', t => {
+  const py = process.platform === 'win32' ? 'python' : 'python3';
+  try { execFileSync(py, ['--version'], { stdio: 'pipe' }); } catch { t.skip('no python'); return; }
+  const raw = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-raw-'));
+  for (const f of ['detail-chain.png', 'detail-shifters-1.png']) fs.writeFileSync(path.join(raw, f), '');
+  const out = execFileSync(py, [path.join(root, 'tools/convert-images.py'), '--raw', raw, '--dry-run'], { encoding: 'utf8' });
+  const jobs = out.trim().split('\n').map(l => JSON.parse(l));
+  const by = end => jobs.find(j => j.target.split(String.fromCharCode(92)).join('/').endsWith(end));
+  assert.deepEqual(by('img/details/chain.webp').size, [512, 512]);
+  assert.deepEqual(by('img/details/shifters-1.webp').size, [512, 512]);
+});

@@ -2,6 +2,7 @@
 
 img/raw/acc-<id>.png        -> img/acc/<id>.webp          512x512
 img/raw/part-<id>-<n>.png   -> img/parts/<id>-<n>.webp    512x512
+img/raw/detail-<id>[-<k>].png -> img/details/<id>[-<k>].webp  512x512 (details of a part and their kinds)
 img/raw/type-<id>.png       -> img/types/<id>.webp        720x480, 3:2 cut around the bike; a tall one gets white sides
 
 Usage (from the repo root): python tools/convert-images.py [--raw DIR] [--out DIR] [--dry-run]
@@ -18,7 +19,7 @@ RAW = ROOT / 'img' / 'raw'
 SQUARE = (512, 512)
 WIDE = (720, 480)    # bike types: a bike is long, a square would leave it small
 QUALITY = 80
-FOLDERS = {'acc': ('acc', SQUARE), 'part': ('parts', SQUARE), 'type': ('types', WIDE)}
+FOLDERS = {'acc': ('acc', SQUARE), 'part': ('parts', SQUARE), 'detail': ('details', SQUARE), 'type': ('types', WIDE)}
 
 
 @dataclass(frozen=True)

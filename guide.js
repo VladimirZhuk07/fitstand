@@ -5,6 +5,9 @@ const has = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
 // quiz.js: in the browser its functions are globals, in Node it is required
 const Qz = typeof module === 'object' && module.exports ? require('./quiz.js') : root;
 
+// pictures of a part's details: img/details/<detail>.webp, and <detail>-<k>.webp for its kinds
+const detailImg = (id, k) => `img/details/${id}${k === undefined ? '' : '-' + k}.webp`;
+
 function parseRoute(hash, content) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
   const [head, arg, extra] = parts;
@@ -230,7 +233,7 @@ function init() {
   const more = m => `<section><h2>${esc(m.title)}</h2>` +
     (m.list ? (m.ordered ? `<ol class="steps">${m.list.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : list(m.list, 'why')) : '') +
     (m.text ? `<p>${esc(m.text)}</p>` : '') + (m.table ? table(m.table) : '') + `</section>`;
-  const card = (href, name, short) => `<a class="card" href="${href}"><b>${esc(name)}</b><span>${esc(short)}</span></a>`;
+  const card = (href, name, short, img) => `<a class="card" href="${href}">${img ? pic(img, 'card-thumb') : ''}<b>${esc(name)}</b><span>${esc(short)}</span></a>`;
   function partsView() {
     return head('Узлы велосипеда') + switcher('parts') +
       `<div class="cards">${C.partOrder.map(id => card(`#parts/${id}`, C.parts[id].name, C.parts[id].short)).join('')}</div>`;
@@ -242,16 +245,16 @@ function init() {
       (p.anim ? root.forkBlock(p.anim) : '') +
       p.variants.map((v, i) => `<article class="var">${pic(`img/parts/${id}-${i}.webp`, 'var-photo', v.name)}<h2>${esc(v.name)}</h2><p>${esc(v.text)}</p>` +
         line('Как работает', v.how) + line('Кому подходит', v.forWhom) + line('Для каких трасс', v.terrain) + `${prosCons(v.pros, v.cons)}</article>`).join('') +
-      (p.details ? sec('Детали', `<div class="cards">${p.details.map(d => card(`#parts/${id}/${d.id}`, d.name, d.short)).join('')}` +
-        `${(p.related || []).map(rid => card(`#parts/${rid}`, C.parts[rid].name, C.parts[rid].short)).join('')}</div>`) : '') +
+      (p.details ? sec('Детали', `<div class="cards">${p.details.map(d => card(`#parts/${id}/${d.id}`, d.name, d.short, detailImg(d.id))).join('')}` +
+        `${(p.related || []).map(rid => card(`#parts/${rid}`, C.parts[rid].name, C.parts[rid].short, `img/parts/${rid}-0.webp`)).join('')}</div>`) : '') +
       (p.more || []).map(more).join('');
   }
   function detailView(pid, id) {
     const p = C.parts[pid], d = p.details.find(x => x.id === id), st = fsApi().getState();
     return head(d.name, p.name) + bike(st.style, st.motor, `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
-      (d.text ? sec('Что это', `<p>${esc(d.text)}</p>`) : '') +
+      (d.text ? sec('Что это', `<div class="det">${pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '') +
       (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.kinds ? sec('Виды', d.kinds.map(k => `<article class="var"><h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
+      (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
       (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
       (d.care ? sec('Уход', list(d.care, 'why')) : '') +
       (d.more || []).map(more).join('');
@@ -348,7 +351,7 @@ function init() {
   render();
 }
 
-const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS };
+const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS, detailImg };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else { Object.assign(root, api); if (typeof document !== 'undefined') init(); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

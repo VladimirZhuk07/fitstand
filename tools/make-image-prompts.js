@@ -97,6 +97,27 @@ const PARTS = {
   pedals: ['a flat platform bicycle pedal', 'a small road bike clipless pedal: narrow aerodynamic body with a spring-loaded cleat binding at the front and rear, no pins, no flat platform, with a matching triangular shoe cleat beside it', 'a dual-sided bicycle pedal: one side is a flat platform with small metal pins, the other side has a spring-loaded clipless cleat binding in the middle; tilted at an angle so both the platform side and the binding are clearly visible'],
 };
 
+// drivetrain details (content.js parts.drivetrain.details): a photo of each detail and of each of its kinds, in order
+const DETAILS = {
+  bb: { photo: 'a bicycle bottom bracket cartridge: a threaded cylindrical metal unit with sealed bearings and splined axle ends sticking out on both sides, shown alone', kinds: [] },
+  cranks: { photo: 'a bicycle crankset without pedals: the right crank arm with two chainrings attached and the separate left crank arm lying beside it', kinds: [
+    'an inexpensive steel bicycle crankset: shiny chrome steel crank arm with a stamped steel chainring and a chain guard ring, city bike style',
+    'a forged aluminium bicycle crankset: matte black aluminium crank arms with a machined aluminium chainring',
+    'a lightweight carbon fibre bicycle crankset: crank arms with visible carbon weave texture and a black chainring'] },
+  chain: { photo: 'a loosely coiled bicycle chain, silver and dark grey links', kinds: [
+    'a short straight length of wide single-speed bicycle chain with plain flat silver plates and a connecting link',
+    'a short straight length of narrow derailleur bicycle chain with shaped, bevelled inner plates, grey and silver'] },
+  fd: { photo: 'a bicycle front derailleur, unmounted: a round clamp band and a narrow curved metal cage that guides the chain', kinds: [] },
+  rd: { photo: 'a bicycle rear derailleur, unmounted: the body with a spring and a long cage holding two small toothed jockey pulleys', kinds: [] },
+  cassette: { photo: 'a bicycle rear cassette: ten sprockets stacked from smallest to largest, viewed at an angle so the cone shape is visible', kinds: [
+    'a bicycle cassette: a stack of separate sprockets and a lockring placed next to a rear hub with a splined freehub body, showing that the sprockets slide onto the splines',
+    'a threaded bicycle freewheel: a single solid block of seven sprockets with the threaded ratchet body in the centre, shown alone'] },
+  shifters: { photo: 'a short piece of flat bicycle handlebar with a rubber grip and a trigger gear shifter with two thumb levers clamped next to the grip', kinds: [
+    'an unmounted bicycle trigger shifter with two thumb levers and a small blank gear indicator window',
+    'a twist-grip bicycle gear shifter on a short piece of handlebar: a rotating ribbed rubber ring next to a fixed rubber grip, with a plain unmarked indicator ring'] },
+  cables: { photo: 'bicycle gear cables: a coiled thin steel inner cable with a small barrel end, and several pieces of black cable housing with silver metal end caps', kinds: [] },
+};
+
 // bike types (content.js types keys), stage 3 of the third feedback
 const TYPE_STYLE = 'Strict side view (profile) of the whole bicycle, front wheel on the right, the bicycle spans the full width of the frame and sits in the vertical centre with empty white space above and below, both wheels fully visible, no rider, no kickstand.';
 const TYPES = {
@@ -159,5 +180,16 @@ L.push('## Этап 3: виды, обода, покрышки', '',
   `${stage3.length} картинок по третьему отзыву. Агенту Cursor: «Сгенерируй картинки по разделу „Этап 3“ файла \`info/image-prompts.md\`. Для каждой: общий стиль + промпт (для видов ещё дополнение для видов), PNG 1024×1024, сохрани в \`img/raw/\` под указанным именем. Без текста и логотипов».`, '',
   'Дополнение к общему стилю — только для видов (`type-*.png`):', '', '```', TYPE_STYLE, '```', '',
   ...head, ...stage3.map(row), '');
+const detailItems = [];
+for (const d of C.parts.drivetrain.details) {
+  const p = DETAILS[d.id];
+  if (!p) throw new Error('no prompt for detail ' + d.id);
+  if ((d.kinds || []).length !== p.kinds.length) throw new Error('kinds mismatch ' + d.id);
+  detailItems.push({ file: `detail-${d.id}.png`, ru: d.name, en: p.photo });
+  p.kinds.forEach((en, i) => detailItems.push({ file: `detail-${d.id}-${i}.png`, ru: `${d.name}: ${d.kinds[i].name}`, en }));
+}
+L.push('## Отзыв 4: детали трансмиссии', '',
+  `${detailItems.length} картинок: фото каждой детали и каждого её вида. Квадрат 1:1, 1024×1024, PNG в \`img/raw/\`.`, '',
+  ...head, ...detailItems.map(row), '');
 fs.writeFileSync(out, L.join('\n'), 'utf8');
 console.log('written', accItems.length + partItems.length, 'prompts; trial', trial.length);

@@ -105,3 +105,10 @@ test('detail page plumbing: details flag reaches the drawing', () => {
   assert.match(src, /details: svg\.dataset\.details === '1'/);
   assert.match(src, /r\.view === 'detail'/);
 });
+
+test('detail picture names (feedback 4: pictures for every list)', () => {
+  const { detailImg } = require('../guide.js');
+  assert.equal(detailImg('chain'), 'img/details/chain.webp');
+  assert.equal(detailImg('shifters', 1), 'img/details/shifters-1.webp');
+  assert.equal(detailImg('cranks', 0), 'img/details/cranks-0.webp');
+});
