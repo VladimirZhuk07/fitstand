@@ -105,9 +105,9 @@ const DETAILS = {
     'a forged aluminium bicycle crankset: matte black aluminium crank arms with a machined aluminium chainring',
     'a lightweight carbon fibre bicycle crankset: crank arms with visible carbon weave texture and a black chainring'] },
   chain: { photo: 'a loosely coiled bicycle chain, silver and dark grey links', kinds: [
-    'a short straight length of wide single-speed bicycle chain with plain flat silver plates and a connecting link',
+    'a short straight length of single-speed bicycle chain lying flat, one single row of links only (not a double-row industrial chain), wide rollers, plain flat straight-edged silver side plates, one connecting master link with a clip',
     'a short straight length of narrow derailleur bicycle chain with shaped, bevelled inner plates, grey and silver'] },
-  fd: { photo: 'a bicycle front derailleur, unmounted: a round clamp band and a narrow curved metal cage that guides the chain', kinds: [] },
+  fd: { photo: 'a bicycle front derailleur, unmounted: a round clamp band on top, a small parallelogram linkage with a return spring, and below it a long arc-shaped chain cage made of two parallel steel plates, inner and outer, with a narrow gap between them where the chain runs', kinds: [] },
   rd: { photo: 'a bicycle rear derailleur, unmounted: the body with a spring and a long cage holding two small toothed jockey pulleys', kinds: [] },
   cassette: { photo: 'a bicycle rear cassette: ten sprockets stacked from smallest to largest, viewed at an angle so the cone shape is visible', kinds: [
     'a bicycle cassette: a stack of separate sprockets and a lockring placed next to a rear hub with a splined freehub body, showing that the sprockets slide onto the splines',

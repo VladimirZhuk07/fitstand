@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { CONTENT } = require('../content.js');
+const { detailImg } = require('../guide.js');
 
 const root = path.join(__dirname, '..');
 const MAX_BYTES = 120 * 1024;
@@ -35,4 +36,19 @@ test('no pictures of parts that are gone', () => {
     const id = f.replace(/-\d+\.webp$/, '');
     assert.ok(Object.prototype.hasOwnProperty.call(CONTENT.parts, id), f);
   }
+});
+
+// pictures of part details and their kinds, named by guide.detailImg
+const detailPics = () => Object.values(CONTENT.parts).flatMap(p => (p.details || []).flatMap(d =>
+  [detailImg(d.id), ...(d.kinds || []).map((_, i) => detailImg(d.id, i))]));
+
+test('every part detail and each of its kinds has a compressed picture', () => {
+  const pics = detailPics();
+  assert.equal(pics.length, 17);
+  pics.forEach(check);
+});
+
+test('no pictures of details that are gone', () => {
+  const pics = new Set(detailPics());
+  for (const f of fs.readdirSync(path.join(root, 'img/details'))) assert.ok(pics.has(`img/details/${f}`), f);
 });
