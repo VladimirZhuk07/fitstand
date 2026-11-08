@@ -437,3 +437,10 @@ test('drivetrain details per spec 3', () => {
   assert.deepEqual(cmp.head, ['', 'Манетка', 'Велошифт']);
   assert.ok(cmp.rows.length >= 4);
 });
+
+test('pedals: combined variant and how to choose (spec 3)', () => {
+  const P = CONTENT.parts.pedals;
+  assert.deepEqual(P.variants.map(v => v.name), ['Платформы', 'Контактные', 'Комбинированные']);
+  const m = P.more.find(x => x.title === 'Как подобрать педали');
+  assert.ok(m && m.list.length >= 3);
+});
