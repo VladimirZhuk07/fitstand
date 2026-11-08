@@ -237,7 +237,7 @@ function init() {
     return head(p.name) + bike(st.style, st.motor, id) + `<p class="lead">${esc(p.short)}</p>` +
       (p.anim ? root.forkBlock(p.anim) : '') +
       p.variants.map((v, i) => `<article class="var">${pic(`img/parts/${id}-${i}.webp`, 'var-photo', v.name)}<h2>${esc(v.name)}</h2><p>${esc(v.text)}</p>` +
-        line('Как работает', v.how) + line('Для каких трасс', v.terrain) + `${prosCons(v.pros, v.cons)}</article>`).join('') +
+        line('Как работает', v.how) + line('Кому подходит', v.forWhom) + line('Для каких трасс', v.terrain) + `${prosCons(v.pros, v.cons)}</article>`).join('') +
       (p.more || []).map(more).join('');
   }
 

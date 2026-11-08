@@ -382,3 +382,13 @@ test('fork animation texts', () => {
   assert.match(A.captions.climb.on, /подъём/i);
   assert.match(A.captions.bump.off, /Недорогая пружинная/, 'only cheap spring forks have almost no damping');
 });
+
+test('drivetrain variants and usage per spec 2, 4', () => {
+  const T = CONTENT.parts.drivetrain;
+  T.variants.forEach(v => {
+    assert.ok(nonEmpty(v.forWhom), `${v.name}.forWhom`);
+    assert.ok(nonEmpty(v.terrain), `${v.name}.terrain`);
+  });
+  assert.deepEqual(T.more.map(m => m.title), ['Как переключать на разных трассах', 'Как не испортить трансмиссию', 'Частые ошибки новичков', 'Как выбрать трансмиссию новичку', 'Уход за трансмиссией']);
+  T.more.forEach(m => assert.ok(m.list && m.list.length >= 3, m.title));
+});
