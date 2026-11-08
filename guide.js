@@ -8,7 +8,7 @@ const Qz = typeof module === 'object' && module.exports ? require('./quiz.js') :
 function parseRoute(hash, content) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
   const [head, arg, extra] = parts;
-  if (extra !== undefined) return { view: 'fit' };
+  if (parts.length > 3 || (extra !== undefined && head !== 'parts')) return { view: 'fit' };
   if (head === 'quiz') {
     const n = Number(arg);
     return { view: 'quiz', n: Number.isInteger(n) && n >= 1 && n <= Qz.MAX_STEPS ? n : 1 };
@@ -23,7 +23,10 @@ function parseRoute(hash, content) {
   if (head === 'types') return arg !== undefined && has(content.types, arg) ? { view: 'type', id: arg } : { view: 'types' };
   if (head === 'parts') {
     const id = arg === 'wheels' ? 'rims' : arg; // «Колёса и покрышки» became «Обода» and «Покрышки»
-    return id !== undefined && has(content.parts, id) ? { view: 'part', id } : { view: 'parts' };
+    if (id === undefined || !has(content.parts, id)) return { view: 'parts' };
+    const details = content.parts[id].details;
+    if (extra && Array.isArray(details) && details.some(d => d.id === extra)) return { view: 'detail', part: id, id: extra };
+    return { view: 'part', id };
   }
   return { view: 'fit' };
 }

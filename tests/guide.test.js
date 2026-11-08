@@ -89,3 +89,13 @@ test('type cards and pages show a photo, the drawing stays as a fallback', () =>
   assert.match(src, /type-thumb/);
   assert.match(src, /type-photo/);
 });
+
+test('parseRoute: part details (spec 5)', () => {
+  assert.deepEqual(r('#parts/drivetrain/chain'), { view: 'detail', part: 'drivetrain', id: 'chain' });
+  assert.deepEqual(r('#parts/drivetrain/shifters'), { view: 'detail', part: 'drivetrain', id: 'shifters' });
+  for (const h of ['#parts/drivetrain/xyz', '#parts/drivetrain/constructor', '#parts/drivetrain/__proto__', '#parts/drivetrain/'])
+    assert.deepEqual(r(h), { view: 'part', id: 'drivetrain' }, h);
+  assert.deepEqual(r('#parts/brakes/chain'), { view: 'part', id: 'brakes' });
+  assert.deepEqual(r('#parts/xyz/chain'), { view: 'parts' });
+  for (const h of ['#types/mtb/x', '#acc/helmet/x', '#parts/drivetrain/chain/x']) assert.deepEqual(r(h), { view: 'fit' }, h);
+});
