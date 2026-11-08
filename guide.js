@@ -251,8 +251,8 @@ function init() {
     return head(d.name, p.name) + bike(st.style, st.motor, `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
       (d.text ? sec('Что это', `<p>${esc(d.text)}</p>`) : '') +
       (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.kinds ? sec('Виды', d.kinds.map(k => `<article class="var"><h2>${esc(k.name)}</h2><p>${esc(k.text)}</p>${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
-      (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
+      (d.kinds ? sec('Виды', d.kinds.map(k => `<article class="var"><h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
+      (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
       (d.care ? sec('Уход', list(d.care, 'why')) : '') +
       (d.more || []).map(more).join('');
   }

@@ -87,7 +87,7 @@ function gearDetails(R,sd,ck,HbJ,rc,rg,part){
   const dtN=nrm(HbJ), dtOff=V(dtN.y*26,-dtN.x*26), csN=nrm(R), csOff=V(-csN.y*18,csN.x*18);
   const loop=add(Ht,add(mul(u,-40),V(150,40))), hb=add(add(HbJ,mul(dtN,-30)),dtOff);
   const bb=add(mul(dtN,70),dtOff), cs0=add(mul(csN,70),csOff), cs1=add(mul(csN,len(R)-90),csOff);
-  const cab=`<path class="s-metal nf" stroke-width="6" d="M${P(sh0)} Q${P(loop)} ${P(hb)} L${P(bb)} Q${P(V(0,-70))} ${P(cs0)} L${P(cs1)} Q${P(add(R,V(-20,-40)))} ${P(rdTop)}"/>`;
+  const cab=`<path class="s-metal nf" stroke-width="9" d="M${P(sh0)} Q${P(loop)} ${P(hb)} L${P(bb)} Q${P(V(0,-70))} ${P(cs0)} L${P(cs1)} Q${P(add(R,V(-20,-40)))} ${P(rdTop)}"/>`;
   return part('drivetrain',cab,'cables')+part('drivetrain',fd,'fd')+part('drivetrain',rd,'rd')+part('drivetrain',sh,'shifters');
 }
 function bikeMarkup(g,ux,opts={}){
