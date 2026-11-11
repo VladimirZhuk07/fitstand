@@ -125,3 +125,9 @@ test('detail page plumbing: usage, schema, terrain, highlight and style override
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
   for (const s of ['d.usage', 'd.schema', 'd.hl', 'd.style', 'k.terrain']) assert.ok(src.includes(s), s);
 });
+
+test('a missing schema file removes its whole section, not just the picture', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  assert.match(src, /data-opt-sec/);
+  assert.match(src, /closest\('section'\)/);
+});

@@ -82,7 +82,8 @@ function init() {
   const program = (t, before) => `<section><h2>С чего начать</h2><ol class="prog">${t.program.map((s, i) => `<li><b>${esc(s.title)}</b><span>${esc(s.text)}</span>${i === 0 && before ? `<span class="prog-acc">${esc(before)}</span>` : ''}</li>`).join('')}</ol></section>`;
   const accLink = id => `<a href="#acc/${id}">${esc(C.accessories[id].name)}</a>`;
   // pictures: img/acc/<id>.webp, img/parts/<part>-<n>.webp; data-opt — removed quietly if the file is missing
-  const pic = (src, cls, alt = '') => `<img class="${cls}" src="${src}" alt="${esc(alt)}" loading="lazy" decoding="async" data-opt>`;
+  // sec: the picture is the whole content of its section, so a missing file removes the section with its heading
+  const pic = (src, cls, alt = '', sec = false) => `<img class="${cls}" src="${src}" alt="${esc(alt)}" loading="lazy" decoding="async" data-opt${sec ? ' data-opt-sec' : ''}>`;
   const accPic = (id, cls) => pic(`img/acc/${id}.webp`, cls);
   const accRow = id => `<li>${accPic(id, 'acc-mini')}<span>${accLink(id)} — ${esc(C.accessories[id].why)}</span></li>`;
   const switcher = on => `<nav class="pg-switch" aria-label="Разделы гида"><a href="#types"${on === 'types' ? ' aria-current="page"' : ''}>Виды</a><a href="#parts"${on === 'parts' ? ' aria-current="page"' : ''}>Узлы</a></nav>`;
@@ -256,11 +257,11 @@ function init() {
     return head(d.name, p.name) + bike(d.style || st.style, st.motor, d.hl || `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
       (d.text ? sec('Что это', `<div class="det">${pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '') +
       (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.schema ? sec('Принцип работы', pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`)) : '') +
+      (d.schema ? sec('Принцип работы', pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`, true)) : '') +
       (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${k.terrain ? `<p><b>Для каких трасс:</b> ${esc(k.terrain)}</p>` : ''}${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
       (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
       (d.care ? sec('Уход', list(d.care, 'why')) : '') +
-      (d.usage ? sec('Как использовать', d.usage.map(u => `<h3>${esc(u.title)}</h3>${list(u.list, 'why')}`).join('')) : '') +
+      (d.usage ? sec('Как использовать', '<div class="usage">' + d.usage.map(u => `<h3>${esc(u.title)}</h3>${list(u.list, 'why')}`).join('') + '</div>') : '') +
       (d.more || []).map(more).join('');
   }
 
@@ -342,7 +343,7 @@ function init() {
     }
   });
   // a picture that is not there yet: drop it, the screen stays as before
-  document.addEventListener('error', e => { if (e.target instanceof HTMLImageElement && e.target.hasAttribute('data-opt')) e.target.remove(); }, true);
+  document.addEventListener('error', e => { if (e.target instanceof HTMLImageElement && e.target.hasAttribute('data-opt')) { const sec = e.target.hasAttribute('data-opt-sec') && e.target.closest('section'); (sec || e.target).remove(); } }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !page.hidden) back(); });
   window.addEventListener('popstate', render);
 
