@@ -444,3 +444,25 @@ test('pedals: combined variant and how to choose (spec 3)', () => {
   const m = P.more.find(x => x.title === 'Как подобрать педали');
   assert.ok(m && m.list.length >= 3);
 });
+
+// ---------- suspension pages (feedback 5) ----------
+const forkDetail = id => CONTENT.parts.fork.details.find(d => d.id === id);
+const USAGE5 = ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Возможные поломки', 'Ремонт'];
+const okKind = (k, label) => {
+  assert.ok(nonEmpty(k.name) && nonEmpty(k.text) && nonEmpty(k.terrain), label);
+  assert.ok(k.pros.length >= 1 && k.pros.length <= 3 && k.cons.length >= 1 && k.cons.length <= 3, `${label} pros/cons`);
+};
+
+test('fork details: spring fork page', () => {
+  const d = forkDetail('springFork');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text));
+  assert.equal(d.hl, 'fork');
+  assert.equal(d.schema, true);
+  assert.deepEqual(d.kinds.map(k => k.name), ['Пружинно-эластомерная', 'Пружинно-масляная', 'Простая пружинная']);
+  d.kinds.forEach(k => okKind(k, k.name));
+  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
+  const lock = d.usage[1].list.join(' ').toLowerCase();
+  assert.ok(lock.includes('эластомер'));
+  assert.ok(!lock.includes('отключ'), 'the lockout clamps the elastomer, the spring stays');
+});
