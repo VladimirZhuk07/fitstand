@@ -78,7 +78,7 @@ test('parts complete', () => {
 test('fork, rims, tyres per spec', () => {
   const P = CONTENT.parts;
   for (const i of [1, 2]) assert.ok(nonEmpty(P.fork.variants[i].how), `fork ${i}.how`);
-  assert.deepEqual(P.fork.more.map(m => m.title), ['Блокировка', 'Настройки воздушной вилки']);
+  assert.deepEqual(P.fork.more.map(m => m.title), ['Блокировка']);
   assert.equal(P.rims.variants.length, 4);
   assert.equal(P.tyres.variants.length, 6);
   for (const id of ['rims', 'tyres']) P[id].variants.forEach(v => assert.ok(nonEmpty(v.terrain), `${id}.${v.name}.terrain`));
@@ -465,4 +465,20 @@ test('fork details: spring fork page', () => {
   const lock = d.usage[1].list.join(' ').toLowerCase();
   assert.ok(lock.includes('эластомер'));
   assert.ok(!lock.includes('отключ'), 'the lockout clamps the elastomer, the spring stays');
+});
+
+test('fork details: air fork page; settings moved from the overview', () => {
+  assert.deepEqual(CONTENT.parts.fork.more.map(m => m.title), ['Блокировка']);
+  const d = forkDetail('airFork');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text));
+  assert.equal(d.hl, 'fork');
+  assert.equal(d.schema, true);
+  assert.ok(d.kinds.length >= 2 && d.kinds.length <= 3);
+  d.kinds.forEach(k => okKind(k, k.name));
+  assert.ok(d.breaks.length >= 3);
+  d.breaks.forEach(b => assert.ok(nonEmpty(b.name) && nonEmpty(b.text), b.name));
+  assert.deepEqual(d.usage.map(u => u.title), ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Ремонт своими руками']);
+  assert.ok(d.usage[2].list.length >= 5);
+  const lock = d.usage[1].list.join(' ').toLowerCase();
+  assert.ok(lock.includes('демпфер') && lock.includes('воздух'));
 });
