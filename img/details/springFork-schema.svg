@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+
+<defs>
+  <linearGradient id="alum" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#9aa6b2"/>
+    <stop offset="0.15" stop-color="#6a7682"/>
+    <stop offset="0.42" stop-color="#3c4652"/>
+    <stop offset="0.7" stop-color="#2a313a"/>
+    <stop offset="1" stop-color="#5a6570"/>
+  </linearGradient>
+  <linearGradient id="alumV" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#8e9aa6"/>
+    <stop offset="0.35" stop-color="#4a5560"/>
+    <stop offset="1" stop-color="#2c333c"/>
+  </linearGradient>
+  <linearGradient id="cavity" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#12171c"/>
+    <stop offset="1" stop-color="#2a313a"/>
+  </linearGradient>
+  <linearGradient id="spring" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f7fafc"/>
+    <stop offset="0.35" stop-color="#c5ced6"/>
+    <stop offset="0.62" stop-color="#8b969f"/>
+    <stop offset="1" stop-color="#e6edf2"/>
+  </linearGradient>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#d5dde4"/>
+    <stop offset="0.5" stop-color="#8b969f"/>
+    <stop offset="1" stop-color="#5c6770"/>
+  </linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f3dc9a"/>
+    <stop offset="0.45" stop-color="#c4963c"/>
+    <stop offset="1" stop-color="#7c5a1e"/>
+  </linearGradient>
+  <linearGradient id="elast" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#5c4650"/>
+    <stop offset="0.45" stop-color="#241c22"/>
+    <stop offset="1" stop-color="#6a5058"/>
+  </linearGradient>
+  <linearGradient id="oil" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffe08a"/>
+    <stop offset="0.45" stop-color="#e39a14"/>
+    <stop offset="1" stop-color="#b56b08"/>
+  </linearGradient>
+  <linearGradient id="rubber" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#3a4048"/>
+    <stop offset="1" stop-color="#14181c"/>
+  </linearGradient>
+  <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse">
+    <path d="M0 5 L5 0" stroke="#0e1318" stroke-width="0.7" opacity="0.28"/>
+  </pattern>
+  <filter id="card" x="-6%" y="-6%" width="112%" height="116%">
+    <feDropShadow dx="0" dy="2" stdDeviation="3.5" flood-color="#1c2430" flood-opacity="0.14"/>
+  </filter>
+  <marker id="arrBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0 0 L10 5 L0 10 Z" fill="#1d6fbf"/>
+  </marker>
+  <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0 0 L10 5 L0 10 Z" fill="#c0392b"/>
+  </marker>
+  <marker id="arrOil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M0 0 L10 5 L0 10 Z" fill="#a86408"/>
+  </marker>
+  <marker id="arrAir" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M0 0 L10 5 L0 10 Z" fill="#1d6fbf"/>
+  </marker>
+</defs>
+<rect width="1600" height="1100" fill="#e6e9ed"/>
+<g transform="translate(20,20)">
+    <rect width="760" height="520" rx="16" fill="#fbfcfd" stroke="#d5dbe3" filter="url(#card)"/>
+    <path d="M 168 182 h 92 v 200 h -92 z M 179 182 h 70 v 189 h -70 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 168 182 h 11 v 200 h -11 z M 249 182 h 11 v 200 h -11 z M 168 371 h 92 v 11 h -92 z" fill="url(#hatch)" opacity="0.45"/><rect x="179" y="190" width="70" height="179" fill="#141a20"/><path d="M 189 74 h 50 v 196 h -50 z M 197 82 h 34 v 188 h -34 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 189 74 h 8 v 196 h -8 z M 231 74 h 8 v 196 h -8 z" fill="url(#hatch)" opacity="0.55"/><rect x="197" y="80" width="34" height="186" fill="url(#cavity)"/><path d="M 198 248 h 32 l -4 10 h -24 z" fill="url(#steel)"/><path d="M 208 102
+      Q 203 172 208 242
+      L 220.1 242
+      Q 225 172 220.1 102 Z"
+      fill="url(#elast)" opacity="0.92"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="#6d787f" stroke-width="6.5" stroke-linecap="round"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="url(#spring)" stroke-width="4.2" stroke-linecap="round"/><rect x="184" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="235" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="152" y="46" width="124" height="32" rx="6" fill="url(#alumV)"/><rect x="160" y="49" width="108" height="5" rx="2" fill="#fff" opacity="0.28"/><rect x="203" y="18" width="22" height="32" rx="3" fill="url(#alum)"/><circle cx="174" cy="64" r="3.2" fill="#1c242c" stroke="#9aa6b2" stroke-width="1"/><rect x="211.4" y="72" width="5.2" height="20" fill="url(#brass)"/><polygon points="214,99 207,92 221,92" fill="url(#brass)"/><g transform="translate(266 62) rotate(-38)">
+    <rect x="0" y="-5" width="34" height="10" rx="5" fill="url(#brass)"/>
+    <circle cx="7" cy="0" r="4.2" fill="#1f9d55" stroke="#fff" stroke-width="1"/>
+  </g><rect x="188" y="357" width="52" height="10" rx="3" fill="url(#steel)"/><circle cx="214" cy="362" r="7.5" fill="#22282f" stroke="#c5ced6" stroke-width="2"/><path d="M 168 348 h 12 v 28 h -12 z M 248 348 h 12 v 28 h -12 z" fill="url(#alumV)"/><line x1="222" y1="28" x2="330" y2="28" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222" cy="28" r="2.3" fill="#24303a"/>
+    <text x="335" y="32" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Крепление к раме</text><line x1="254" y1="56" x2="330" y2="58" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="254" cy="56" r="2.3" fill="#24303a"/>
+    <text x="335" y="62" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Корона</text><line x1="276" y1="60" x2="330" y2="88" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="276" cy="60" r="2.3" fill="#24303a"/>
+    <text x="335" y="92" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Рычаг блокировки</text><line x1="210" y1="83" x2="150" y2="78" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="210" cy="83" r="2.3" fill="#24303a"/>
+    <text x="145" y="82" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Шток</text><line x1="239" y1="102" x2="330" y2="122" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="239" cy="102" r="2.3" fill="#24303a"/>
+    <text x="335" y="126" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Верхняя нога</text><line x1="232" y1="171" x2="330" y2="168" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="232" cy="171" r="2.3" fill="#24303a"/>
+    <text x="335" y="172" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Пружина</text><line x1="221.7" y1="172" x2="330" y2="214" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="221.7" cy="172" r="2.3" fill="#24303a"/>
+    <text x="335" y="218" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Эластомер</text><line x1="241" y1="188" x2="330" y2="262" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="241" cy="188" r="2.3" fill="#24303a"/>
+    <text x="335" y="266" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Сальник</text><line x1="260" y1="266" x2="330" y2="318" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="260" cy="266" r="2.3" fill="#24303a"/>
+    <text x="335" y="322" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Нижняя нога</text><line x1="230" y1="362" x2="330" y2="372" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="230" cy="362" r="2.3" fill="#24303a"/>
+    <text x="335" y="376" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Ось колеса</text>
+    <rect x="200" y="474" width="360" height="30" rx="15" fill="#e7f6ee"/>
+    <text x="380" y="494" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#0e6a3a">Спокойное · открыто</text>
+  </g>
+<g transform="translate(820,20)">
+    <rect width="760" height="520" rx="16" fill="#fbfcfd" stroke="#d5dbe3" filter="url(#card)"/>
+    <rect x="168" y="182" width="92" height="200" rx="4" fill="none" stroke="#9aa6b2" stroke-width="1.2" stroke-dasharray="4 3"/><path d="M 168 118 h 92 v 200 h -92 z M 179 118 h 70 v 189 h -70 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 168 118 h 11 v 200 h -11 z M 249 118 h 11 v 200 h -11 z M 168 307 h 92 v 11 h -92 z" fill="url(#hatch)" opacity="0.45"/><rect x="179" y="126" width="70" height="179" fill="#141a20"/><path d="M 189 74 h 50 v 196 h -50 z M 197 82 h 34 v 188 h -34 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 189 74 h 8 v 196 h -8 z M 231 74 h 8 v 196 h -8 z" fill="url(#hatch)" opacity="0.55"/><rect x="197" y="80" width="34" height="186" fill="url(#cavity)"/><path d="M 198 180 h 32 l -4 10 h -24 z" fill="url(#steel)"/><path d="M 205.2 96
+      Q 198 138 205.2 180
+      L 222.8 180
+      Q 230 138 222.8 96 Z"
+      fill="url(#elast)" opacity="0.92"/><path d="M 198 90 C 198 92.6, 230 92.6, 230 95.9 C 230 99.2, 198 99.2, 198 101.7 M 198 101.7 C 198 104.3, 230 104.3, 230 107.6 C 230 110.9, 198 110.9, 198 113.5 M 198 113.5 C 198 116.1, 230 116.1, 230 119.4 C 230 122.7, 198 122.7, 198 125.2 M 198 125.2 C 198 127.8, 230 127.8, 230 131.1 C 230 134.4, 198 134.4, 198 137 M 198 137 C 198 139.6, 230 139.6, 230 142.9 C 230 146.1, 198 146.1, 198 148.7 M 198 148.7 C 198 151.3, 230 151.3, 230 154.6 C 230 157.9, 198 157.9, 198 160.5 M 198 160.5 C 198 163.1, 230 163.1, 230 166.3 C 230 169.6, 198 169.6, 198 172.2 M 198 172.2 C 198 174.8, 230 174.8, 230 178.1 C 230 181.4, 198 181.4, 198 184 " fill="none" stroke="#6d787f" stroke-width="6.5" stroke-linecap="round"/><path d="M 198 90 C 198 92.6, 230 92.6, 230 95.9 C 230 99.2, 198 99.2, 198 101.7 M 198 101.7 C 198 104.3, 230 104.3, 230 107.6 C 230 110.9, 198 110.9, 198 113.5 M 198 113.5 C 198 116.1, 230 116.1, 230 119.4 C 230 122.7, 198 122.7, 198 125.2 M 198 125.2 C 198 127.8, 230 127.8, 230 131.1 C 230 134.4, 198 134.4, 198 137 M 198 137 C 198 139.6, 230 139.6, 230 142.9 C 230 146.1, 198 146.1, 198 148.7 M 198 148.7 C 198 151.3, 230 151.3, 230 154.6 C 230 157.9, 198 157.9, 198 160.5 M 198 160.5 C 198 163.1, 230 163.1, 230 166.3 C 230 169.6, 198 169.6, 198 172.2 M 198 172.2 C 198 174.8, 230 174.8, 230 178.1 C 230 181.4, 198 181.4, 198 184 " fill="none" stroke="url(#spring)" stroke-width="4.2" stroke-linecap="round"/><path d="M 201 104 Q 214 106 227 104" fill="none" stroke="#1a1418" stroke-width="0.8" opacity="0.7"/><path d="M 201 140 Q 214 142 227 140" fill="none" stroke="#1a1418" stroke-width="0.8" opacity="0.7"/><path d="M 201 176 Q 214 178 227 176" fill="none" stroke="#1a1418" stroke-width="0.8" opacity="0.7"/><rect x="184" y="118" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="235" y="118" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="152" y="46" width="124" height="32" rx="6" fill="url(#alumV)"/><rect x="160" y="49" width="108" height="5" rx="2" fill="#fff" opacity="0.28"/><rect x="203" y="18" width="22" height="32" rx="3" fill="url(#alum)"/><circle cx="174" cy="64" r="3.2" fill="#1c242c" stroke="#9aa6b2" stroke-width="1"/><rect x="211.4" y="72" width="5.2" height="20" fill="url(#brass)"/><polygon points="214,99 207,92 221,92" fill="url(#brass)"/><g transform="translate(266 62) rotate(-38)">
+    <rect x="0" y="-5" width="34" height="10" rx="5" fill="url(#brass)"/>
+    <circle cx="7" cy="0" r="4.2" fill="#1f9d55" stroke="#fff" stroke-width="1"/>
+  </g><rect x="188" y="293" width="52" height="10" rx="3" fill="url(#steel)"/><circle cx="214" cy="298" r="7.5" fill="#22282f" stroke="#c5ced6" stroke-width="2"/><path d="M 168 284 h 12 v 28 h -12 z M 248 284 h 12 v 28 h -12 z" fill="url(#alumV)"/><line x1="150" y1="308" x2="150" y2="146" stroke="#1d6fbf" stroke-width="2.2" marker-end="url(#arrBlue)"/><line x1="164" y1="160" x2="164" y2="292" stroke="#1d6fbf" stroke-width="1.6" marker-end="url(#arrBlue)"/><line x1="222" y1="28" x2="330" y2="28" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222" cy="28" r="2.3" fill="#24303a"/>
+    <text x="335" y="32" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Крепление к раме</text><line x1="254" y1="56" x2="330" y2="58" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="254" cy="56" r="2.3" fill="#24303a"/>
+    <text x="335" y="62" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Корона</text><line x1="276" y1="60" x2="330" y2="88" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="276" cy="60" r="2.3" fill="#24303a"/>
+    <text x="335" y="92" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Рычаг блокировки</text><line x1="210" y1="83" x2="150" y2="78" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="210" cy="83" r="2.3" fill="#24303a"/>
+    <text x="145" y="82" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Шток</text><line x1="239" y1="102" x2="330" y2="122" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="239" cy="102" r="2.3" fill="#24303a"/>
+    <text x="335" y="126" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Верхняя нога</text><line x1="232" y1="137" x2="330" y2="168" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="232" cy="137" r="2.3" fill="#24303a"/>
+    <text x="335" y="172" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Пружина</text><line x1="225.2" y1="138" x2="330" y2="214" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="225.2" cy="138" r="2.3" fill="#24303a"/>
+    <text x="335" y="218" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Эластомер</text><line x1="241" y1="124" x2="330" y2="262" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="241" cy="124" r="2.3" fill="#24303a"/>
+    <text x="335" y="266" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Сальник</text><line x1="260" y1="202" x2="330" y2="318" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="260" cy="202" r="2.3" fill="#24303a"/>
+    <text x="335" y="322" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Нижняя нога</text><line x1="230" y1="298" x2="330" y2="372" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="230" cy="298" r="2.3" fill="#24303a"/>
+    <text x="335" y="376" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Ось колеса</text>
+    <rect x="200" y="474" width="360" height="30" rx="15" fill="#e7f6ee"/>
+    <text x="380" y="494" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#0e6a3a">Сжатие · открыто</text>
+  </g>
+<g transform="translate(20,560)">
+    <rect width="760" height="520" rx="16" fill="#fbfcfd" stroke="#d5dbe3" filter="url(#card)"/>
+    <path d="M 168 182 h 92 v 200 h -92 z M 179 182 h 70 v 189 h -70 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 168 182 h 11 v 200 h -11 z M 249 182 h 11 v 200 h -11 z M 168 371 h 92 v 11 h -92 z" fill="url(#hatch)" opacity="0.45"/><rect x="179" y="190" width="70" height="179" fill="#141a20"/><path d="M 189 74 h 50 v 196 h -50 z M 197 82 h 34 v 188 h -34 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 189 74 h 8 v 196 h -8 z M 231 74 h 8 v 196 h -8 z" fill="url(#hatch)" opacity="0.55"/><rect x="197" y="80" width="34" height="186" fill="url(#cavity)"/><path d="M 198 248 h 32 l -4 10 h -24 z" fill="url(#steel)"/><path d="M 207.4 98
+      Q 202 170 207.4 242
+      L 220.6 242
+      Q 226 170 220.6 98 Z"
+      fill="url(#elast)" opacity="0.92"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="#6d787f" stroke-width="6.5" stroke-linecap="round"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="url(#spring)" stroke-width="4.2" stroke-linecap="round"/><rect x="184" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="235" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="152" y="46" width="124" height="32" rx="6" fill="url(#alumV)"/><rect x="160" y="49" width="108" height="5" rx="2" fill="#fff" opacity="0.28"/><rect x="203" y="18" width="22" height="32" rx="3" fill="url(#alum)"/><circle cx="174" cy="64" r="3.2" fill="#1c242c" stroke="#9aa6b2" stroke-width="1"/><rect x="211.4" y="72" width="5.2" height="29" fill="url(#brass)"/><polygon points="214,110 207,101 221,101" fill="url(#brass)"/><path d="M 205 100 L 214 109 L 223 100" fill="none" stroke="#f3dc9a" stroke-width="1.4"/><g transform="translate(266 62) rotate(48)">
+    <rect x="0" y="-5" width="34" height="10" rx="5" fill="url(#brass)"/>
+    <circle cx="7" cy="0" r="4.2" fill="#d64545" stroke="#fff" stroke-width="1"/>
+  </g><rect x="188" y="357" width="52" height="10" rx="3" fill="url(#steel)"/><circle cx="214" cy="362" r="7.5" fill="#22282f" stroke="#c5ced6" stroke-width="2"/><path d="M 168 348 h 12 v 28 h -12 z M 248 348 h 12 v 28 h -12 z" fill="url(#alumV)"/><line x1="222" y1="28" x2="330" y2="28" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222" cy="28" r="2.3" fill="#24303a"/>
+    <text x="335" y="32" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Крепление к раме</text><line x1="254" y1="56" x2="330" y2="58" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="254" cy="56" r="2.3" fill="#24303a"/>
+    <text x="335" y="62" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Корона</text><line x1="276" y1="60" x2="330" y2="88" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="276" cy="60" r="2.3" fill="#24303a"/>
+    <text x="335" y="92" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Рычаг блокировки</text><line x1="210" y1="87.5" x2="150" y2="78" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="210" cy="87.5" r="2.3" fill="#24303a"/>
+    <text x="145" y="82" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Шток</text><line x1="239" y1="102" x2="330" y2="122" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="239" cy="102" r="2.3" fill="#24303a"/>
+    <text x="335" y="126" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Верхняя нога</text><line x1="232" y1="171" x2="330" y2="168" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="232" cy="171" r="2.3" fill="#24303a"/>
+    <text x="335" y="172" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Пружина</text><line x1="222.4" y1="170" x2="330" y2="214" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222.4" cy="170" r="2.3" fill="#24303a"/>
+    <text x="335" y="218" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Эластомер</text><line x1="241" y1="188" x2="330" y2="262" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="241" cy="188" r="2.3" fill="#24303a"/>
+    <text x="335" y="266" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Сальник</text><line x1="260" y1="266" x2="330" y2="318" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="260" cy="266" r="2.3" fill="#24303a"/>
+    <text x="335" y="322" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Нижняя нога</text><line x1="230" y1="362" x2="330" y2="372" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="230" cy="362" r="2.3" fill="#24303a"/>
+    <text x="335" y="376" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Ось колеса</text>
+    <rect x="200" y="474" width="360" height="30" rx="15" fill="#fdecec"/>
+    <text x="380" y="494" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#9d2424">Спокойное · закрыто</text>
+  </g>
+<g transform="translate(820,560)">
+    <rect width="760" height="520" rx="16" fill="#fbfcfd" stroke="#d5dbe3" filter="url(#card)"/>
+    <path d="M 168 182 h 92 v 200 h -92 z M 179 182 h 70 v 189 h -70 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 168 182 h 11 v 200 h -11 z M 249 182 h 11 v 200 h -11 z M 168 371 h 92 v 11 h -92 z" fill="url(#hatch)" opacity="0.45"/><rect x="179" y="190" width="70" height="179" fill="#141a20"/><path d="M 189 74 h 50 v 196 h -50 z M 197 82 h 34 v 188 h -34 z" fill="url(#alum)" fill-rule="evenodd"/>
+    <path d="M 189 74 h 8 v 196 h -8 z M 231 74 h 8 v 196 h -8 z" fill="url(#hatch)" opacity="0.55"/><rect x="197" y="80" width="34" height="186" fill="url(#cavity)"/><path d="M 198 248 h 32 l -4 10 h -24 z" fill="url(#steel)"/><path d="M 207.4 98
+      Q 202 170 207.4 242
+      L 220.6 242
+      Q 226 170 220.6 98 Z"
+      fill="url(#elast)" opacity="0.92"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="#6d787f" stroke-width="6.5" stroke-linecap="round"/><path d="M 198 90 C 198 94.5, 230 94.5, 230 100.1 C 230 105.8, 198 105.8, 198 110.3 M 198 110.3 C 198 114.7, 230 114.7, 230 120.4 C 230 126, 198 126, 198 130.5 M 198 130.5 C 198 135, 230 135, 230 140.6 C 230 146.3, 198 146.3, 198 150.8 M 198 150.8 C 198 155.2, 230 155.2, 230 160.9 C 230 166.5, 198 166.5, 198 171 M 198 171 C 198 175.5, 230 175.5, 230 181.1 C 230 186.8, 198 186.8, 198 191.3 M 198 191.3 C 198 195.7, 230 195.7, 230 201.4 C 230 207, 198 207, 198 211.5 M 198 211.5 C 198 216, 230 216, 230 221.6 C 230 227.3, 198 227.3, 198 231.8 M 198 231.8 C 198 236.2, 230 236.2, 230 241.9 C 230 247.5, 198 247.5, 198 252 " fill="none" stroke="url(#spring)" stroke-width="4.2" stroke-linecap="round"/><rect x="184" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="235" y="182" width="9" height="12" rx="2" fill="url(#rubber)"/><rect x="152" y="46" width="124" height="32" rx="6" fill="url(#alumV)"/><rect x="160" y="49" width="108" height="5" rx="2" fill="#fff" opacity="0.28"/><rect x="203" y="18" width="22" height="32" rx="3" fill="url(#alum)"/><circle cx="174" cy="64" r="3.2" fill="#1c242c" stroke="#9aa6b2" stroke-width="1"/><rect x="211.4" y="72" width="5.2" height="29" fill="url(#brass)"/><polygon points="214,110 207,101 221,101" fill="url(#brass)"/><path d="M 205 100 L 214 109 L 223 100" fill="none" stroke="#f3dc9a" stroke-width="1.4"/><g transform="translate(266 62) rotate(48)">
+    <rect x="0" y="-5" width="34" height="10" rx="5" fill="url(#brass)"/>
+    <circle cx="7" cy="0" r="4.2" fill="#d64545" stroke="#fff" stroke-width="1"/>
+  </g><rect x="188" y="357" width="52" height="10" rx="3" fill="url(#steel)"/><circle cx="214" cy="362" r="7.5" fill="#22282f" stroke="#c5ced6" stroke-width="2"/><path d="M 168 348 h 12 v 28 h -12 z M 248 348 h 12 v 28 h -12 z" fill="url(#alumV)"/><line x1="150" y1="392" x2="150" y2="370" stroke="#c0392b" stroke-width="2.2" marker-end="url(#arrRed)"/><path d="M 150 368 L 134 352 L 120 374" fill="none" stroke="#c0392b" stroke-width="2.2" marker-end="url(#arrRed)"/><line x1="214" y1="20" x2="214" y2="6" stroke="#c0392b" stroke-width="1.8" marker-end="url(#arrRed)"/><line x1="222" y1="28" x2="330" y2="28" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222" cy="28" r="2.3" fill="#24303a"/>
+    <text x="335" y="32" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Крепление к раме</text><line x1="254" y1="56" x2="330" y2="58" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="254" cy="56" r="2.3" fill="#24303a"/>
+    <text x="335" y="62" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Корона</text><line x1="276" y1="60" x2="330" y2="88" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="276" cy="60" r="2.3" fill="#24303a"/>
+    <text x="335" y="92" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Рычаг блокировки</text><line x1="210" y1="87.5" x2="150" y2="78" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="210" cy="87.5" r="2.3" fill="#24303a"/>
+    <text x="145" y="82" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Шток</text><line x1="239" y1="102" x2="330" y2="122" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="239" cy="102" r="2.3" fill="#24303a"/>
+    <text x="335" y="126" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Верхняя нога</text><line x1="232" y1="171" x2="330" y2="168" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="232" cy="171" r="2.3" fill="#24303a"/>
+    <text x="335" y="172" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Пружина</text><line x1="222.4" y1="170" x2="330" y2="214" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="222.4" cy="170" r="2.3" fill="#24303a"/>
+    <text x="335" y="218" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Эластомер</text><line x1="241" y1="188" x2="330" y2="262" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="241" cy="188" r="2.3" fill="#24303a"/>
+    <text x="335" y="266" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Сальник</text><line x1="260" y1="266" x2="330" y2="318" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="260" cy="266" r="2.3" fill="#24303a"/>
+    <text x="335" y="322" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Нижняя нога</text><line x1="230" y1="362" x2="330" y2="372" stroke="#8b97a2" stroke-width="1"/>
+    <circle cx="230" cy="362" r="2.3" fill="#24303a"/>
+    <text x="335" y="376" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#1c2630">Ось колеса</text>
+    <rect x="200" y="474" width="360" height="30" rx="15" fill="#fdecec"/>
+    <text x="380" y="494" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#9d2424">Удар · закрыто</text>
+  </g>
+</svg>

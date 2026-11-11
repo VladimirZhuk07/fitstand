@@ -78,7 +78,7 @@ test('parts complete', () => {
 test('fork, rims, tyres per spec', () => {
   const P = CONTENT.parts;
   for (const i of [1, 2]) assert.ok(nonEmpty(P.fork.variants[i].how), `fork ${i}.how`);
-  assert.deepEqual(P.fork.more.map(m => m.title), ['Блокировка', 'Настройки воздушной вилки']);
+  assert.deepEqual(P.fork.more.map(m => m.title), ['Блокировка']);
   assert.equal(P.rims.variants.length, 4);
   assert.equal(P.tyres.variants.length, 6);
   for (const id of ['rims', 'tyres']) P[id].variants.forEach(v => assert.ok(nonEmpty(v.terrain), `${id}.${v.name}.terrain`));
@@ -443,4 +443,79 @@ test('pedals: combined variant and how to choose (spec 3)', () => {
   assert.deepEqual(P.variants.map(v => v.name), ['Платформы', 'Контактные', 'Комбинированные']);
   const m = P.more.find(x => x.title === 'Как подобрать педали');
   assert.ok(m && m.list.length >= 3);
+});
+
+// ---------- suspension pages (feedback 5) ----------
+const forkDetail = id => CONTENT.parts.fork.details.find(d => d.id === id);
+const USAGE5 = ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Возможные поломки', 'Ремонт'];
+const okKind = (k, label) => {
+  assert.ok(nonEmpty(k.name) && nonEmpty(k.text) && nonEmpty(k.terrain), label);
+  assert.ok(k.pros.length >= 1 && k.pros.length <= 3 && k.cons.length >= 1 && k.cons.length <= 3, `${label} pros/cons`);
+};
+
+test('fork details: spring fork page', () => {
+  const d = forkDetail('springFork');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text));
+  assert.equal(d.hl, 'fork');
+  assert.equal(d.schema, true);
+  assert.deepEqual(d.kinds.map(k => k.name), ['Пружинно-эластомерная', 'Пружинно-масляная', 'Простая пружинная']);
+  d.kinds.forEach(k => okKind(k, k.name));
+  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
+  const lock = d.usage[1].list.join(' ').toLowerCase();
+  assert.ok(lock.includes('эластомер'));
+  assert.ok(!lock.includes('отключ'), 'the lockout clamps the elastomer, the spring stays');
+});
+
+test('fork details: air fork page; settings moved from the overview', () => {
+  assert.deepEqual(CONTENT.parts.fork.more.map(m => m.title), ['Блокировка']);
+  const d = forkDetail('airFork');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text));
+  assert.equal(d.hl, 'fork');
+  assert.equal(d.schema, true);
+  assert.ok(d.kinds.length >= 2 && d.kinds.length <= 3);
+  d.kinds.forEach(k => okKind(k, k.name));
+  assert.ok(d.breaks.length >= 3);
+  d.breaks.forEach(b => assert.ok(nonEmpty(b.name) && nonEmpty(b.text), b.name));
+  assert.deepEqual(d.usage.map(u => u.title), ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Ремонт своими руками']);
+  assert.ok(d.usage[2].list.length >= 5);
+  const lock = d.usage[1].list.join(' ').toLowerCase();
+  assert.ok(lock.includes('демпфер') && lock.includes('воздух'));
+});
+
+test('fork details: rear shock page', () => {
+  const d = forkDetail('rearShock');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text) && nonEmpty(d.how));
+  assert.equal(d.style, 'fullsus');
+  assert.equal(d.hl, 'fork:rearShock');
+  assert.equal(d.schema, true);
+  assert.deepEqual(d.kinds.map(k => k.name), ['Пружинный', 'Воздушный', 'Эластомерный']);
+  d.kinds.forEach(k => { okKind(k, k.name); assert.ok(/велосипед/i.test(k.text + k.terrain), `${k.name}: for which bikes`); });
+  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
+});
+
+test('twist shifter: how to use it', () => {
+  const sh = CONTENT.parts.drivetrain.details.find(d => d.id === 'shifters');
+  assert.equal(sh.usage[0].title, 'Как пользоваться велошифтом');
+  assert.ok(sh.usage[0].list.length >= 3);
+});
+
+test('review fixes: suspension page facts and drawings', () => {
+  for (const id of ['springFork', 'airFork']) assert.equal(forkDetail(id).style, 'mtb', `${id} draws a suspension fork`);
+  const air = forkDetail('airFork'), spring = forkDetail('springFork'), shock = forkDetail('rearShock');
+  assert.ok(!air.how.includes('помогает вилке вернуться') && air.how.includes('негативн'), 'the negative chamber starts the travel');
+  assert.ok(air.text.includes('80–160 мм'), 'one travel range on the page');
+  const airUsage = JSON.stringify(air.usage);
+  assert.ok(!airUsage.includes('обслуживайте нижние ноги'), 'lower-leg service is not a home job');
+  assert.ok(spring.usage[1].list.join(' ').includes('масл'), 'the oil spring fork lockout is explained');
+  assert.ok(spring.usage[4].list.join(' ').includes('верхнюю крышку'), 'a simple spring is swapped at home');
+  assert.ok(!shock.kinds[2].terrain.includes('туристических'));
+  const shifters = CONTENT.parts.drivetrain.details.find(d => d.id === 'shifters');
+  assert.ok(shifters.usage[0].list.join(' ').toLowerCase().includes('запомните'));
+});
+
+test('no suspension makers in the content', () => {
+  const s = JSON.stringify(CONTENT).toLowerCase();
+  for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
 });
