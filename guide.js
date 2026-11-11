@@ -7,6 +7,8 @@ const Qz = typeof module === 'object' && module.exports ? require('./quiz.js') :
 
 // pictures of a part's details: img/details/<detail>.webp, and <detail>-<k>.webp for its kinds
 const detailImg = (id, k) => `img/details/${id}${k === undefined ? '' : '-' + k}.webp`;
+// the principle drawing of a detail (the suspension pages): img/details/<detail>-schema.svg
+const schemaImg = id => `img/details/${id}-schema.svg`;
 
 function parseRoute(hash, content) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
@@ -251,12 +253,14 @@ function init() {
   }
   function detailView(pid, id) {
     const p = C.parts[pid], d = p.details.find(x => x.id === id), st = fsApi().getState();
-    return head(d.name, p.name) + bike(st.style, st.motor, `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
+    return head(d.name, p.name) + bike(d.style || st.style, st.motor, d.hl || `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
       (d.text ? sec('Что это', `<div class="det">${pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '') +
       (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
+      (d.schema ? sec('Принцип работы', pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`)) : '') +
+      (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${k.terrain ? `<p><b>Для каких трасс:</b> ${esc(k.terrain)}</p>` : ''}${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
       (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
       (d.care ? sec('Уход', list(d.care, 'why')) : '') +
+      (d.usage ? sec('Как использовать', d.usage.map(u => `<h3>${esc(u.title)}</h3>${list(u.list, 'why')}`).join('')) : '') +
       (d.more || []).map(more).join('');
   }
 
@@ -351,7 +355,7 @@ function init() {
   render();
 }
 
-const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS, detailImg };
+const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS, detailImg, schemaImg };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else { Object.assign(root, api); if (typeof document !== 'undefined') init(); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

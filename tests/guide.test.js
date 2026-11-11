@@ -112,3 +112,16 @@ test('detail picture names (feedback 4: pictures for every list)', () => {
   assert.equal(detailImg('shifters', 1), 'img/details/shifters-1.webp');
   assert.equal(detailImg('cranks', 0), 'img/details/cranks-0.webp');
 });
+
+// ---------- suspension pages (feedback 5) ----------
+test('schema picture name and a fork detail route', () => {
+  const { schemaImg, parseRoute } = require('../guide.js');
+  assert.equal(schemaImg('springFork'), 'img/details/springFork-schema.svg');
+  const content = { parts: { fork: { details: [{ id: 'rearShock' }] } } };
+  assert.deepEqual(parseRoute('#parts/fork/rearShock', content), { view: 'detail', part: 'fork', id: 'rearShock' });
+});
+
+test('detail page plumbing: usage, schema, terrain, highlight and style overrides', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  for (const s of ['d.usage', 'd.schema', 'd.hl', 'd.style', 'k.terrain']) assert.ok(src.includes(s), s);
+});
