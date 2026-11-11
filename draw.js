@@ -141,12 +141,15 @@ function bikeMarkup(g,ux,opts={}){
   fr+=L_(BB,T,'s-frame',32)+(g.stepThrough?`<g data-k="stepThrough">${tt}</g>`:tt)+L_(BB,HbJ,'s-frame',40);
   fr+=L_(sub(Hb,mul(u,8)),add(ck.Ht,mul(u,4)),'s-frame',48);
   fr+=`<circle class="s-frame nf" cx="${fx(R.x)}" cy="${fx(-R.y)}" r="1" stroke-width="22"/>`;
+  let sh='';
   if(g.rearShock){
     const a=mul(sd,g.ST*0.55), b=add(R,mul(sub(stayTop,R),0.45));
-    fr+=`<g data-k="rearShock">${L_(a,b,'s-ink',30)}${L_(add(a,mul(nrm(sub(b,a)),40)),sub(b,mul(nrm(sub(b,a)),40)),'s-metal',14)}<circle class="f-ink" cx="0" cy="0" r="30"/></g>`;
+    sh=`<g data-k="rearShock">${L_(a,b,'s-ink',30)}${L_(add(a,mul(nrm(sub(b,a)),40)),sub(b,mul(nrm(sub(b,a)),40)),'s-metal',14)}<circle class="f-ink" cx="0" cy="0" r="30"/></g>`;
   }
   if(g.hinge){const m=mul(add(ttEnd,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
   s+=part('frame',fr);
+  // the rear shock is a fork-section detail: the suspension page lights it
+  if(sh) s+=part('fork',sh,'rearShock');
   // live: a highlight along the seat, down and top tubes — the light comes from the upper left
   if(live) for(const [a,b,w] of [[BB,T,32],[BB,HbJ,40],[ttEnd,HtJ,30]]){
     const d=nrm(sub(b,a)), n0=V(-d.y,d.x), n=n0.y>0?n0:mul(n0,-1), o=mul(n,w*0.22);

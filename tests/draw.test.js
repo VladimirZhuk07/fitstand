@@ -190,3 +190,16 @@ test('arms reach the bar while the body sways', () => {
     if (M.len(M.sub(grip, u.shoulder)) < G.arm - 1) assert.ok(M.len(M.sub(u.hand, grip)) < 1, 'hand on the grip');
   }
 });
+
+// ---------- rear shock as a fork detail (feedback 5, spec: suspension) ----------
+const shockGroups = s => s.match(/<g data-part="fork" data-d="rearShock"( data-on)?>/g) || [];
+
+test('rear shock is its own fork detail on a full-suspension bike', () => {
+  const plain = Dr.bikeMarkup(g('fullsus'), 1, { live: false });
+  assert.equal(shockGroups(plain).length, 1);
+  assert.ok(!shockGroups(plain)[0].endsWith(' data-on>'));
+  assert.ok(plain.includes('data-k="rearShock"'));
+  for (const hl of ['fork:rearShock', 'fork']) assert.ok(shockGroups(Dr.bikeMarkup(g('fullsus'), 1, { live: false, highlight: hl }))[0].endsWith(' data-on>'), hl);
+  assert.ok(!shockGroups(Dr.bikeMarkup(g('fullsus'), 1, { live: false, highlight: 'frame' }))[0].endsWith(' data-on>'));
+  assert.equal(shockGroups(Dr.bikeMarkup(g('mtb'), 1, { live: false })).length, 0);
+});
