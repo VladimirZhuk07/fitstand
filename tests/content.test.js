@@ -482,3 +482,15 @@ test('fork details: air fork page; settings moved from the overview', () => {
   const lock = d.usage[1].list.join(' ').toLowerCase();
   assert.ok(lock.includes('демпфер') && lock.includes('воздух'));
 });
+
+test('fork details: rear shock page', () => {
+  const d = forkDetail('rearShock');
+  assert.ok(nonEmpty(d.short) && nonEmpty(d.text) && nonEmpty(d.how));
+  assert.equal(d.style, 'fullsus');
+  assert.equal(d.hl, 'fork:rearShock');
+  assert.equal(d.schema, true);
+  assert.deepEqual(d.kinds.map(k => k.name), ['Пружинный', 'Воздушный', 'Эластомерный']);
+  d.kinds.forEach(k => { okKind(k, k.name); assert.ok(/велосипед/i.test(k.text + k.terrain), `${k.name}: for which bikes`); });
+  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
+});
