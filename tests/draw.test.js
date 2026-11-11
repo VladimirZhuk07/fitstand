@@ -203,3 +203,10 @@ test('rear shock is its own fork detail on a full-suspension bike', () => {
   assert.ok(!shockGroups(Dr.bikeMarkup(g('fullsus'), 1, { live: false, highlight: 'frame' }))[0].endsWith(' data-on>'));
   assert.equal(shockGroups(Dr.bikeMarkup(g('mtb'), 1, { live: false })).length, 0);
 });
+
+test('the shock pivot dot belongs to the frame, so it is not lit with the shock', () => {
+  const m = Dr.bikeMarkup(g('fullsus'), 1, { live: false, highlight: 'fork:rearShock' });
+  const shock = m.match(/<g data-part="fork" data-d="rearShock"[^>]*><g data-k="rearShock">[\s\S]*?<\/g><\/g>/)[0];
+  assert.ok(!shock.includes('cx="0" cy="0" r="30"'));
+  assert.ok(m.includes('<circle class="f-ink" cx="0" cy="0" r="30"/>'));
+});

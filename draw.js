@@ -144,7 +144,8 @@ function bikeMarkup(g,ux,opts={}){
   let sh='';
   if(g.rearShock){
     const a=mul(sd,g.ST*0.55), b=add(R,mul(sub(stayTop,R),0.45));
-    sh=`<g data-k="rearShock">${L_(a,b,'s-ink',30)}${L_(add(a,mul(nrm(sub(b,a)),40)),sub(b,mul(nrm(sub(b,a)),40)),'s-metal',14)}<circle class="f-ink" cx="0" cy="0" r="30"/></g>`;
+    sh=`<g data-k="rearShock">${L_(a,b,'s-ink',30)}${L_(add(a,mul(nrm(sub(b,a)),40)),sub(b,mul(nrm(sub(b,a)),40)),'s-metal',14)}</g>`;
+    fr+=`<circle class="f-ink" cx="0" cy="0" r="30"/>`; // the pivot at the bottom bracket stays with the frame
   }
   if(g.hinge){const m=mul(add(ttEnd,HtJ),0.5);fr+=`<circle data-k="hinge" class="f-panel s-ink" cx="${fx(m.x)}" cy="${fx(-m.y)}" r="26" stroke-width="8"/>`;}
   s+=part('frame',fr);

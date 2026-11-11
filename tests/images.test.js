@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { CONTENT } = require('../content.js');
-const { detailImg } = require('../guide.js');
+const { detailImg, schemaImg } = require('../guide.js');
 
 const root = path.join(__dirname, '..');
 const MAX_BYTES = 120 * 1024;
@@ -39,9 +39,12 @@ test('no pictures of parts that are gone', () => {
 });
 
 // pictures of part details and their kinds, named by guide.detailImg
-// the suspension pages (schema: true) wait for their pictures — remove this filter when the files are in img/details (feedback 5)
-const detailPics = () => Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(d => !d.schema).flatMap(d =>
+const schemaIds = Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(d => d.schema).map(d => d.id));
+// every picture a detail can have; the suspension pages (schema: true) are not required yet — their files arrive later (feedback 5),
+// but once delivered they must be known names, so they are allowed here
+const detailPicsOf = pick => Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(pick).flatMap(d =>
   [detailImg(d.id), ...(d.kinds || []).map((_, i) => detailImg(d.id, i))]));
+const detailPics = () => detailPicsOf(d => !d.schema);
 
 test('every part detail and each of its kinds has a compressed picture', () => {
   const pics = detailPics();
@@ -50,13 +53,11 @@ test('every part detail and each of its kinds has a compressed picture', () => {
 });
 
 test('no pictures of details that are gone', () => {
-  const pics = new Set(detailPics());
+  const pics = new Set([...detailPicsOf(() => true), ...schemaIds.map(schemaImg)]);
   for (const f of fs.readdirSync(path.join(root, 'img/details'))) assert.ok(pics.has(`img/details/${f}`), f);
 });
 
 // principle drawings of the suspension pages: img/details/<id>-schema.svg (feedback 5); skipped until the file is delivered
-const { schemaImg } = require('../guide.js');
-const schemaIds = Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(d => d.schema).map(d => d.id));
 test('three schema pictures are expected', () => assert.deepEqual(schemaIds, ['springFork', 'airFork', 'rearShock']));
 for (const id of schemaIds) {
   const file = path.join(root, schemaImg(id));

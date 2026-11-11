@@ -500,3 +500,22 @@ test('twist shifter: how to use it', () => {
   assert.equal(sh.usage[0].title, 'Как пользоваться велошифтом');
   assert.ok(sh.usage[0].list.length >= 3);
 });
+
+test('review fixes: suspension page facts and drawings', () => {
+  for (const id of ['springFork', 'airFork']) assert.equal(forkDetail(id).style, 'mtb', `${id} draws a suspension fork`);
+  const air = forkDetail('airFork'), spring = forkDetail('springFork'), shock = forkDetail('rearShock');
+  assert.ok(!air.how.includes('помогает вилке вернуться') && air.how.includes('негативн'), 'the negative chamber starts the travel');
+  assert.ok(air.text.includes('80–160 мм'), 'one travel range on the page');
+  const airUsage = JSON.stringify(air.usage);
+  assert.ok(!airUsage.includes('обслуживайте нижние ноги'), 'lower-leg service is not a home job');
+  assert.ok(spring.usage[1].list.join(' ').includes('масл'), 'the oil spring fork lockout is explained');
+  assert.ok(spring.usage[4].list.join(' ').includes('верхнюю крышку'), 'a simple spring is swapped at home');
+  assert.ok(!shock.kinds[2].terrain.includes('туристических'));
+  const shifters = CONTENT.parts.drivetrain.details.find(d => d.id === 'shifters');
+  assert.ok(shifters.usage[0].list.join(' ').toLowerCase().includes('запомните'));
+});
+
+test('no suspension makers in the content', () => {
+  const s = JSON.stringify(CONTENT).toLowerCase();
+  for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
+});
