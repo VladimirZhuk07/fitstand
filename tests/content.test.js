@@ -494,3 +494,9 @@ test('fork details: rear shock page', () => {
   assert.deepEqual(d.usage.map(u => u.title), USAGE5);
   d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
 });
+
+test('twist shifter: how to use it', () => {
+  const sh = CONTENT.parts.drivetrain.details.find(d => d.id === 'shifters');
+  assert.equal(sh.usage[0].title, 'Как пользоваться велошифтом');
+  assert.ok(sh.usage[0].list.length >= 3);
+});
