@@ -53,3 +53,17 @@ test('no pictures of details that are gone', () => {
   const pics = new Set(detailPics());
   for (const f of fs.readdirSync(path.join(root, 'img/details'))) assert.ok(pics.has(`img/details/${f}`), f);
 });
+
+// principle drawings of the suspension pages: img/details/<id>-schema.svg (feedback 5); skipped until the file is delivered
+const { schemaImg } = require('../guide.js');
+const schemaIds = Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(d => d.schema).map(d => d.id));
+test('three schema pictures are expected', () => assert.deepEqual(schemaIds, ['springFork', 'airFork', 'rearShock']));
+for (const id of schemaIds) {
+  const file = path.join(root, schemaImg(id));
+  test(`schema picture ${id}: a standalone SVG without brands`, { skip: !fs.existsSync(file) && 'file not delivered yet' }, () => {
+    const svg = fs.readFileSync(file, 'utf8');
+    assert.match(svg, /<svg[\s>]/);
+    assert.ok(!/<(script|image)\b|href="http/i.test(svg), 'no scripts or external images');
+    for (const b of ['shimano', 'sram', 'rockshox', 'fox', 'manitou', 'suntour']) assert.ok(!svg.toLowerCase().includes(b), b);
+  });
+}
