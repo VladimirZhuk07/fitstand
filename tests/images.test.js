@@ -40,28 +40,26 @@ test('no pictures of parts that are gone', () => {
 
 // pictures of part details and their kinds, named by guide.detailImg
 const schemaIds = Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(d => d.schema).map(d => d.id));
-// every picture a detail can have; the suspension pages (schema: true) are not required yet — their files arrive later (feedback 5),
-// but once delivered they must be known names, so they are allowed here
-const detailPicsOf = pick => Object.values(CONTENT.parts).flatMap(p => (p.details || []).filter(pick).flatMap(d =>
+// pictures of part details and their kinds, named by guide.detailImg
+const detailPics = () => Object.values(CONTENT.parts).flatMap(p => (p.details || []).flatMap(d =>
   [detailImg(d.id), ...(d.kinds || []).map((_, i) => detailImg(d.id, i))]));
-const detailPics = () => detailPicsOf(d => !d.schema);
 
 test('every part detail and each of its kinds has a compressed picture', () => {
   const pics = detailPics();
-  assert.equal(pics.length, 17);
+  assert.equal(pics.length, 29);
   pics.forEach(check);
 });
 
 test('no pictures of details that are gone', () => {
-  const pics = new Set([...detailPicsOf(() => true), ...schemaIds.map(schemaImg)]);
+  const pics = new Set([...detailPics(), ...schemaIds.map(schemaImg)]);
   for (const f of fs.readdirSync(path.join(root, 'img/details'))) assert.ok(pics.has(`img/details/${f}`), f);
 });
 
-// principle drawings of the suspension pages: img/details/<id>-schema.svg (feedback 5); skipped until the file is delivered
+// principle drawings of the suspension pages: img/details/<id>-schema.svg (feedback 5)
 test('three schema pictures are expected', () => assert.deepEqual(schemaIds, ['springFork', 'airFork', 'rearShock']));
 for (const id of schemaIds) {
   const file = path.join(root, schemaImg(id));
-  test(`schema picture ${id}: a standalone SVG without brands`, { skip: !fs.existsSync(file) && 'file not delivered yet' }, () => {
+  test(`schema picture ${id}: a standalone SVG without brands`, () => {
     const svg = fs.readFileSync(file, 'utf8');
     assert.match(svg, /<svg[\s>]/);
     assert.ok(!/<(script|image)\b|href="http/i.test(svg), 'no scripts or external images');

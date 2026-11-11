@@ -131,3 +131,8 @@ test('a missing schema file removes its whole section, not just the picture', ()
   assert.match(src, /data-opt-sec/);
   assert.match(src, /closest\('section'\)/);
 });
+
+test('the schema opens full size on tap (the labels are tiny on a phone)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+  assert.match(src, /<a class="schema-link" href="\$\{schemaImg\(id\)\}"/);
+});

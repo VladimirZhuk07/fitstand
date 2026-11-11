@@ -257,7 +257,7 @@ function init() {
     return head(d.name, p.name) + bike(d.style || st.style, st.motor, d.hl || `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
       (d.text ? sec('Что это', `<div class="det">${pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '') +
       (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.schema ? sec('Принцип работы', pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`, true)) : '') +
+      (d.schema ? sec('Принцип работы', `<a class="schema-link" href="${schemaImg(id)}" target="_blank" rel="noopener">${pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`, true)}</a><p class="pg-note">Нажмите на схему, чтобы открыть её крупно.</p>`) : '') +
       (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${k.terrain ? `<p><b>Для каких трасс:</b> ${esc(k.terrain)}</p>` : ''}${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
       (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
       (d.care ? sec('Уход', list(d.care, 'why')) : '') +
