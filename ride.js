@@ -167,7 +167,8 @@ const BUILD = {
         out += `<path class="rb-fern" d="M${f1(x)} ${f1(y)} Q${f1(x + 6)} ${f1(y - 45)} ${f1(x - 18)} ${f1(y - 70)} M${f1(x + 10)} ${f1(y)} Q${f1(x + 22)} ${f1(y - 50)} ${f1(x + 40)} ${f1(y - 66)}"/>`;
         const rx = 18 + rg() * 14, ry = 12 + rg() * 8;
         out += `<ellipse class="rb-boulder" cx="${f1(x + cell * 0.45)}" cy="${f1(h - ry - 3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
-        out += `<path class="rb-root" d="M${f1(x + cell * 0.55)} ${f1(h - 6)} Q${f1(x + cell * 0.7)} ${f1(h - 48)} ${f1(x + cell * 0.95)} ${f1(h - 20)}"/>`;
+        const rx0 = i * cell; // the root stays inside its own cell: nothing is cut off at the tile seam
+        out += `<path class="rb-root" d="M${f1(rx0 + cell * 0.55)} ${f1(h - 6)} Q${f1(rx0 + cell * 0.7)} ${f1(h - 48)} ${f1(rx0 + cell * 0.95)} ${f1(h - 20)}"/>`;
       }
       return out;
     },
@@ -253,8 +254,8 @@ function applyRide(svg, shifts) {
   for (const id of ['far', 'mid', 'near', 'road']) svg.querySelector('#rb-' + id).setAttribute('patternTransform', `translate(${+shifts[id].toFixed(2)} 0)`);
 }
 
-// a slow device: the last 60 frame intervals (s) average above 28 ms — then the depth blur is dropped
-const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a + b, 0) / 60 > 0.028;
+// a slow device: the last 60 frame intervals (s) average above 40 ms (a 30 fps cap is not slow) — then the depth blur is dropped
+const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a + b, 0) / 60 > 0.04;
 
 // ---------- dust behind the rear wheel (mountain bike): six puffs, each lives a sixth of the loop, so the loop has no seam ----------
 const FX_N = 6;
@@ -278,7 +279,13 @@ function applyFx(svg, puffs, w) {
   });
 }
 
-const api = { effectPuffs, fxMarkup, applyFx, slowFrames, RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
+// the shadow follows the bounce by a few percent: it shrinks a little as the bike rises (bounce is relative to the scene's own amplitude)
+function shadowScale(bounce, sceneId) {
+  const amp = sceneData(sceneId).bounce.reduce((sum, [a]) => sum + a, 0), k = amp ? Math.max(-1, Math.min(1, bounce / amp)) : 0;
+  return { sx: 1 - 0.04 * k, sy: 1 - 0.08 * k };
+}
+
+const api = { shadowScale, effectPuffs, fxMarkup, applyFx, slowFrames, RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

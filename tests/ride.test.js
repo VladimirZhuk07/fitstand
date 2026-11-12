@@ -196,9 +196,9 @@ test('torso sway reaches 2 degrees, the head still holds', () => {
 
 test('slowFrames: a slow device is detected after 60 frames', () => {
   assert.equal(R.slowFrames(Array(60).fill(0.016)), false);
-  assert.equal(R.slowFrames(Array(60).fill(0.04)), true);
-  assert.equal(R.slowFrames(Array(59).fill(0.04)), false);
-  assert.equal(R.slowFrames([...Array(100).fill(0.04), ...Array(60).fill(0.016)]), false, 'only the last 60 count');
+  assert.equal(R.slowFrames(Array(60).fill(0.05)), true);
+  assert.equal(R.slowFrames(Array(59).fill(0.05)), false);
+  assert.equal(R.slowFrames([...Array(100).fill(0.05), ...Array(60).fill(0.016)]), false, 'only the last 60 count');
 });
 
 test('depth blur and the slow-device guard are wired in the page', () => {
@@ -291,4 +291,36 @@ test('fx markup and applyFx', () => {
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
   assert.match(html, /fxMarkup\(sceneId\(\)\)/);
   assert.match(html, /applyFx\(bikeSvg,state\.playing\?effectPuffs\(rideT,sceneId\(\)\):\[\]/);
+});
+
+// ---------- review fixes ----------
+test('root and fern paths stay inside their tile (no cut-off at the seam)', () => {
+  for (const id of SCENE_IDS) for (const r of [311, 203, 152.5]) for (const p of patterns(bg(id, r))) {
+    for (const e of p.inner.matchAll(/<path class="(rb-root|rb-fern)" d="([^"]+)"/g)) {
+      const nums = e[2].match(/-?\d+(?:\.\d+)?/g).map(Number);
+      for (let i = 0; i < nums.length; i += 2) assert.ok(nums[i] >= 0 && nums[i] <= p.tile && nums[i + 1] >= 0 && nums[i + 1] <= p.h, `${id} R=${r} ${p.id} ${e[1]} x=${nums[i]} tile=${p.tile}`);
+    }
+  }
+});
+
+test('shadowScale: a few percent, smaller when the bike rises, none at rest', () => {
+  for (const id of SCENE_IDS) {
+    const amp = R.SCENES[id].bounce.reduce((s, [a]) => s + a, 0);
+    assert.deepEqual(R.shadowScale(0, id), { sx: 1, sy: 1 });
+    for (const b of [-amp, -amp / 2, amp / 2, amp]) {
+      const { sx, sy } = R.shadowScale(b, id);
+      assert.ok(sx >= 0.95 && sx <= 1.05 && sy >= 0.9 && sy <= 1.1, `${id} b=${b}`);
+    }
+    assert.ok(R.shadowScale(amp, id).sx < 1 && R.shadowScale(-amp, id).sx > 1, `${id}: the shadow shrinks as the bike rises`);
+  }
+  assert.deepEqual(R.shadowScale(5, 'nope'), R.shadowScale(5, 'default'));
+});
+
+test('the slow-device guard ignores frames that redrew the scene and tolerates a 30 fps cap', () => {
+  assert.equal(R.slowFrames(Array(60).fill(0.033)), false, '30 fps is not slow');
+  assert.equal(R.slowFrames(Array(60).fill(0.05)), true);
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /if\(!redrew\)\{frameDts\.push\(dt\)/);
+  assert.match(html, /shadowScale\(pose\.bounce,sceneId\(\)\)/);
+  assert.match(html, /removeAttribute\('transform'\)/);
 });

@@ -789,12 +789,15 @@ function updateDynamic(){
   applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
-  // the shadow stretches and squeezes a little with the bounce
-  if(refs.shadow){const cx=+refs.shadow.getAttribute('cx'),cy=+refs.shadow.getAttribute('cy');refs.shadow.setAttribute('transform',`translate(${fx(cx)} ${fx(cy)}) scale(${(1+0.012*pose.bounce).toFixed(3)} ${(1-0.04*pose.bounce).toFixed(3)}) translate(${fx(-cx)} ${fx(-cy)})`);}
+  // the shadow shrinks a little as the bike rises; at rest (pause) it keeps its own shape
+  if(refs.shadow){
+    if(!state.playing)refs.shadow.removeAttribute('transform');
+    else{const cx=+refs.shadow.getAttribute('cx'),cy=+refs.shadow.getAttribute('cy'),{sx,sy}=shadowScale(pose.bounce,sceneId());refs.shadow.setAttribute('transform',`translate(${fx(cx)} ${fx(cy)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(${fx(-cx)} ${fx(-cy)})`);}
+  }
   if($('#fx'))applyFx(bikeSvg,state.playing?effectPuffs(rideT,sceneId()):[],{x:refs.pts.R.x,y:refs.pts.ground});
   if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR,sceneId()).x;applyRide(bikeSvg,sh);}
 }
-let last=performance.now(), frameDts=[], blurOff=false;
+let last=performance.now(), frameDts=[], blurOff=false, redrew=false;
 function tick(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   if(target){
@@ -809,9 +812,10 @@ function tick(now){
     for(const key of ['x','y','w','h']){const d=tb[key]-vb[key];if(Math.abs(d)>0.3){vb[key]+=d*k*0.8;vbMove=true;}else vb[key]=tb[key];}
     if(vbMove||moving||dirty){bikeSvg.setAttribute('viewBox',`${fx(vb.x)} ${fx(vb.y)} ${fx(vb.w)} ${fx(vb.h)}`);
       const nu=computeUx(vb); if(Math.abs(nu-ux)/ux>0.04){ux=nu;dirty=true;}}
+    redrew=moving||dirty||vbMove; // drags and tweens are slow whatever the blur: they do not count for the guard
     if(moving||dirty){rebuild();dirty=false;updateDynamic();}
     if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();
-      frameDts.push(dt); if(frameDts.length>120)frameDts.splice(0,60);
+      if(!redrew){frameDts.push(dt); if(frameDts.length>120)frameDts.splice(0,60);}
       if(!blurOff&&slowFrames(frameDts))blurOff=true;}
     bikeSvg.classList.toggle('no-blur',blurOff||!state.playing);
     if(personDirty){personSvg.innerHTML=personMarkup(curP);personDirty=false;}
