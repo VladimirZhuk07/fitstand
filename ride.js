@@ -9,7 +9,7 @@ const wrap = t => ((t % RIDE.PERIOD) + RIDE.PERIOD) % RIDE.PERIOD;
 // bounce: [amplitude mm, whole periods a loop, phase] — every wobble has a whole number of periods, so the loop has no seam
 const SCENES = {
   default: { kmh: 21.6, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
-  road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'open', mid: 'barriers', near: 'asphalt', road: 'smooth' } },
   city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
   mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
 };
@@ -87,9 +87,55 @@ function specks(tile, h, seed) {
   return out;
 }
 
+// ---------- layer builders: each draws the inside of one pattern tile; the scene table says which one a layer uses ----------
+// y of a hill line made by hillPath at x
+const hillY = (tile, base, waves, x) => base - waves.reduce((sum, [a, n, ph]) => sum + a * Math.cos((TAU * n * x) / tile + ph), 0);
+const BUILD = {
+  far: {
+    default: (tile, h) => `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/><path class="rb-hill" d="${hillPath(tile, h, h * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`,
+    // an open horizon: long low hills and a far line of trees
+    open: (tile, h) => {
+      const w = [[18, 1, 2.2], [10, 3, 1.1]], base = h * 0.78, r = rng(5), n = 18;
+      let line = '';
+      for (let i = 0; i < n; i++) {
+        const x = ((i + 0.5) * tile) / n, rx = 26 + r() * 14, ry = 14 + r() * 8;
+        line += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.5)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
+      }
+      return `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.66, [[26, 1, 0.4], [14, 2, 1.7]])}"/><path class="rb-hill" d="${hillPath(tile, h, base, w)}"/>${line}`;
+    },
+  },
+  mid: {
+    default: (tile, h) => trees(tile, h, 7),
+    // a guardrail along the road, with posts, and two signs on poles
+    barriers: (tile, h) => {
+      const n = Math.max(1, Math.round(tile / 140)), step = tile / n;
+      let out = `<rect class="rb-barrier" x="0" y="${f1(h - 78)}" width="${f1(tile)}" height="16"/><rect class="rb-barrier" x="0" y="${f1(h - 48)}" width="${f1(tile)}" height="10"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-barrier" x="${f1(i * step + step / 2 - 6)}" y="${f1(h - 64)}" width="12" height="56"/>`;
+      for (const px of [tile * 0.22, tile * 0.68]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 300)}" width="14" height="${f1(222)}"/><rect class="rb-sign" x="${f1(px - 30)}" y="${f1(h - 360)}" width="74" height="60" rx="8"/>`;
+      return out;
+    },
+  },
+  near: {
+    default: (tile, h) => grass(tile, 23, h),
+    // smooth asphalt of the road shoulder with a long marking line: the blur makes it a fast stripe
+    asphalt: (tile, h) => `<rect class="rb-road" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="${f1(h * 0.7)}"/><rect class="rb-marking" x="0" y="${f1(h * 0.3 + 8)}" width="${f1(tile)}" height="8"/>`,
+  },
+  road: {
+    default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // flawless asphalt with a dashed centre line
+    smooth: (tile, h) => {
+      const n = Math.max(1, Math.round(tile / 340)), step = tile / n;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-marking" x="${f1(i * step + (step - 150) / 2)}" y="${f1(h * 0.55)}" width="150" height="8"/>`;
+      return out;
+    },
+  },
+};
+const layerInner = (layer, sceneId, tile, h) => (BUILD[layer][sceneData(sceneId).layers[layer]] || BUILD[layer].default)(tile, h);
+
 // the whole background for the view b (viewBox in mm) with the ground at groundY
-function rideBgMarkup(b, groundY, wheelR) {
-  const tile = id => layerShift(id, 0, wheelR).tile;
+function rideBgMarkup(b, groundY, wheelR, sceneId) {
+  const tile = id => layerShift(id, 0, wheelR, sceneId).tile;
   // a wide screen shows more than the viewBox (preserveAspectRatio meet), so the background reaches far past it
   const X0 = b.x - b.w * 3, W = b.w * 7, Y0 = b.y - b.h, bottom = b.y + b.h * 2;
   // the road is a band under the wheels; below it a verge with grass and posts
@@ -99,17 +145,15 @@ function rideBgMarkup(b, groundY, wheelR) {
   const rect = (id, y, h) => `<rect x="${f1(X0)}" y="${f1(y + 4)}" width="${f1(W)}" height="${f1(h - 4)}" fill="url(#rb-${id})"/>`;
   const tf = tile('far'), tm = tile('mid'), tr = tile('road'), tn = tile('near');
   const defs = '<defs>' +
-    '<linearGradient id="rb-skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sky-top)"/><stop offset="1" style="stop-color:var(--sky-bottom)"/></linearGradient>' +
+    '<linearGradient id="rb-skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb,var(--sky-top),var(--tint,transparent) var(--tk,0%))"/><stop offset="1" style="stop-color:color-mix(in srgb,var(--sky-bottom),var(--tint,transparent) var(--tk,0%))"/></linearGradient>' +
     '<radialGradient id="rb-sunG" cx="0.12" cy="0.25" r="0.75"><stop offset="0" style="stop-color:var(--sun);stop-opacity:.55"/><stop offset="1" style="stop-color:var(--sun);stop-opacity:0"/></radialGradient>' +
     '<linearGradient id="rb-hazeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--haze);stop-opacity:0"/><stop offset="0.75" style="stop-color:var(--haze);stop-opacity:0"/><stop offset="1" style="stop-color:var(--haze);stop-opacity:.6"/></linearGradient>' +
-    pat('far', groundY - HF, HF,
-      `<path class="rb-hill2" d="${hillPath(tf, HF, HF * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/>` +
-      `<path class="rb-hill" d="${hillPath(tf, HF, HF * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`) +
-    pat('mid', groundY - HM, HM, trees(tm, HM, 7)) +
-    pat('road', RY, HR, `<rect class="rb-road" x="0" y="0" width="${f1(tr)}" height="${f1(HR)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tr)}" height="5"/>${specks(tr, HR, 11)}`) +
-    pat('near', NY, HN, grass(tn, 23, HN)) +
+    pat('far', groundY - HF, HF, layerInner('far', sceneId, tf, HF)) +
+    pat('mid', groundY - HM, HM, layerInner('mid', sceneId, tm, HM)) +
+    pat('road', RY, HR, layerInner('road', sceneId, tr, HR)) +
+    pat('near', NY, HN, layerInner('near', sceneId, tn, HN)) +
     '</defs>';
-  return `<g id="rideBg">${defs}` +
+  return `<g id="rideBg" data-scene="${sceneData(sceneId) === SCENES.default ? 'default' : sceneId}">${defs}` +
     `<rect class="rb-sky" x="${f1(X0)}" y="${f1(Y0)}" width="${f1(W)}" height="${f1(groundY - Y0)}" fill="url(#rb-skyG)"/>` +
     `<rect x="${f1(X0)}" y="${f1(Y0)}" width="${f1(W)}" height="${f1(groundY - Y0)}" fill="url(#rb-sunG)"/>` +
     rect('far', groundY - HF, HF) +

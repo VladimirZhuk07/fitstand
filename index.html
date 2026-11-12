@@ -188,10 +188,13 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike.riding .spokes{opacity:.28} #bike.riding .blur-disc{opacity:.14}
 #bike.riding .shadow{opacity:.14}
 .stage-note{transition:opacity .3s} #bike.riding~.stage-note{opacity:0}
-.rb-hill{fill:var(--hill)} .rb-hill2{fill:var(--hill2)} .rb-tree{fill:var(--tree)} .rb-tree2{opacity:.82}
-.rb-trunk{fill:var(--trunk)} .rb-bush{fill:var(--bush)} .rb-midlayer{opacity:.92}
-.rb-road{fill:var(--road)} .rb-verge{fill:var(--verge)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
+.rb-hill{fill:color-mix(in srgb,var(--hill),var(--tint,transparent) var(--tk,0%))} .rb-hill2{fill:color-mix(in srgb,var(--hill2),var(--tint,transparent) var(--tk,0%))} .rb-tree{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%))} .rb-tree2{opacity:.82}
+.rb-trunk{fill:var(--trunk)} .rb-bush{fill:color-mix(in srgb,var(--bush),var(--tint,transparent) var(--tk,0%))} .rb-midlayer{opacity:.92}
+.rb-road{fill:color-mix(in srgb,var(--road),var(--tint,transparent) var(--tk,0%))} .rb-verge{fill:color-mix(in srgb,var(--verge),var(--tint,transparent) var(--tk,0%))} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
+/* scenes (feedback 5): a tint mixed into the theme colours, so one definition serves the light and the dark theme */
+#bike[data-scene="road"]{--tint:#9FC4E8;--tk:18%}
+.rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}
@@ -753,7 +756,7 @@ function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
   refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
-  refs.pts=geomPts(cur); refs.shadow=document.getElementById('shadow');
+  bikeSvg.dataset.scene = sceneId(); refs.pts=geomPts(cur); refs.shadow=document.getElementById('shadow');
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
   $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR,sceneId()):'';
   // the rider: the far leg behind the frame, the rest over the cockpit

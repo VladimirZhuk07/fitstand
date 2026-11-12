@@ -208,3 +208,36 @@ test('depth blur and the slow-device guard are wired in the page', () => {
   assert.match(html, /slowFrames\(frameDts\)/);
   assert.match(html, /classList\.toggle\('no-blur',blurOff\|\|!state\.playing\)/);
 });
+
+// ---------- scene backgrounds (feedback 5) ----------
+const VIEW = { x: -900, y: -1900, w: 2400, h: 2300 };
+const bg = (id, r = 311) => R.rideBgMarkup(VIEW, 241, r, id);
+const patterns = m => [...m.matchAll(/<pattern id="rb-(\w+)"[^>]* width="([\d.]+)" height="([\d.]+)">(.*?)<\/pattern>/g)].map(x => ({ id: x[1], tile: +x[2], h: +x[3], inner: x[4] }));
+
+test('every scene: patterns stay inside their tile, the scene is named, colours come from CSS', () => {
+  for (const id of SCENE_IDS) for (const r of [311, 203]) {
+    const m = bg(id, r);
+    assert.match(m, new RegExp(`^<g id="rideBg" data-scene="${id}"`), id);
+    assert.doesNotMatch(m, /(fill|stroke|stop-color)="#/, `${id}: colours from CSS variables`);
+    for (const p of patterns(m)) {
+      for (const e of p.inner.matchAll(/<rect[^>]* x="([-\d.]+)"[^>]* y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/g))
+        assert.ok(+e[1] >= -0.05 && +e[1] + +e[3] <= p.tile + 0.05 && +e[2] >= -0.05 && +e[2] + +e[4] <= p.h + 0.05, `${id}/${p.id}: rect ${e[0].slice(0, 70)}`);
+      for (const e of p.inner.matchAll(/<ellipse[^>]* cx="([-\d.]+)" cy="([-\d.]+)" rx="([\d.]+)" ry="([\d.]+)"/g))
+        if (p.id !== 'far') assert.ok(+e[2] - +e[4] >= 2 && +e[2] + +e[4] <= p.h && +e[1] - +e[3] >= -0.05 && +e[1] + +e[3] <= p.tile + 0.05, `${id}/${p.id}: ellipse ${e[0].slice(0, 70)}`);
+    }
+  }
+});
+
+test('road scene: open horizon, guardrail, signs, a dashed centre line; not the default trees', () => {
+  const m = bg('road');
+  for (const c of ['rb-barrier', 'rb-sign', 'rb-marking', 'rb-treeline']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-speck"') && !m.includes('class="rb-house"'));
+  assert.ok(bg('default').includes('class="rb-tree"') && !bg('default').includes('rb-barrier'), 'the default scene is unchanged');
+});
+
+test('road scene: the tint is set per scene in CSS', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /#bike\[data-scene="road"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}/);
+  assert.match(html, /\.rb-hill\{fill:color-mix\(in srgb,var\(--hill\),var\(--tint,transparent\) var\(--tk,0%\)\)\}/);
+  assert.match(html, /bikeSvg\.dataset\.scene\s*=\s*sceneId\(\)/);
+});
