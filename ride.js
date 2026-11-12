@@ -12,8 +12,14 @@ const SCENES = {
   road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'open', mid: 'barriers', near: 'asphalt', road: 'smooth' } },
   city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'roofs', mid: 'street', near: 'curb', road: 'tiles' } },
   mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'forest', mid: 'trunks', near: 'roots', road: 'dirt' } },
+  hybrid:  { kmh: 20, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'park', near: 'verge', road: 'cracks' } },
+  women:   { kmh: 14, bounce: [[0.8, 13, 0], [0.8, 29, 0.7]], effect: 'none', layers: { far: 'water', mid: 'promenade', near: 'flowers', road: 'tiles' } },
+  gravel:  { kmh: 23.5, bounce: [[2.2, 9, 0], [1.8, 23, 0.7]], effect: 'dust', layers: { far: 'fields', mid: 'fence', near: 'gravel', road: 'gravelroad' } },
+  cx:      { kmh: 24, bounce: [[3, 7, 0], [2.5, 19, 0.7], [2, 37, 1.9]], effect: 'mud', layers: { far: 'woodline', mid: 'course', near: 'mudgrass', road: 'mud' } },
+  track:   { kmh: 37.5, bounce: [[0.3, 13, 0], [0.3, 29, 0.7]], effect: 'none', tilt: 4, layers: { far: 'stands', mid: 'rail', near: 'trackline', road: 'wood' } },
+  folding: { kmh: 13.5, bounce: [[1, 13, 0], [1, 29, 0.7]], effect: 'none', layers: { far: 'harbour', mid: 'quay', near: 'cobbles', road: 'tiles' } },
 };
-const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb' };
+const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const sceneOf = style => (typeof style === 'string' && has(STYLE_SCENE, style) ? STYLE_SCENE[style] : 'default');
 const sceneData = id => (typeof id === 'string' && has(SCENES, id) ? SCENES[id] : SCENES.default);

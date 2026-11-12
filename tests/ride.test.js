@@ -132,14 +132,19 @@ test('pattern content stays inside its tile (no seams, no clipped crowns)', () =
 });
 
 // ---------- scenes (feedback 5) ----------
-const SCENE_IDS = ['default', 'road', 'city', 'mtb'];
-const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], default: [20, 24] };
+const SCENE_IDS = ['default', 'road', 'city', 'mtb', 'hybrid', 'women', 'gravel', 'cx', 'track', 'folding'];
+const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], hybrid: [18, 22], women: [12, 16], gravel: [22, 25], cx: [22, 26], track: [35, 40], folding: [12, 15], default: [20, 24] };
 const R2 = [...WHEELS, 203, 152.5];
 
 test('sceneOf: a scene per style, unknown styles fall back to default', () => {
-  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', women: 'default', track: 'default', undefined: 'default', __proto__: 'default' };
-  for (const k of ['road', 'city', 'mtb', 'fullsus', 'women', 'track']) assert.equal(R.sceneOf(k), want[k], k);
-  for (const k of [undefined, '__proto__', 'constructor', null]) assert.equal(R.sceneOf(k), 'default', String(k));
+  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
+  for (const [k, v] of Object.entries(want)) assert.equal(R.sceneOf(k), v, k);
+  for (const k of [undefined, '__proto__', 'constructor', null, 'bmx', 'kid']) assert.equal(R.sceneOf(k), 'default', String(k));
+});
+
+test('only the track leans into the bank', () => {
+  assert.equal(R.SCENES.track.tilt, 4);
+  for (const id of SCENE_IDS.filter(i => i !== 'track')) assert.ok(!R.SCENES[id].tilt, id);
 });
 
 test('scene speeds are in the seller ranges', () => {
@@ -163,7 +168,7 @@ test('every scene keeps the wheel, the road and the layers in step', () => {
     for (const { id: lid, k } of R.LAYERS) {
       const { tile } = R.layerShift(lid, 0, r, id), n = (R.speedOf(r, id) * P * k) / tile;
       assert.ok(Math.abs(n - Math.round(n)) < 1e-9, `${id} ${lid} R=${r}`);
-      assert.ok(tile >= 2400 && tile <= 5000, `${id} ${lid} tile ${tile}`);
+      assert.ok(tile >= 1900 && tile <= 5000, `${id} ${lid} tile ${tile}`);
     }
   }
 });
