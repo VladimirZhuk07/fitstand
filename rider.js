@@ -41,16 +41,23 @@ function leg(l, hip, hr, far) {
   ];
 }
 
+// a ponytail from the back of the head under the helmet: a tapered tail that swings by `sw` degrees
+function ponytail(c, R, sw) {
+  const root = add(c, V(-R * 1.0, R * 0.3)), tip = add(root, rot(V(-R * 1.15, -R * 0.85), sw));
+  return { id: 'rd-ponytail', tag: 'path', cls: 'rd-hair', attrs: { d: limbPath(root, tip, R * 0.42, R * 0.14, R * 0.1, 0.35) } };
+}
+
 function riderShapes(g, j, pose = {}) {
-  const hr = g.headR, { hip, up } = j, moving = Number.isFinite(pose.t), tau = moving ? phase(pose.t) : 0;
+  const hr = g.headR, { hip, up } = j, moving = Number.isFinite(pose.t), tau = moving ? phase(pose.t) : 0, fem = !!pose.female;
   // cloth: the shirt hem flutters a little (2 and 5 times a loop), the helmet strap swings
   const hem = moving ? 8 * (0.6 * Math.sin(TAU * 2 * tau) + 0.4 * Math.sin(TAU * 5 * tau + 1)) : 0;
   const strap = moving ? 3 * Math.sin(TAU * 3 * tau) : 0;
   // torso: back curve behind, chest in front
   const d = unit(sub(up.shoulder, hip)), nn = perp(d), front = nn.x > 0 ? nn : mul(nn, -1), back = mul(front, -1);
-  const hipB = add(add(hip, mul(back, hr * 0.75)), mul(back, hem)), hipF = add(hip, mul(front, hr * 0.55));
-  const shB = add(up.shoulder, mul(back, hr * 0.6)), shF = add(up.shoulder, mul(front, hr * 0.65));
-  const midB = add(lerp(hip, up.shoulder, 0.55), mul(back, hr * 1.0)), chest = add(lerp(hip, up.shoulder, 0.72), mul(front, hr * 1.05));
+  // a woman: narrower shoulders, wider hips, a fuller chest line
+  const hipB = add(add(hip, mul(back, hr * (fem ? 0.9 : 0.75))), mul(back, hem)), hipF = add(hip, mul(front, hr * (fem ? 0.7 : 0.55)));
+  const shB = add(up.shoulder, mul(back, hr * (fem ? 0.5 : 0.6))), shF = add(up.shoulder, mul(front, hr * (fem ? 0.55 : 0.65)));
+  const midB = add(lerp(hip, up.shoulder, 0.55), mul(back, hr * 1.0)), chest = add(lerp(hip, up.shoulder, 0.72), mul(front, hr * (fem ? 1.12 : 1.05)));
   const belly = add(lerp(hip, up.shoulder, 0.3), mul(front, hr * 0.8));
   const torsoD = `M${P(hipB)} Q${P(midB)} ${P(shB)} Q${P(add(up.shoulder, mul(d, hr * 0.4)))} ${P(shF)} Q${P(chest)} ${P(lerp(shF, hipF, 0.45))} Q${P(belly)} ${P(hipF)} Q${P(add(hip, mul(d, -hr * 0.5)))} ${P(hipB)} Z`;
   const fold = k => { const a = add(lerp(hip, up.shoulder, k), mul(back, hr * 0.5)), b = add(lerp(hip, up.shoulder, k + 0.08), mul(front, hr * 0.3));
@@ -65,13 +72,14 @@ function riderShapes(g, j, pose = {}) {
     { id: 'rd-torso', tag: 'path', cls: 'rd-shirt', attrs: { d: torsoD } },
     { id: 'rd-fold1', tag: 'path', cls: 'rd-fold', attrs: { d: fold(0.25), 'stroke-width': f1(hr * 0.06) } },
     { id: 'rd-fold2', tag: 'path', cls: 'rd-fold', attrs: { d: fold(0.45), 'stroke-width': f1(hr * 0.06) } },
-    { id: 'rd-seat', tag: 'ellipse', cls: 'rd-shorts', attrs: { cx: f1(hip.x), cy: f1(-hip.y), rx: f1(hr * 0.72), ry: f1(hr * 0.5) } },
+    { id: 'rd-seat', tag: 'ellipse', cls: 'rd-shorts', attrs: { cx: f1(hip.x), cy: f1(-hip.y), rx: f1(hr * (fem ? 0.82 : 0.72)), ry: f1(hr * (fem ? 0.56 : 0.5)) } },
     ...leg(j.near, hip, hr, false),
     { id: 'rd-neck', tag: 'path', cls: 'rd-skin', attrs: { d: limbPath(neckFrom, neckTo, R * 0.5, R * 0.45) } },
     { id: 'rd-head', tag: 'circle', cls: 'rd-skin', attrs: { cx: f1(c.x), cy: f1(-c.y), r: f1(R * 0.92) } },
     { id: 'rd-nose', tag: 'path', cls: 'rd-skin', attrs: { d: `M${P(add(c, V(R * 0.82, -R * 0.05)))} L${P(add(c, V(R * 1.06, -R * 0.32)))} L${P(add(c, V(R * 0.84, -R * 0.4)))} Z` } },
     { id: 'rd-chin', tag: 'path', cls: 'rd-skin', attrs: { d: `M${P(add(c, V(R * 0.2, -R * 0.75)))} Q${P(add(c, V(R * 0.75, -R * 1.0)))} ${P(add(c, V(R * 0.85, -R * 0.55)))} L${P(add(c, V(R * 0.5, -R * 0.3)))} Z` } },
     { id: 'rd-ear', tag: 'ellipse', cls: 'rd-ear', attrs: { cx: f1(c.x - R * 0.12), cy: f1(-c.y + R * 0.05), rx: f1(R * 0.16), ry: f1(R * 0.22) } },
+    ...(fem ? [ponytail(c, R, moving ? 10 * Math.sin(TAU * 3 * tau + 0.5) : 0)] : []),
     { id: 'rd-helmet', tag: 'path', cls: 'rd-helmet', attrs: { d: `M${P(add(c, V(-R * 1.12, -R * 0.05)))} Q${P(add(c, V(-R * 1.15, R * 1.25)))} ${P(add(c, V(R * 0.2, R * 1.18)))} Q${P(add(c, V(R * 1.2, R * 1.05)))} ${P(add(c, V(R * 1.18, R * 0.12)))} L${P(add(c, V(R * 0.9, R * 0.18)))} Q${P(add(c, V(0, R * 0.32)))} ${P(add(c, V(-R * 1.12, -R * 0.05)))} Z`, transform: rot } },
     ...vents,
     { id: 'rd-visor', tag: 'path', cls: 'rd-visor', attrs: { d: `M${P(add(c, V(R * 0.95, R * 0.25)))} L${P(add(c, V(R * 1.45, R * 0.18)))} L${P(add(c, V(R * 1.2, R * 0.05)))} Z`, transform: rot } },
@@ -93,7 +101,8 @@ const tagOf = s => `<${s.tag} id="${s.id}" class="${s.cls}" ${Object.entries(s.a
 // the far leg goes before the frame, everything else after the cockpit: two pieces of markup
 function riderMarkup(g, j, pose, side) {
   const shapes = riderShapes(g, j, pose).filter(s => (side === 'far') === s.id.startsWith('rd-far-'));
-  return side === 'far' ? `<g class="rider rider-v rider-far">${shapes.map(tagOf).join('')}</g>` : `<g class="rider rider-v">${DEFS}${shapes.map(tagOf).join('')}</g>`;
+  const f = pose && pose.female ? ' rider-f' : '';
+  return side === 'far' ? `<g class="rider rider-v rider-far${f}">${shapes.map(tagOf).join('')}</g>` : `<g class="rider rider-v${f}">${DEFS}${shapes.map(tagOf).join('')}</g>`;
 }
 // a frame of the animation: only attributes of the existing elements change
 function applyRider(svg, shapes) {
