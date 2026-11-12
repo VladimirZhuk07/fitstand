@@ -188,11 +188,24 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike.riding .spokes{opacity:.28} #bike.riding .blur-disc{opacity:.14}
 #bike.riding .shadow{opacity:.14}
 .stage-note{transition:opacity .3s} #bike.riding~.stage-note{opacity:0}
-.rb-hill{fill:var(--hill)} .rb-hill2{fill:var(--hill2)} .rb-tree{fill:var(--tree)} .rb-tree2{opacity:.82}
-.rb-trunk{fill:var(--trunk)} .rb-bush{fill:var(--bush)} .rb-midlayer{opacity:.92}
-.rb-road{fill:var(--road)} .rb-verge{fill:var(--verge)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
+.rb-hill{fill:color-mix(in srgb,var(--hill),var(--tint,transparent) var(--tk,0%))} .rb-hill2{fill:color-mix(in srgb,var(--hill2),var(--tint,transparent) var(--tk,0%))} .rb-tree{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%))} .rb-tree2{opacity:.82}
+.rb-trunk{fill:var(--trunk)} .rb-bush{fill:color-mix(in srgb,var(--bush),var(--tint,transparent) var(--tk,0%))} .rb-midlayer{opacity:.92}
+.rb-road{fill:color-mix(in srgb,var(--road),var(--tint,transparent) var(--tk,0%))} .rb-verge{fill:color-mix(in srgb,var(--verge),var(--tint,transparent) var(--tk,0%))} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
+/* scenes (feedback 5): a tint mixed into the theme colours, so one definition serves the light and the dark theme */
+#bike[data-scene="road"]{--tint:#9FC4E8;--tk:18%}
+#bike[data-scene="city"]{--tint:#F2B27A;--tk:20%}
+#bike[data-scene="mtb"]{--tint:#7FA070;--tk:24%}
+.rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
+.rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
+.rb-trunk-dark{fill:color-mix(in srgb,var(--trunk) 70%,black)} .rb-boulder{fill:color-mix(in srgb,var(--roadedge) 65%,var(--trunk))}
+.rb-root{stroke:var(--trunk);stroke-width:12;fill:none;stroke-linecap:round} .rb-fern{stroke:var(--grass);stroke-width:7;fill:none;stroke-linecap:round}
+.rb-light{fill:var(--sun);opacity:.35} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} #bike:not(.riding) #fx{opacity:0}
 .rb-nearlayer{opacity:.85}
+/* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
+.rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}
+#bike.no-blur .rb-midlayer,#bike.no-blur .rb-nearlayer{filter:none}
+.rim-glint{fill:none;stroke:var(--hi);stroke-width:8;stroke-linecap:round}
 /* the volumetric rider (rider.js): light from the upper left; the far leg darker */
 .rd-skin{fill:url(#rd-gSkin)} .rd-skin-far{fill:color-mix(in srgb,var(--skin-2) 82%,black)} .rd-ear{fill:var(--ear)}
 .rd-shirt{fill:url(#rd-gShirt)} .rd-fold{fill:none;stroke:var(--fold);stroke-opacity:.45;stroke-linecap:round}
@@ -743,15 +756,17 @@ function computeUx(b){
   const r=bikeSvg.getBoundingClientRect(); if(!r.width||!r.height)return 1;
   return 1/Math.min(r.width/b.w,r.height/b.h);
 }
+// the scene of the ride follows the chosen style (road, city, mountain; the rest keep the default one)
+const sceneId=()=>sceneOf(state.style);
 function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
   refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
-  refs.pts=geomPts(cur);
+  bikeSvg.dataset.scene = sceneId(); refs.pts=geomPts(cur); refs.shadow=document.getElementById('shadow');
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
-  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR):'';
+  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR,sceneId())+fxMarkup(sceneId()):'';
   // the rider: the far leg behind the frame, the rest over the cockpit
-  const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR));
+  const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR,sceneId()));
   $('#riderFarSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'far');
   $('#riderSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'near');
 }
@@ -763,7 +778,7 @@ function riderJoints(g,pts,pose){
 }
 function updateDynamic(){
   // the scene runs at the speed of the target wheel: it does not change while the drawing tweens to a new size
-  const g=cur, pose=ridePose(rideT,target.wheelR), j=riderJoints(g,refs.pts,pose);
+  const g=cur, pose=ridePose(rideT,target.wheelR,sceneId()), j=riderJoints(g,refs.pts,pose);
   for (const [side,l] of [['n',j.near],['f',j.far]]){
     setL(refs[side+'Crank'],V(0,0),l.pedal);
     setL(refs[side+'Pedal'],sub(l.pedal,V(48,0)),add(l.pedal,V(48,0)));
@@ -774,9 +789,15 @@ function updateDynamic(){
   applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
-  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR).x;applyRide(bikeSvg,sh);}
+  // the shadow shrinks a little as the bike rises; at rest (pause) it keeps its own shape
+  if(refs.shadow){
+    if(!state.playing)refs.shadow.removeAttribute('transform');
+    else{const cx=+refs.shadow.getAttribute('cx'),cy=+refs.shadow.getAttribute('cy'),{sx,sy}=shadowScale(pose.bounce,sceneId());refs.shadow.setAttribute('transform',`translate(${fx(cx)} ${fx(cy)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(${fx(-cx)} ${fx(-cy)})`);}
+  }
+  if($('#fx'))applyFx(bikeSvg,state.playing?effectPuffs(rideT,sceneId()):[],{x:refs.pts.R.x,y:refs.pts.ground});
+  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR,sceneId()).x;applyRide(bikeSvg,sh);}
 }
-let last=performance.now();
+let last=performance.now(), frameDts=[], blurOff=false, redrew=false;
 function tick(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   if(target){
@@ -791,8 +812,12 @@ function tick(now){
     for(const key of ['x','y','w','h']){const d=tb[key]-vb[key];if(Math.abs(d)>0.3){vb[key]+=d*k*0.8;vbMove=true;}else vb[key]=tb[key];}
     if(vbMove||moving||dirty){bikeSvg.setAttribute('viewBox',`${fx(vb.x)} ${fx(vb.y)} ${fx(vb.w)} ${fx(vb.h)}`);
       const nu=computeUx(vb); if(Math.abs(nu-ux)/ux>0.04){ux=nu;dirty=true;}}
+    redrew=moving||dirty||vbMove; // drags and tweens are slow whatever the blur: they do not count for the guard
     if(moving||dirty){rebuild();dirty=false;updateDynamic();}
-    if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();}
+    if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();
+      if(!redrew){frameDts.push(dt); if(frameDts.length>120)frameDts.splice(0,60);}
+      if(!blurOff&&slowFrames(frameDts))blurOff=true;}
+    bikeSvg.classList.toggle('no-blur',blurOff||!state.playing);
     if(personDirty){personSvg.innerHTML=personMarkup(curP);personDirty=false;}
   }
   requestAnimationFrame(tick);
