@@ -142,9 +142,9 @@ test('sceneOf: a scene per style, unknown styles fall back to default', () => {
   for (const k of [undefined, '__proto__', 'constructor', null, 'bmx', 'kid']) assert.equal(R.sceneOf(k), 'default', String(k));
 });
 
-test('only the track leans into the bank', () => {
-  assert.equal(R.SCENES.track.tilt, 4);
-  for (const id of SCENE_IDS.filter(i => i !== 'track')) assert.ok(!R.SCENES[id].tilt, id);
+test('the bank tilt was tried on the track and rejected: no scene leans (the option stays, tested below)', () => {
+  // at 4 degrees the whole scene reads as a climb up a hill, not as a banked turn; a velodrome is flat from the side
+  for (const id of SCENE_IDS) assert.ok(!R.SCENES[id].tilt, id);
 });
 
 test('scene speeds are in the seller ranges', () => {
@@ -386,4 +386,40 @@ test('fx markup: clods for cyclocross, dust for gravel and mtb, nothing otherwis
   for (const id of ['road', 'track', 'default']) assert.equal(R.fxMarkup(id), '');
   assert.equal((R.fxMarkup('cx').match(/<circle/g) || []).length, 6);
   assert.match(indexHtml(), /\.fx-mud\{fill:color-mix\(in srgb,var\(--trunk\) 85%,black\)\}/);
+});
+
+test('track scene: stands, rails, flags, wooden boards; no houses', () => {
+  const m = bg('track');
+  for (const c of ['rb-stand', 'rb-barrier', 'rb-flag', 'rb-plank', 'rb-marking']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-house"'));
+  assert.match(indexHtml(), tintCss('track'));
+});
+
+test('folding scene: harbour water, boats, bollards, cobbles, paving', () => {
+  const m = bg('folding');
+  for (const c of ['rb-water', 'rb-boat', 'rb-sail', 'rb-lamp', 'rb-boulder', 'rb-tile']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('folding'));
+});
+
+test('bank tilt: one wrapper turns the background and the bike together, only while riding', () => {
+  const html = indexHtml();
+  assert.match(html, /<g id="tiltWrap">\s*<g id="rideBgWrap"><\/g>\s*<g id="scene"><\/g>\s*<\/g>/);
+  assert.match(html, /rotate\(\$\{-tilt\} /);
+  assert.match(html, /state\.playing/);
+  assert.ok(html.includes("getElementById('tiltWrap')") || html.includes("$('#tiltWrap')"));
+});
+
+test('bank tilt: the background still covers every corner of the view when it is turned', () => {
+  const rot = (px, py, cx, cy, deg) => { const a = (deg * Math.PI) / 180, dx = px - cx, dy = py - cy; return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)]; };
+  for (const view of [VIEW, { x: -500, y: -1700, w: 1200, h: 2000 }]) {
+    const m = R.rideBgMarkup(view, 241, 311, 'track');
+    const sky = m.match(/<rect class="rb-sky" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
+    const verge = m.match(/<rect class="rb-verge" x="[-\d.]+" y="[-\d.]+" width="[\d.]+" height="([\d.]+)"/);
+    assert.ok(verge);
+    const x0 = sky[0], x1 = sky[0] + sky[2], y0 = sky[1], y1 = 241 + 25 + 80 + Number(verge[1]);
+    const cx = view.x + view.w / 2;
+    for (const [px, py] of [[view.x, view.y], [view.x + view.w, view.y], [view.x, view.y + view.h], [view.x + view.w, view.y + view.h]])
+      for (const deg of [4, -4]) { const [qx, qy] = rot(px, py, cx, 241, deg); assert.ok(qx >= x0 && qx <= x1 && qy >= y0 && qy <= y1, `corner ${px},${py} turned by ${deg}`); }
+  }
 });

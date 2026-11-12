@@ -16,7 +16,7 @@ const SCENES = {
   women:   { kmh: 14, bounce: [[0.8, 13, 0], [0.8, 29, 0.7]], effect: 'none', layers: { far: 'water', mid: 'promenade', near: 'flowers', road: 'tiles' } },
   gravel:  { kmh: 23.5, bounce: [[2.2, 9, 0], [1.8, 23, 0.7]], effect: 'dust', layers: { far: 'fields', mid: 'fence', near: 'gravel', road: 'gravelroad' } },
   cx:      { kmh: 24, bounce: [[3, 7, 0], [2.5, 19, 0.7], [2, 37, 1.9]], effect: 'mud', layers: { far: 'woodline', mid: 'course', near: 'mudgrass', road: 'mud' } },
-  track:   { kmh: 37.5, bounce: [[0.3, 13, 0], [0.3, 29, 0.7]], effect: 'none', tilt: 4, layers: { far: 'stands', mid: 'rail', near: 'trackline', road: 'wood' } },
+  track:   { kmh: 37.5, bounce: [[0.3, 13, 0], [0.3, 29, 0.7]], effect: 'none', tilt: 0, layers: { far: 'stands', mid: 'rail', near: 'trackline', road: 'wood' } },
   folding: { kmh: 13.5, bounce: [[1, 13, 0], [1, 29, 0.7]], effect: 'none', layers: { far: 'harbour', mid: 'quay', near: 'cobbles', road: 'tiles' } },
 };
 const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
@@ -124,6 +124,22 @@ const BUILD = {
       for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 40 + rg() * 26, ry = 46 + rg() * 30; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.35)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
       return `<path class="rb-hill2" d="${hillPath(tile, h, base + 20, w)}"/>${crowns}<path class="rb-hill" d="${hillPath(tile, h, h * 0.8, [[30, 3, 0.9], [14, 7, 2.1]])}"/>`;
     },
+    // the velodrome grandstand: a roof, rows of seats, supports
+    stands: (tile, h) => {
+      const m = Math.max(10, Math.round(tile / 80)), pitch = tile / m;
+      let out = `<rect class="rb-hill2" x="0" y="${f1(h * 0.42)}" width="${f1(tile)}" height="${f1(h * 0.58)}"/><rect class="rb-hill" x="0" y="${f1(h * 0.36)}" width="${f1(tile)}" height="24"/>`;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < m; c++) out += `<rect class="rb-stand" x="${f1(c * pitch + 3)}" y="${f1(h * 0.5 + r * 52)}" width="${f1(pitch - 6)}" height="30" rx="4"/>`;
+      for (let i = 0; i < 8; i++) out += `<rect class="rb-hill" x="${f1(((i + 0.5) * tile) / 8 - 7)}" y="${f1(h * 0.36)}" width="14" height="${f1(h * 0.64)}"/>`;
+      return out;
+    },
+    // the harbour: water, low roofs and masts
+    harbour: (tile, h) => {
+      const n = 9, cell = tile / n, rg = rng(109);
+      let out = '';
+      for (let i = 0; i < n; i++) { const H = 60 + rg() * 80; out += `<rect class="rb-hill2" x="${f1(i * cell + 4)}" y="${f1(h * 0.7 - H)}" width="${f1(cell - 8)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 6; i++) out += `<rect class="rb-hill" x="${f1(((i + 0.5) * tile) / 6)}" y="${f1(h * 0.7 - 190)}" width="6" height="190"/>`;
+      return out + `<rect class="rb-water" x="0" y="${f1(h * 0.7)}" width="${f1(tile)}" height="${f1(h * 0.3)}"/>`;
+    },
     // a quiet water front: a strip of water, low roofs and trees beyond it
     water: (tile, h) => {
       const n = 10, cell = tile / n, rg = rng(73);
@@ -154,6 +170,26 @@ const BUILD = {
   },
   mid: {
     default: (tile, h) => trees(tile, h, 7),
+    // the track rail: two rails on posts and flags on poles
+    rail: (tile, h) => {
+      const n = Math.max(1, Math.round(tile / 160)), step = tile / n;
+      let out = `<rect class="rb-barrier" x="0" y="${f1(h - 104)}" width="${f1(tile)}" height="12"/><rect class="rb-barrier" x="0" y="${f1(h - 62)}" width="${f1(tile)}" height="10"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-barrier" x="${f1(i * step + step / 2 - 5)}" y="${f1(h - 104)}" width="10" height="104"/>`;
+      for (const px of [tile * 0.2, tile * 0.55, tile * 0.85]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 300)}" width="10" height="196"/><rect class="rb-flag" x="${f1(px + 10)}" y="${f1(h - 300)}" width="52" height="34" rx="3"/>`;
+      return out;
+    },
+    // a quay: boats at the berth, bollards, a bench
+    quay: (tile, h) => {
+      const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, rg = rng(113);
+      let out = '';
+      for (let i = 0; i < n; i++) {
+        const bx = i * cell + cell * 0.12, rx = 90 + rg() * 20;
+        out += `<ellipse class="rb-boat" cx="${f1(bx + rx)}" cy="${f1(h - 56)}" rx="${f1(rx)}" ry="22"/><rect class="rb-boat" x="${f1(bx + rx - 4)}" y="${f1(h - 300)}" width="8" height="240"/><path class="rb-sail" d="M${f1(bx + rx + 8)} ${f1(h - 290)} L${f1(bx + rx + 8)} ${f1(h - 90)} L${f1(bx + rx + 74)} ${f1(h - 90)} Z"/>`;
+        out += lampAt(i * cell + cell * 0.9, h) + `<rect class="rb-lamp" x="${f1(i * cell + cell * 0.55)}" y="${f1(h - 50)}" width="20" height="50" rx="5"/>`;
+        if (i % 2) out += benchAt(i * cell + cell * 0.55, h);
+      }
+      return out;
+    },
     // a park: trees behind, a hedge, a picket fence and a couple of signposts
     park: (tile, h) => {
       const rg = rng(61), n = Math.max(1, Math.round(tile / 36)), step = tile / n;
@@ -266,6 +302,16 @@ const BUILD = {
       }
       return out;
     },
+    // the black line and the sprinter's line of the track edge
+    trackline: (tile, h) => `<rect class="rb-plank" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="${f1(h * 0.7)}"/><rect class="rb-marking" x="0" y="${f1(h * 0.42)}" width="${f1(tile)}" height="7"/><rect class="rb-marking" x="0" y="${f1(h * 0.72)}" width="${f1(tile)}" height="7"/>`,
+    // cobbles along a quay edge
+    cobbles: (tile, h) => {
+      const rg = rng(127), n = Math.max(20, Math.round(tile / 70)), cell = tile / n;
+      const top = Math.floor(h * 0.35);
+      let out = `<rect class="rb-tile" x="0" y="${top}" width="${f1(tile)}" height="${f1(h - top)}"/>`;
+      for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) out += `<ellipse class="rb-boulder" cx="${f1(i * cell + cell / 2 + (r ? cell * 0.0 : 0))}" cy="${f1(h * (0.55 + r * 0.25))}" rx="${f1(cell * 0.38 + rg() * 3)}" ry="${f1(10 + rg() * 2)}"/>`;
+      return out;
+    },
     // flowers on tall stems in the grass by the promenade
     flowers: (tile, h) => {
       const rg = rng(83), n = 12, cell = tile / n;
@@ -289,6 +335,13 @@ const BUILD = {
   },
   road: {
     default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // boards of a velodrome track with joints and a sprinter's line
+    wood: (tile, h) => {
+      const n = Math.max(8, Math.round(tile / 90)), step = tile / n;
+      let out = `<rect class="rb-plank" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-roadedge" x="${f1(i * step + 1)}" y="5" width="3" height="${f1(h - 5)}"/>`;
+      return out + `<rect class="rb-marking" x="0" y="${f1(h * 0.55)}" width="${f1(tile)}" height="5"/>`;
+    },
     // a rutted gravel road with coarse grit
     gravelroad: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 13)}${specks(tile, h, 17)}<rect class="rb-rut" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="7"/><rect class="rb-rut" x="0" y="${f1(h * 0.68)}" width="${f1(tile)}" height="7"/>`,
     // a muddy track: mud patches over the ruts
