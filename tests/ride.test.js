@@ -362,3 +362,28 @@ test('cyclocross scene: a course with stakes and flags, mud and ruts', () => {
   for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
   assert.match(indexHtml(), tintCss('cx'));
 });
+
+test('mud for cyclocross: six clods that fly up and fall back, the loop is whole', () => {
+  const key = ps => ps.map(p => `${p.dx.toFixed(4)}|${p.dy.toFixed(4)}|${p.r.toFixed(4)}|${p.o.toFixed(4)}`).sort().join();
+  for (const t of [0, 0.7, 3.3, 8.8]) {
+    const ps = R.effectPuffs(t, 'cx');
+    assert.equal(ps.length, 6);
+    for (const p of ps) assert.ok(p.o >= 0 && p.o <= 0.8 + 1e-9 && p.r > 0 && p.dx < 0 && p.dy >= -1e-9, JSON.stringify(p));
+    assert.equal(key(ps), key(R.effectPuffs(t + P, 'cx')), 'nine seconds');
+    assert.equal(key(ps), key(R.effectPuffs(t + P / 6, 'cx')), 'a clod lives a sixth of the loop');
+  }
+  // a clod flies up and falls: the middle of its life is higher than the start and the end
+  const at = u => R.effectPuffs((u * P) / 6, 'cx')[0].dy;
+  assert.ok(at(0.5) > at(0) + 20 && at(0.5) > at(0.97) + 20, 'ballistic');
+  assert.equal(R.effectPuffs(1, 'gravel').length, 6, 'gravel raises dust');
+  for (const id of ['road', 'city', 'hybrid', 'women', 'track', 'folding', 'default', 'nope']) assert.deepEqual(R.effectPuffs(1, id), [], id);
+});
+
+test('fx markup: clods for cyclocross, dust for gravel and mtb, nothing otherwise', () => {
+  assert.match(R.fxMarkup('cx'), /class="fx-mud"/);
+  assert.doesNotMatch(R.fxMarkup('cx'), /fx-dust/);
+  for (const id of ['gravel', 'mtb']) { assert.match(R.fxMarkup(id), /class="fx-dust"/); assert.doesNotMatch(R.fxMarkup(id), /fx-mud/); }
+  for (const id of ['road', 'track', 'default']) assert.equal(R.fxMarkup(id), '');
+  assert.equal((R.fxMarkup('cx').match(/<circle/g) || []).length, 6);
+  assert.match(indexHtml(), /\.fx-mud\{fill:color-mix\(in srgb,var\(--trunk\) 85%,black\)\}/);
+});

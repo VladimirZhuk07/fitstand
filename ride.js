@@ -382,15 +382,21 @@ const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a 
 const FX_N = 6;
 // relative to the rear wheel and the ground, in mm: dx back, dy up; r radius; o opacity
 function effectPuffs(t, sceneId) {
-  if (sceneData(sceneId).effect !== 'dust' || sceneData(sceneId) === SCENES.default) return [];
-  const tau = wrap(t) / RIDE.PERIOD, out = [];
+  const effect = sceneData(sceneId).effect, tau = wrap(t) / RIDE.PERIOD, out = [];
+  if (effect !== 'dust' && effect !== 'mud') return [];
   for (let i = 0; i < FX_N; i++) {
     const u = (tau * FX_N + i / FX_N) % 1;
-    out.push({ dx: -(40 + u * 300), dy: 20 + u * 90, r: 22 + u * 46, o: 0.65 * (1 - u) });
+    // dust drifts back and rises slowly; a clod of mud flies up and falls back (a parabola that lands at u = 1)
+    out.push(effect === 'dust'
+      ? { dx: -(40 + u * 300), dy: 20 + u * 90, r: 22 + u * 46, o: 0.65 * (1 - u) }
+      : { dx: -(30 + u * 220), dy: 40 + 220 * u - 260 * u * u, r: 10 + 8 * (1 - u), o: 0.8 * (1 - u * u) });
   }
   return out;
 }
-const fxMarkup = sceneId => (sceneData(sceneId).effect === 'dust' ? `<g id="fx">${Array.from({ length: FX_N }, (_, i) => `<circle id="fx-${i}" class="fx-dust" cx="0" cy="0" r="1" opacity="0"/>`).join('')}</g>` : '');
+const fxMarkup = sceneId => {
+  const effect = sceneData(sceneId).effect, cls = effect === 'dust' ? 'fx-dust' : effect === 'mud' ? 'fx-mud' : '';
+  return cls ? `<g id="fx">${Array.from({ length: FX_N }, (_, i) => `<circle id="fx-${i}" class="${cls}" cx="0" cy="0" r="1" opacity="0"/>`).join('')}</g>` : '';
+};
 // w: the rear wheel's x and the ground line (model mm, y up); the markup has y down
 function applyFx(svg, puffs, w) {
   svg.querySelector('#fx').setAttribute('display', puffs.length ? 'inline' : 'none');
