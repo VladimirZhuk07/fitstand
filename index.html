@@ -193,6 +193,10 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-road{fill:var(--road)} .rb-verge{fill:var(--verge)} .rb-roadedge{fill:var(--roadedge)} .rb-speck{fill:var(--speck);opacity:.55}
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
 .rb-nearlayer{opacity:.85}
+/* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
+.rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}
+#bike.no-blur .rb-midlayer,#bike.no-blur .rb-nearlayer{filter:none}
+.rim-glint{fill:none;stroke:var(--hi);stroke-width:8;stroke-linecap:round}
 /* the volumetric rider (rider.js): light from the upper left; the far leg darker */
 .rd-skin{fill:url(#rd-gSkin)} .rd-skin-far{fill:color-mix(in srgb,var(--skin-2) 82%,black)} .rd-ear{fill:var(--ear)}
 .rd-shirt{fill:url(#rd-gShirt)} .rd-fold{fill:none;stroke:var(--fold);stroke-opacity:.45;stroke-linecap:round}
@@ -749,7 +753,7 @@ function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
   refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
-  refs.pts=geomPts(cur);
+  refs.pts=geomPts(cur); refs.shadow=document.getElementById('shadow');
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
   $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR,sceneId()):'';
   // the rider: the far leg behind the frame, the rest over the cockpit
@@ -776,9 +780,11 @@ function updateDynamic(){
   applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
+  // the shadow stretches and squeezes a little with the bounce
+  if(refs.shadow){const cx=+refs.shadow.getAttribute('cx'),cy=+refs.shadow.getAttribute('cy');refs.shadow.setAttribute('transform',`translate(${fx(cx)} ${fx(cy)}) scale(${(1+0.012*pose.bounce).toFixed(3)} ${(1-0.04*pose.bounce).toFixed(3)}) translate(${fx(-cx)} ${fx(-cy)})`);}
   if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR,sceneId()).x;applyRide(bikeSvg,sh);}
 }
-let last=performance.now();
+let last=performance.now(), frameDts=[], blurOff=false;
 function tick(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   if(target){
@@ -794,7 +800,10 @@ function tick(now){
     if(vbMove||moving||dirty){bikeSvg.setAttribute('viewBox',`${fx(vb.x)} ${fx(vb.y)} ${fx(vb.w)} ${fx(vb.h)}`);
       const nu=computeUx(vb); if(Math.abs(nu-ux)/ux>0.04){ux=nu;dirty=true;}}
     if(moving||dirty){rebuild();dirty=false;updateDynamic();}
-    if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();}
+    if(state.playing){rideT=(rideT+dt)%RIDE.PERIOD;updateDynamic();
+      frameDts.push(dt); if(frameDts.length>120)frameDts.splice(0,60);
+      if(!blurOff&&slowFrames(frameDts))blurOff=true;}
+    bikeSvg.classList.toggle('no-blur',blurOff||!state.playing);
     if(personDirty){personSvg.innerHTML=personMarkup(curP);personDirty=false;}
   }
   requestAnimationFrame(tick);

@@ -210,3 +210,14 @@ test('the shock pivot dot belongs to the frame, so it is not lit with the shock'
   assert.ok(!shock.includes('cx="0" cy="0" r="30"'));
   assert.ok(m.includes('<circle class="f-ink" cx="0" cy="0" r="30"/>'));
 });
+
+test('live drawing: the shadow has an id; each wheel has a glint that does not turn with the rim', () => {
+  const m = Dr.bikeMarkup(g('hybrid'), 1, {});
+  assert.equal((m.match(/id="shadow"/g) || []).length, 1);
+  assert.equal((m.match(/class="rim-glint"/g) || []).length, 2);
+  for (const w of ['wR', 'wF']) {
+    const i = m.indexOf(`<g id="${w}">`), j = m.indexOf('class="valve"', i);
+    assert.ok(i >= 0 && !m.slice(i, j + 120).includes('rim-glint'), `${w}: the glint stays outside the turning group`);
+  }
+  assert.equal((Dr.bikeMarkup(g('hybrid'), 1, { live: false }).match(/id="shadow"/g) || []).length, 0);
+});

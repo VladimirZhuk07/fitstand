@@ -29,7 +29,7 @@ function ridePose(t, wheelR, sceneId) {
     crank: 360 * RIDE.CRANK_REVS * tau,
     wheel: 360 * wheelRevs(wheelR, sceneId) * tau,
     ground: speedOf(wheelR, sceneId) * RIDE.PERIOD * tau,
-    torso: 0.35 * s(2 * RIDE.CRANK_REVS),                   // a hint towards each pushing leg; more reads as a saddle set too high
+    torso: 2 * s(2 * RIDE.CRANK_REVS),                      // 2° towards each pushing leg, at the cadence; the head holds (model.js)
     breath: 3 * (1 - Math.cos(TAU * 3 * tau)),             // 3 breaths a loop
     bar: 0.6 * s(2, 0.3) + 0.45 * s(5, 1.1) + 0.3 * s(7, 2), // small steering corrections
     bounce: sceneData(sceneId).bounce.reduce((sum, [a, n, ph]) => sum + a * s(n, ph), 0), // the tyres on the road
@@ -126,7 +126,10 @@ function applyRide(svg, shifts) {
   for (const id of ['far', 'mid', 'near', 'road']) svg.querySelector('#rb-' + id).setAttribute('patternTransform', `translate(${+shifts[id].toFixed(2)} 0)`);
 }
 
-const api = { RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
+// a slow device: the last 60 frame intervals (s) average above 28 ms — then the depth blur is dropped
+const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a + b, 0) / 60 > 0.028;
+
+const api = { slowFrames, RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

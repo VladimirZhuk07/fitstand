@@ -101,7 +101,7 @@ test('the head holds steady: only the breath moves it', () => {
     for (let t = 0; t < R.RIDE.PERIOD; t += 1 / 30) {
       const p = R.ridePose(t, 311), u = M.upperAt(G, hip, ck, p);
       assert.ok(Math.abs(u.head.x - base.head.x) < 0.5 && Math.abs(u.head.y - base.head.y - p.breath) < 0.5, `${style} t=${t}`);
-      assert.ok(M.len(M.sub(u.shoulder, M.add(base.shoulder, M.V(0, p.breath)))) < 4, `${style}: shoulder sways a few mm at most`);
+      assert.ok(M.len(M.sub(u.shoulder, M.add(base.shoulder, M.V(0, p.breath)))) < 25, `${style}: shoulder sways up to 2 degrees`);
     }
   }
 });
@@ -187,4 +187,24 @@ test('changing the scene between frames never gives NaN', () => {
       for (const { id: lid } of R.LAYERS) assert.ok(Number.isFinite(R.layerShift(lid, t, 311, id).x));
     }
   }
+});
+
+test('torso sway reaches 2 degrees, the head still holds', () => {
+  const peak = Math.max(...frames().map(t => Math.abs(R.ridePose(t, 311).torso)));
+  assert.ok(peak >= 1.9 && peak <= 2.0, `peak ${peak}`);
+});
+
+test('slowFrames: a slow device is detected after 60 frames', () => {
+  assert.equal(R.slowFrames(Array(60).fill(0.016)), false);
+  assert.equal(R.slowFrames(Array(60).fill(0.04)), true);
+  assert.equal(R.slowFrames(Array(59).fill(0.04)), false);
+  assert.equal(R.slowFrames([...Array(100).fill(0.04), ...Array(60).fill(0.016)]), false, 'only the last 60 count');
+});
+
+test('depth blur and the slow-device guard are wired in the page', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /\.rb-midlayer\{filter:blur\(\d+px\)\} \.rb-nearlayer\{filter:blur\(\d+px\)\}/);
+  assert.match(html, /#bike\.no-blur \.rb-midlayer,#bike\.no-blur \.rb-nearlayer\{filter:none\}/);
+  assert.match(html, /slowFrames\(frameDts\)/);
+  assert.match(html, /classList\.toggle\('no-blur',blurOff\|\|!state\.playing\)/);
 });

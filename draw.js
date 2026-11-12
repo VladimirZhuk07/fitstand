@@ -16,7 +16,8 @@ function wheel(c,g,id){
     rim:(id?`<g id="${id}"><g class="spokes">${sp}</g><circle class="blur-disc" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR-6)}"/><circle class="valve" cx="${fx(c.x)}" cy="${fx(-c.y+rimR-14)}" r="7"/></g>`:`<g>${sp}</g>`)+`
   <circle class="s-rim nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
   <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`,
-    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`,
+    // a still highlight on the upper left of a live rim: the light comes from there, the rim turns under it
+    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`+(id?`<path class="rim-glint" d="M${fx(c.x+rimR*Math.cos(110*D))} ${fx(-(c.y+rimR*Math.sin(110*D)))} A${fx(rimR)} ${fx(rimR)} 0 0 0 ${fx(c.x+rimR*Math.cos(150*D))} ${fx(-(c.y+rimR*Math.sin(150*D)))}"/>`:''),
   };
 }
 function geomPts(g){
@@ -106,7 +107,7 @@ function bikeMarkup(g,ux,opts={}){
   // grid + ground
   const gx0=R.x-g.wheelR-2000, gx1=F.x+g.wheelR+2000;
   if(live) s+=`<rect class="grid-bg" x="${fx(gx0)}" y="-4000" width="${fx(gx1-gx0)}" height="${fx(4000-ground+400)}" fill="url(#grid)" />`;
-  s+=`<ellipse class="shadow" cx="${fx((R.x+F.x)/2)}" cy="${fx(-ground)}" rx="${fx((F.x-R.x)/2+g.wheelR*0.8)}" ry="18"/>`;
+  s+=`<ellipse${live?' id="shadow"':''} class="shadow" cx="${fx((R.x+F.x)/2)}" cy="${fx(-ground)}" rx="${fx((F.x-R.x)/2+g.wheelR*0.8)}" ry="18"/>`;
   s+=`<line class="ground" x1="${fx(gx0)}" y1="${fx(-ground)}" x2="${fx(gx1)}" y2="${fx(-ground)}"/>`;
   // far side: crank, pedal, leg
   if(pedals&&!g.frontPedals) s+=`<g opacity=".42"><line${id('fCrank')} class="s-ink" stroke-width="24"${crankAt(pF)}/><line${id('fPedal')} class="s-ink" stroke-width="20"${pedalAt(pF)}/></g>`;
