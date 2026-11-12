@@ -406,20 +406,25 @@ test('bank tilt: one wrapper turns the background and the bike together, only wh
   const html = indexHtml();
   assert.match(html, /<g id="tiltWrap">\s*<g id="rideBgWrap"><\/g>\s*<g id="scene"><\/g>\s*<\/g>/);
   assert.match(html, /rotate\(\$\{-tilt\} /);
-  assert.match(html, /state\.playing/);
+  assert.match(html, /tilt=state\.playing\?\(SCENES\[sceneId\(\)\]\.tilt\|\|0\):0/);
+  assert.match(html, /else tw\.removeAttribute\('transform'\)/);
   assert.ok(html.includes("getElementById('tiltWrap')") || html.includes("$('#tiltWrap')"));
 });
 
 test('bank tilt: the background still covers every corner of the view when it is turned', () => {
   const rot = (px, py, cx, cy, deg) => { const a = (deg * Math.PI) / 180, dx = px - cx, dy = py - cy; return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)]; };
-  for (const view of [VIEW, { x: -500, y: -1700, w: 1200, h: 2000 }]) {
+  for (const view of [VIEW, { x: -500, y: -1700, w: 1200, h: 2000 }, { x: -1500, y: -1700, w: 3000, h: 1200 }, { x: -300, y: -2400, w: 700, h: 2800 }]) {
     const m = R.rideBgMarkup(view, 241, 311, 'track');
     const sky = m.match(/<rect class="rb-sky" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
-    const verge = m.match(/<rect class="rb-verge" x="[-\d.]+" y="[-\d.]+" width="[\d.]+" height="([\d.]+)"/);
+    const verge = m.match(/<rect class="rb-verge" x="[-\d.]+" y="([-\d.]+)" width="[\d.]+" height="([\d.]+)"/);
     assert.ok(verge);
-    const x0 = sky[0], x1 = sky[0] + sky[2], y0 = sky[1], y1 = 241 + 25 + 80 + Number(verge[1]);
+    const x0 = sky[0], x1 = sky[0] + sky[2], y0 = sky[1], y1 = Number(verge[1]) + Number(verge[2]);
     const cx = view.x + view.w / 2;
     for (const [px, py] of [[view.x, view.y], [view.x + view.w, view.y], [view.x, view.y + view.h], [view.x + view.w, view.y + view.h]])
       for (const deg of [4, -4]) { const [qx, qy] = rot(px, py, cx, 241, deg); assert.ok(qx >= x0 && qx <= x1 && qy >= y0 && qy <= y1, `corner ${px},${py} turned by ${deg}`); }
   }
+});
+
+test('pause: the play button redraws the dynamic parts, so the tilt and the shadow stop moving at once', () => {
+  assert.match(indexHtml(), /state\.playing=!state\.playing;syncPlay\(\);if\(refs\.pts\)updateDynamic\(\);/);
 });
