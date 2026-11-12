@@ -95,3 +95,49 @@ test('the sole sits on the pedal, not above it', () => {
     assert.ok(Math.abs(y - (j.near.pedal.y + 11)) <= 5, `${style} ${h[0]} t=${k * 0.75}: sole ${y.toFixed(1)} vs pedal top ${(j.near.pedal.y + 11).toFixed(1)}`);
   }
 });
+
+// ---------- a woman on the women's bike (feedback 5) ----------
+const shapesOf = (style, t, female) => { const { g, j } = joints(style, HEIGHTS[2], t); return { g, j, shapes: R.riderShapes(g, j, { t, female }) }; };
+const byId = (shapes, id) => shapes.find(s => s.id === id);
+
+test('a female rider has a ponytail, the male one does not', () => {
+  assert.ok(byId(shapesOf('women', 1, true).shapes, 'rd-ponytail'));
+  assert.ok(!byId(shapesOf('women', 1, false).shapes, 'rd-ponytail'));
+  assert.ok(!byId(shapesOf('women', 1, undefined).shapes, 'rd-ponytail'));
+});
+
+test('the ponytail hangs from the back of the head, swings, and the loop is whole', () => {
+  let lo = Infinity, hi = -Infinity;
+  for (let k = 0; k < 40; k++) {
+    const t = k * 0.225, { g, j, shapes } = shapesOf('women', t, true), tail = byId(shapes, 'rd-ponytail'), c = j.up.head;
+    const n = tail.attrs.d.replace(/A[\d.]+ [\d.]+ 0 0 1 /g, ' ').match(/-?\d+(?:\.\d+)?/g).map(Number); // x y pairs, arc radii and flags removed
+    assert.ok(n.every(Number.isFinite), `t=${t}`);
+    for (let i = 0; i < n.length - 1; i += 2) assert.ok(Math.hypot(n[i] - c.x, n[i + 1] + c.y) <= 4.2 * g.headR, `t=${t}: the tail stays near the head`);
+    assert.ok(Math.min(...n.filter((_, i) => i % 2 === 0)) < c.x - g.headR, 'the tail is behind the head');
+    const tip = n[n.length - 2]; lo = Math.min(lo, tip); hi = Math.max(hi, tip);
+    assert.equal(JSON.stringify(shapesOf('women', t + 9, true).shapes.find(s => s.id === 'rd-ponytail').attrs), JSON.stringify(tail.attrs), 'nine seconds');
+  }
+  assert.ok(hi - lo > 5, 'the tail swings');
+});
+
+test('a female torso differs; everything else of the figure is the same', () => {
+  const f = shapesOf('women', 2, true).shapes, m = shapesOf('women', 2, false).shapes;
+  assert.notEqual(byId(f, 'rd-torso').attrs.d, byId(m, 'rd-torso').attrs.d);
+  for (const s of m) if (!['rd-torso', 'rd-seat', 'rd-fold1', 'rd-fold2', 'rd-sleeve'].includes(s.id)) assert.deepEqual(byId(f, s.id).attrs, s.attrs, s.id);
+  assert.equal(f.length, m.length + 1, 'only the ponytail is added');
+});
+
+test('riderMarkup: the female figure carries rider-f; the page picks it by the women style', () => {
+  const { g, j } = joints('women', HEIGHTS[2], 1);
+  assert.match(R.riderMarkup(g, j, { t: 1, female: true }, 'near'), /class="rider rider-v rider-f"/);
+  assert.match(R.riderMarkup(g, j, { t: 1, female: true }, 'far'), /class="rider rider-v rider-far rider-f"/);
+  assert.doesNotMatch(R.riderMarkup(g, j, { t: 1 }, 'near'), /rider-f/);
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /riderMarkup\(cur,j,\{t:rideT,female:isFemale\(\)\},'far'\)/);
+  assert.match(html, /riderMarkup\(cur,j,\{t:rideT,female:isFemale\(\)\},'near'\)/);
+  assert.match(html, /riderShapes\(g,j,\{t:rideT,female:isFemale\(\)\}\)/);
+  assert.match(html, /const isFemale=\(\)=>state\.style==='women'/);
+  assert.match(html, /\.rider-f\{--shirt-1:var\(--shirt-f1\);--shirt-2:var\(--shirt-f2\);--fold:var\(--fold-f\)\}/);
+  assert.match(html, /\.rd-hair\{fill:var\(--hair\)\}/);
+  assert.equal((html.match(/--hair:#[0-9A-Fa-f]{6}/g) || []).length, 3, 'light, dark by media query, dark by choice');
+});

@@ -47,6 +47,7 @@
   --skin-1:#EBC3A0; --skin-2:#C99372; --ear:#D19F7C; --shirt-1:#5E9399; --shirt-2:#3D6A70; --fold:#2F5458;
   --shorts-1:#3B4350; --shorts-2:#262C35; --sock:#F1F1EE; --shoe-1:#FAFAF8; --shoe-2:#C9CDD0; --sole:#2C3035;
   --visor:#1E2226; --hi:rgba(255,255,255,.35); --tread:#3A3F44;
+  --hair:#5A3A2A; --shirt-f1:#E58A9B; --shirt-f2:#B85670; --fold-f:#8C3B52;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -56,6 +57,7 @@
   --skin-1:#C9A083; --skin-2:#9E7458; --ear:#A87F63; --shirt-1:#4A7A80; --shirt-2:#2E5257; --fold:#203B3E;
   --shorts-1:#2C323C; --shorts-2:#1B2027; --sock:#C9CBC6; --shoe-1:#D8DADB; --shoe-2:#9EA3A7; --sole:#16191C;
   --visor:#0E1012; --hi:rgba(255,255,255,.18); --tread:#2A2E32;
+  --hair:#3A281F; --shirt-f1:#B8667A; --shirt-f2:#8A3F57; --fold-f:#5E2A3B;
   }
 }
 :root[data-theme="dark"]{
@@ -65,6 +67,7 @@
   --skin-1:#C9A083; --skin-2:#9E7458; --ear:#A87F63; --shirt-1:#4A7A80; --shirt-2:#2E5257; --fold:#203B3E;
   --shorts-1:#2C323C; --shorts-2:#1B2027; --sock:#C9CBC6; --shoe-1:#D8DADB; --shoe-2:#9EA3A7; --sole:#16191C;
   --visor:#0E1012; --hi:rgba(255,255,255,.18); --tread:#2A2E32;
+  --hair:#3A281F; --shirt-f1:#B8667A; --shirt-f2:#8A3F57; --fold-f:#5E2A3B;
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
@@ -222,6 +225,7 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rd-sock,.rd-sock-far{fill:var(--sock)} .rd-shoe{fill:url(#rd-gShoe)} .rd-shoe-far{fill:color-mix(in srgb,var(--shoe-2) 80%,black)} .rd-sole,.rd-sole-far{fill:var(--sole)}
 .rd-helmet{fill:url(#rd-gHelmet)} .rd-vent,.rd-visor{fill:var(--visor)} .rd-strap{stroke:var(--visor);fill:none;stroke-linecap:round}
 .rider-far{opacity:.9}
+.rider-f{--shirt-1:var(--shirt-f1);--shirt-2:var(--shirt-f2);--fold:var(--fold-f)} .rd-hair{fill:var(--hair)}
 .bike .hi{stroke:var(--hi);fill:none} .bike .tread{fill:none;stroke:var(--tread);stroke-dasharray:6 10}
 
 /* guide entries */
@@ -769,6 +773,8 @@ function computeUx(b){
 }
 // the scene of the ride follows the chosen style (road, city, mountain; the rest keep the default one)
 const sceneId=()=>sceneOf(state.style);
+// the women's bike is ridden by a woman
+const isFemale=()=>state.style==='women';
 function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
@@ -778,8 +784,8 @@ function rebuild(){
   $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR,sceneId())+fxMarkup(sceneId()):'';
   // the rider: the far leg behind the frame, the rest over the cockpit
   const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR,sceneId()));
-  $('#riderFarSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'far');
-  $('#riderSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'near');
+  $('#riderFarSlot').innerHTML=riderMarkup(cur,j,{t:rideT,female:isFemale()},'far');
+  $('#riderSlot').innerHTML=riderMarkup(cur,j,{t:rideT,female:isFemale()},'near');
 }
 function setL(el,a,b){if(!el)return;el.setAttribute('x1',fx(a.x));el.setAttribute('y1',fx(-a.y));el.setAttribute('x2',fx(b.x));el.setAttribute('y2',fx(-b.y));}
 // the rider's joints at a moment of the ride: legs on the pedals, hands on the steering bar
@@ -797,7 +803,7 @@ function updateDynamic(){
   const {R,F,ck}=refs.pts;
   if(refs.wR)refs.wR.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(R.x)} ${fx(-R.y)})`);
   if(refs.wF)refs.wF.setAttribute('transform',`rotate(${fx(pose.wheel)} ${fx(F.x)} ${fx(-F.y)})`);
-  applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
+  applyRider(bikeSvg,riderShapes(g,j,{t:rideT,female:isFemale()}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
   // the shadow shrinks a little as the bike rises; at rest (pause) it keeps its own shape
