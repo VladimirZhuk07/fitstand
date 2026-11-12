@@ -12,8 +12,14 @@ const SCENES = {
   road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'open', mid: 'barriers', near: 'asphalt', road: 'smooth' } },
   city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'roofs', mid: 'street', near: 'curb', road: 'tiles' } },
   mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'forest', mid: 'trunks', near: 'roots', road: 'dirt' } },
+  hybrid:  { kmh: 20, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'park', near: 'verge', road: 'cracks' } },
+  women:   { kmh: 14, bounce: [[0.8, 13, 0], [0.8, 29, 0.7]], effect: 'none', layers: { far: 'water', mid: 'promenade', near: 'flowers', road: 'tiles' } },
+  gravel:  { kmh: 23.5, bounce: [[2.2, 9, 0], [1.8, 23, 0.7]], effect: 'dust', layers: { far: 'fields', mid: 'fence', near: 'gravel', road: 'gravelroad' } },
+  cx:      { kmh: 24, bounce: [[3, 7, 0], [2.5, 19, 0.7], [2, 37, 1.9]], effect: 'mud', layers: { far: 'woodline', mid: 'course', near: 'mudgrass', road: 'mud' } },
+  track:   { kmh: 37.5, bounce: [[0.3, 13, 0], [0.3, 29, 0.7]], effect: 'none', tilt: 0, layers: { far: 'stands', mid: 'rail', near: 'trackline', road: 'wood' } },
+  folding: { kmh: 13.5, bounce: [[1, 13, 0], [1, 29, 0.7]], effect: 'none', layers: { far: 'harbour', mid: 'quay', near: 'cobbles', road: 'tiles' } },
 };
-const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb' };
+const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const sceneOf = style => (typeof style === 'string' && has(STYLE_SCENE, style) ? STYLE_SCENE[style] : 'default');
 const sceneData = id => (typeof id === 'string' && has(SCENES, id) ? SCENES[id] : SCENES.default);
@@ -91,15 +97,56 @@ function specks(tile, h, seed) {
 // ---------- layer builders: each draws the inside of one pattern tile; the scene table says which one a layer uses ----------
 // y of a hill line made by hillPath at x
 const hillY = (tile, base, waves, x) => base - waves.reduce((sum, [a, n, ph]) => sum + a * Math.cos((TAU * n * x) / tile + ph), 0);
+// small props shared by the scenes; all of them stand on the bottom of the tile (y = h) and inside x .. x + width
+const benchAt = (bx, h) => `<rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 64)}" width="170" height="14" rx="3"/><rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 104)}" width="170" height="10" rx="3"/><rect class="rb-bench" x="${f1(bx + 14)}" y="${f1(h - 50)}" width="10" height="48"/><rect class="rb-bench" x="${f1(bx + 146)}" y="${f1(h - 50)}" width="10" height="48"/>`;
+const lampAt = (lx, h) => `<rect class="rb-lamp" x="${f1(lx)}" y="${f1(h - 330)}" width="10" height="330"/><rect class="rb-lamp" x="${f1(lx - 18)}" y="${f1(h - 340)}" width="46" height="14" rx="5"/>`;
 const BUILD = {
   far: {
     default: (tile, h) => `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/><path class="rb-hill" d="${hillPath(tile, h, h * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`,
+    // wide fields under a low horizon with a far line of trees
+    fields: (tile, h) => {
+      const w = [[16, 1, 1.3], [9, 2, 0.4]], base = h * 0.8, r = rng(103), n = 16;
+      let line = '';
+      for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 24 + r() * 12, ry = 12 + r() * 6; line += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.5)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.68, [[30, 1, 2.1], [12, 3, 0.8]])}"/><path class="rb-hill" d="${hillPath(tile, h, base, w)}"/>${line}`;
+    },
+    // a belt of woods and low hills
+    woodline: (tile, h) => {
+      const w = [[28, 2, 0.9], [14, 5, 2.2]], base = h * 0.62, rg = rng(107), n = 24;
+      let crowns = '';
+      for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 36 + rg() * 20, ry = 38 + rg() * 24; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return `<path class="rb-hill2" d="${hillPath(tile, h, base + 14, w)}"/>${crowns}<path class="rb-hill" d="${hillPath(tile, h, h * 0.82, [[24, 3, 0.5], [10, 7, 1.6]])}"/>`;
+    },
     // a dense forest on the hills with the sky showing through
     forest: (tile, h) => {
       const w = [[40, 2, 0.5], [22, 5, 1.3]], base = h * 0.55, rg = rng(29), n = 30;
       let crowns = '';
       for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 40 + rg() * 26, ry = 46 + rg() * 30; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.35)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
       return `<path class="rb-hill2" d="${hillPath(tile, h, base + 20, w)}"/>${crowns}<path class="rb-hill" d="${hillPath(tile, h, h * 0.8, [[30, 3, 0.9], [14, 7, 2.1]])}"/>`;
+    },
+    // the velodrome grandstand: a roof, rows of seats, supports
+    stands: (tile, h) => {
+      const m = Math.max(10, Math.round(tile / 80)), pitch = tile / m;
+      let out = `<rect class="rb-hill2" x="0" y="${f1(h * 0.42)}" width="${f1(tile)}" height="${f1(h * 0.58)}"/><rect class="rb-hill" x="0" y="${f1(h * 0.36)}" width="${f1(tile)}" height="24"/>`;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < m; c++) out += `<rect class="rb-stand" x="${f1(c * pitch + 3)}" y="${f1(h * 0.5 + r * 52)}" width="${f1(pitch - 6)}" height="30" rx="4"/>`;
+      for (let i = 0; i < 8; i++) out += `<rect class="rb-hill" x="${f1(((i + 0.5) * tile) / 8 - 7)}" y="${f1(h * 0.36)}" width="14" height="${f1(h * 0.64)}"/>`;
+      return out;
+    },
+    // the harbour: water, low roofs and masts
+    harbour: (tile, h) => {
+      const n = 9, cell = tile / n, rg = rng(109);
+      let out = '';
+      for (let i = 0; i < n; i++) { const H = 60 + rg() * 80; out += `<rect class="rb-hill2" x="${f1(i * cell + 4)}" y="${f1(h * 0.7 - H)}" width="${f1(cell - 8)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 6; i++) out += `<rect class="rb-hill" x="${f1(((i + 0.5) * tile) / 6)}" y="${f1(h * 0.7 - 190)}" width="6" height="190"/>`;
+      return out + `<rect class="rb-water" x="0" y="${f1(h * 0.7)}" width="${f1(tile)}" height="${f1(h * 0.3)}"/>`;
+    },
+    // a quiet water front: a strip of water, low roofs and trees beyond it
+    water: (tile, h) => {
+      const n = 10, cell = tile / n, rg = rng(73);
+      let out = '';
+      for (let i = 0; i < n; i++) { const H = 70 + rg() * 90; out += `<rect class="rb-hill2" x="${f1(i * cell + 4)}" y="${f1(h * 0.7 - H)}" width="${f1(cell - 8)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 7; i++) { const x = ((i + 0.5) * tile) / 7, rx = 40 + rg() * 20, ry = 30 + rg() * 16; out += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(h * 0.7 - 60 - ry * 0.4)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out + `<rect class="rb-water" x="0" y="${f1(h * 0.7)}" width="${f1(tile)}" height="${f1(h * 0.3)}"/>`;
     },
     // low rooftops in two rows and the crowns of the street trees above them
     roofs: (tile, h) => {
@@ -123,6 +170,69 @@ const BUILD = {
   },
   mid: {
     default: (tile, h) => trees(tile, h, 7),
+    // the track rail: two rails on posts and flags on poles
+    rail: (tile, h) => {
+      const n = Math.max(1, Math.round(tile / 160)), step = tile / n;
+      let out = `<rect class="rb-barrier" x="0" y="${f1(h - 104)}" width="${f1(tile)}" height="12"/><rect class="rb-barrier" x="0" y="${f1(h - 62)}" width="${f1(tile)}" height="10"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-barrier" x="${f1(i * step + step / 2 - 5)}" y="${f1(h - 104)}" width="10" height="104"/>`;
+      for (const px of [tile * 0.2, tile * 0.55, tile * 0.85]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 300)}" width="10" height="196"/><rect class="rb-flag" x="${f1(px + 10)}" y="${f1(h - 300)}" width="52" height="34" rx="3"/>`;
+      return out;
+    },
+    // a quay: boats at the berth, bollards, a bench
+    quay: (tile, h) => {
+      const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, rg = rng(113);
+      let out = '';
+      for (let i = 0; i < n; i++) {
+        const bx = i * cell + cell * 0.12, rx = 90 + rg() * 20;
+        out += `<ellipse class="rb-boat" cx="${f1(bx + rx)}" cy="${f1(h - 56)}" rx="${f1(rx)}" ry="22"/><rect class="rb-boat" x="${f1(bx + rx - 4)}" y="${f1(h - 300)}" width="8" height="240"/><path class="rb-sail" d="M${f1(bx + rx + 8)} ${f1(h - 290)} L${f1(bx + rx + 8)} ${f1(h - 90)} L${f1(bx + rx + 74)} ${f1(h - 90)} Z"/>`;
+        out += lampAt(i * cell + cell * 0.9, h) + `<rect class="rb-lamp" x="${f1(i * cell + cell * 0.55)}" y="${f1(h - 50)}" width="20" height="50" rx="5"/>`;
+        if (i % 2) out += benchAt(i * cell + cell * 0.55, h);
+      }
+      return out;
+    },
+    // a park: trees behind, a hedge, a picket fence and a couple of signposts
+    park: (tile, h) => {
+      const rg = rng(61), n = Math.max(1, Math.round(tile / 36)), step = tile / n;
+      let out = trees(tile, h, 23);
+      for (let i = 0; i < 6; i++) { const rx = 90 + rg() * 50; out += `<ellipse class="rb-bush" cx="${f1(((i + 0.5) * tile) / 6)}" cy="${f1(h - 70)}" rx="${f1(rx)}" ry="48"/>`; }
+      out += `<rect class="rb-fence" x="0" y="${f1(h - 66)}" width="${f1(tile)}" height="9"/><rect class="rb-fence" x="0" y="${f1(h - 34)}" width="${f1(tile)}" height="9"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-fence" x="${f1(i * step + step * 0.25)}" y="${f1(h - 84)}" width="${f1(step * 0.5)}" height="84"/>`;
+      for (const px of [tile * 0.28, tile * 0.74]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 250)}" width="12" height="170"/><rect class="rb-sign" x="${f1(px - 26)}" y="${f1(h - 304)}" width="64" height="50" rx="7"/>`;
+      return out;
+    },
+    // a promenade: flower beds, round shrubs, benches and lamps
+    promenade: (tile, h) => {
+      const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, rg = rng(79);
+      let out = '', front = '';
+      for (let i = 0; i < n; i++) {
+        const cx = i * cell + cell * 0.3;
+        out += `<ellipse class="rb-bush" cx="${f1(cx)}" cy="${f1(h - 80)}" rx="${f1(70 + rg() * 24)}" ry="74"/>`;
+        out += lampAt(i * cell + cell * 0.9, h);
+        const bx = i * cell + cell * 0.08;
+        front += benchAt(bx, h);
+        for (let k = 0; k < 5; k++) front += `<ellipse class="rb-flower" cx="${f1(bx + 190 + k * 26)}" cy="${f1(h - 24 - rg() * 12)}" rx="9" ry="8"/>`;
+        front += `<ellipse class="rb-bush" cx="${f1(bx + 250)}" cy="${f1(h - 14)}" rx="84" ry="12"/>`;
+      }
+      return out + front;
+    },
+    // a roadside fence on posts with wire, and a few lone trees
+    fence: (tile, h) => {
+      const n = Math.max(1, Math.round(tile / 190)), step = tile / n;
+      let out = trees(tile, h, 59) + `<rect class="rb-fence" x="0" y="${f1(h - 96)}" width="${f1(tile)}" height="5"/><rect class="rb-fence" x="0" y="${f1(h - 66)}" width="${f1(tile)}" height="5"/><rect class="rb-fence" x="0" y="${f1(h - 36)}" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-post" x="${f1(i * step + step / 2 - 6)}" y="${f1(h - 118)}" width="12" height="118"/>`;
+      return out;
+    },
+    // a cyclocross course: trees, stakes with tape and flags
+    course: (tile, h) => {
+      const n = Math.max(4, Math.round(tile / 200)), step = tile / n;
+      let out = trees(tile, h, 47) + `<rect class="rb-flag" x="0" y="${f1(h - 84)}" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) {
+        const x = i * step + step / 2 - 4;
+        out += `<rect class="rb-stake" x="${f1(x)}" y="${f1(h - 104)}" width="8" height="104"/>`;
+        if (i % 3 === 0) out += `<rect class="rb-flag" x="${f1(x + 8)}" y="${f1(h - 136)}" width="40" height="28" rx="3"/>`;
+      }
+      return out;
+    },
     // the forest wall: dense crowns, dark trunks in front, boulders by the path
     trunks: (tile, h) => {
       const n = 9, cell = tile / n, rg = rng(43);
@@ -141,9 +251,8 @@ const BUILD = {
         for (let c = 0; c < cols; c++) for (let row = 0; row < 3; row++)
           out += `<rect class="rb-window" x="${f1(x + (w / cols) * (c + 0.5) - 18)}" y="${f1(h - H + 40 + row * 78)}" width="36" height="46" rx="4"/>`;
         const lx = i * cell + cell * 0.9;
-        out += `<rect class="rb-lamp" x="${f1(lx)}" y="${f1(h - 330)}" width="10" height="330"/><rect class="rb-lamp" x="${f1(lx - 18)}" y="${f1(h - 340)}" width="46" height="14" rx="5"/>`;
-        if (i % 2 === 0) { const bx = i * cell + cell * 0.35;
-          front += `<rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 64)}" width="170" height="14" rx="3"/><rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 104)}" width="170" height="10" rx="3"/><rect class="rb-bench" x="${f1(bx + 14)}" y="${f1(h - 50)}" width="10" height="48"/><rect class="rb-bench" x="${f1(bx + 146)}" y="${f1(h - 50)}" width="10" height="48"/>`; }
+        out += lampAt(lx, h);
+        if (i % 2 === 0) front += benchAt(i * cell + cell * 0.35, h);
       }
       return out + front;
     },
@@ -158,6 +267,27 @@ const BUILD = {
   },
   near: {
     default: (tile, h) => grass(tile, 23, h),
+    // grass with mud patches
+    mudgrass: (tile, h) => {
+      const rg = rng(89);
+      let out = grass(tile, 19, h);
+      for (let i = 0; i < 6; i++) { const rx = 60 + rg() * 40; out += `<ellipse class="rb-mud" cx="${f1(((i + 0.5) * tile) / 6)}" cy="${f1(h - 14)}" rx="${f1(rx)}" ry="12"/>`; }
+      return out;
+    },
+    // gravel and grass at the edge of a gravel road
+    gravel: (tile, h) => {
+      const rg = rng(97);
+      let out = grass(tile, 31, h);
+      for (let i = 0; i < 16; i++) { const rx = 8 + rg() * 14, ry = 6 + rg() * 6; out += `<ellipse class="rb-boulder" cx="${f1(((i + 0.5) * tile) / 16)}" cy="${f1(h - ry - 3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out;
+    },
+    // the verge of a park path: grass and small stones
+    verge: (tile, h) => {
+      const rg = rng(67);
+      let out = grass(tile, 29, h);
+      for (let i = 0; i < 8; i++) { const rx = 10 + rg() * 12, ry = 7 + rg() * 5; out += `<ellipse class="rb-boulder" cx="${f1(((i + 0.5) * tile) / 8)}" cy="${f1(h - ry - 3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out;
+    },
     // roots across the way, stones and ferns
     roots: (tile, h) => {
       const rg = rng(37), n = 6, cell = tile / n;
@@ -170,6 +300,23 @@ const BUILD = {
         const rx0 = i * cell; // the root stays inside its own cell: nothing is cut off at the tile seam
         out += `<path class="rb-root" d="M${f1(rx0 + cell * 0.55)} ${f1(h - 6)} Q${f1(rx0 + cell * 0.7)} ${f1(h - 48)} ${f1(rx0 + cell * 0.95)} ${f1(h - 20)}"/>`;
       }
+      return out;
+    },
+    // the black line and the sprinter's line of the track edge
+    trackline: (tile, h) => `<rect class="rb-plank" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="${f1(h * 0.7)}"/><rect class="rb-marking" x="0" y="${f1(h * 0.42)}" width="${f1(tile)}" height="7"/><rect class="rb-marking" x="0" y="${f1(h * 0.72)}" width="${f1(tile)}" height="7"/>`,
+    // cobbles along a quay edge
+    cobbles: (tile, h) => {
+      const rg = rng(127), n = Math.max(20, Math.round(tile / 70)), cell = tile / n;
+      const top = Math.floor(h * 0.35);
+      let out = `<rect class="rb-tile" x="0" y="${top}" width="${f1(tile)}" height="${f1(h - top)}"/>`;
+      for (let r = 0; r < 2; r++) for (let i = 0; i < n; i++) out += `<ellipse class="rb-boulder" cx="${f1(i * cell + cell / 2 + (r ? cell * 0.0 : 0))}" cy="${f1(h * (0.55 + r * 0.25))}" rx="${f1(cell * 0.38 + rg() * 3)}" ry="${f1(10 + rg() * 2)}"/>`;
+      return out;
+    },
+    // flowers on tall stems in the grass by the promenade
+    flowers: (tile, h) => {
+      const rg = rng(83), n = 12, cell = tile / n;
+      let out = grass(tile, 17, h);
+      for (let i = 0; i < n; i++) { const x = i * cell + cell * (0.2 + rg() * 0.6), y = 24 + rg() * 24; out += `<ellipse class="rb-flower" cx="${f1(x)}" cy="${f1(y)}" rx="9" ry="8"/>`; }
       return out;
     },
     // the pavement edge: a kerb, flower beds
@@ -188,6 +335,33 @@ const BUILD = {
   },
   road: {
     default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // boards of a velodrome track with joints and a sprinter's line
+    wood: (tile, h) => {
+      const n = Math.max(8, Math.round(tile / 90)), step = tile / n;
+      let out = `<rect class="rb-plank" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-roadedge" x="${f1(i * step + 1)}" y="5" width="3" height="${f1(h - 5)}"/>`;
+      return out + `<rect class="rb-marking" x="0" y="${f1(h * 0.55)}" width="${f1(tile)}" height="5"/>`;
+    },
+    // a rutted gravel road with coarse grit
+    gravelroad: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 13)}${specks(tile, h, 17)}<rect class="rb-rut" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="7"/><rect class="rb-rut" x="0" y="${f1(h * 0.68)}" width="${f1(tile)}" height="7"/>`,
+    // a muddy track: mud patches over the ruts
+    mud: (tile, h) => {
+      const rg = rng(101), n = 7;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/><rect class="rb-rut" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="7"/><rect class="rb-rut" x="0" y="${f1(h * 0.68)}" width="${f1(tile)}" height="7"/>`;
+      for (let i = 0; i < n; i++) { const rx = 70 + rg() * 60; out += `<ellipse class="rb-mud" cx="${f1(((i + 0.5) * tile) / n)}" cy="${f1(h * (0.35 + rg() * 0.4))}" rx="${f1(rx)}" ry="16"/>`; }
+      return out;
+    },
+    // asphalt with a few cracks
+    cracks: (tile, h) => {
+      const rg = rng(71), n = 5, cell = tile / n;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`;
+      for (let i = 0; i < n; i++) {
+        let x = i * cell + cell * 0.2, y = h * 0.3 + rg() * h * 0.3, d = `M${f1(x)} ${f1(y)}`;
+        for (let k = 0; k < 4; k++) { x += 26 + rg() * 24; y = Math.min(h - 6, Math.max(8, y + (rg() - 0.5) * 30)); d += ` L${f1(x)} ${f1(y)}`; }
+        out += `<path class="rb-crack" d="${d}"/>`;
+      }
+      return out;
+    },
     // packed earth with roots across it and patches of sunlight through the leaves
     dirt: (tile, h) => {
       const rg = rng(53), n = 5, cell = tile / n;
@@ -261,15 +435,21 @@ const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a 
 const FX_N = 6;
 // relative to the rear wheel and the ground, in mm: dx back, dy up; r radius; o opacity
 function effectPuffs(t, sceneId) {
-  if (sceneData(sceneId).effect !== 'dust' || sceneData(sceneId) === SCENES.default) return [];
-  const tau = wrap(t) / RIDE.PERIOD, out = [];
+  const effect = sceneData(sceneId).effect, tau = wrap(t) / RIDE.PERIOD, out = [];
+  if (effect !== 'dust' && effect !== 'mud') return [];
   for (let i = 0; i < FX_N; i++) {
     const u = (tau * FX_N + i / FX_N) % 1;
-    out.push({ dx: -(40 + u * 300), dy: 20 + u * 90, r: 22 + u * 46, o: 0.65 * (1 - u) });
+    // dust drifts back and rises slowly; a clod of mud flies up and falls back (a parabola that lands at u = 1)
+    out.push(effect === 'dust'
+      ? { dx: -(40 + u * 300), dy: 20 + u * 90, r: 22 + u * 46, o: 0.65 * (1 - u) }
+      : { dx: -(30 + u * 220), dy: 40 + 220 * u - 260 * u * u, r: 10 + 8 * (1 - u), o: 0.8 * (1 - u * u) });
   }
   return out;
 }
-const fxMarkup = sceneId => (sceneData(sceneId).effect === 'dust' ? `<g id="fx">${Array.from({ length: FX_N }, (_, i) => `<circle id="fx-${i}" class="fx-dust" cx="0" cy="0" r="1" opacity="0"/>`).join('')}</g>` : '');
+const fxMarkup = sceneId => {
+  const effect = sceneData(sceneId).effect, cls = effect === 'dust' ? 'fx-dust' : effect === 'mud' ? 'fx-mud' : '';
+  return cls ? `<g id="fx">${Array.from({ length: FX_N }, (_, i) => `<circle id="fx-${i}" class="${cls}" cx="0" cy="0" r="1" opacity="0"/>`).join('')}</g>` : '';
+};
 // w: the rear wheel's x and the ground line (model mm, y up); the markup has y down
 function applyFx(svg, puffs, w) {
   svg.querySelector('#fx').setAttribute('display', puffs.length ? 'inline' : 'none');

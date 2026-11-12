@@ -196,11 +196,20 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike[data-scene="road"]{--tint:#9FC4E8;--tk:18%}
 #bike[data-scene="city"]{--tint:#F2B27A;--tk:20%}
 #bike[data-scene="mtb"]{--tint:#7FA070;--tk:24%}
+#bike[data-scene="hybrid"]{--tint:#9CC08A;--tk:18%}
+#bike[data-scene="women"]{--tint:#F3C9A8;--tk:20%}
+#bike[data-scene="gravel"]{--tint:#E8B86E;--tk:22%}
+#bike[data-scene="cx"]{--tint:#8FA8B8;--tk:20%}
+#bike[data-scene="track"]{--tint:#B9CBE0;--tk:20%}
+#bike[data-scene="folding"]{--tint:#F0D9A8;--tk:18%}
 .rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
 .rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
 .rb-trunk-dark{fill:color-mix(in srgb,var(--trunk) 70%,black)} .rb-boulder{fill:color-mix(in srgb,var(--roadedge) 65%,var(--trunk))}
 .rb-root{stroke:var(--trunk);stroke-width:12;fill:none;stroke-linecap:round} .rb-fern{stroke:var(--grass);stroke-width:7;fill:none;stroke-linecap:round}
-.rb-light{fill:var(--sun);opacity:.35} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} #bike:not(.riding) #fx{opacity:0}
+.rb-light{fill:var(--sun);opacity:.35}
+.rb-rut{fill:color-mix(in srgb,var(--road) 65%,black);opacity:.5} .rb-stake{fill:var(--post)} .rb-flag{fill:var(--reflector)} .rb-mud{fill:color-mix(in srgb,var(--trunk) 65%,var(--road))}
+.rb-stand{fill:color-mix(in srgb,var(--roadedge) 70%,var(--hill))} .rb-plank{fill:color-mix(in srgb,var(--trunk) 35%,var(--road))} .rb-boat{fill:color-mix(in srgb,var(--trunk) 60%,var(--reflector))} .rb-sail{fill:var(--post);opacity:.9}
+.rb-fence{fill:var(--post)} .rb-crack{stroke:var(--speck);stroke-width:3;fill:none;stroke-linecap:round} .rb-water{fill:color-mix(in srgb,var(--sky-bottom),var(--hill) 40%)} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} .fx-mud{fill:color-mix(in srgb,var(--trunk) 85%,black)} #bike:not(.riding) #fx{opacity:0}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}
@@ -443,8 +452,10 @@ body.page-open{overflow:hidden}
         <defs>
           <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path class="grid-line" d="M100 0H0V100"/></pattern>
         </defs>
-        <g id="rideBgWrap"></g>
-        <g id="scene"></g>
+        <g id="tiltWrap">
+          <g id="rideBgWrap"></g>
+          <g id="scene"></g>
+        </g>
       </svg>
       <div class="stage-tag" id="stageTag"></div>
       <button class="play" id="play" aria-label="Пауза"></button>
@@ -642,7 +653,7 @@ tabs.forEach((t,i)=>{t.tabIndex=i?-1:0;t.addEventListener('click',()=>selectTab(
 const playBtn=$('#play');
 function syncPlay(){bikeSvg.classList.toggle('riding',state.playing);playBtn.innerHTML=state.playing?'<svg viewBox="0 0 14 14"><rect x="2" y="1.5" width="3.6" height="11" rx="1"/><rect x="8.4" y="1.5" width="3.6" height="11" rx="1"/></svg>':'<svg viewBox="0 0 14 14"><path d="M3 1.6v10.8a.8.8 0 0 0 1.2.7l8.6-5.4a.8.8 0 0 0 0-1.4L4.2.9A.8.8 0 0 0 3 1.6z"/></svg>';
   playBtn.setAttribute('aria-label',state.playing?'Пауза':'Крутить педали');}
-playBtn.addEventListener('click',()=>{state.playing=!state.playing;syncPlay();});
+playBtn.addEventListener('click',()=>{state.playing=!state.playing;syncPlay();if(refs.pts)updateDynamic();});
 
 // highlight dims on the figure
 const personSvg=$('#person');
@@ -794,6 +805,9 @@ function updateDynamic(){
     if(!state.playing)refs.shadow.removeAttribute('transform');
     else{const cx=+refs.shadow.getAttribute('cx'),cy=+refs.shadow.getAttribute('cy'),{sx,sy}=shadowScale(pose.bounce,sceneId());refs.shadow.setAttribute('transform',`translate(${fx(cx)} ${fx(cy)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(${fx(-cx)} ${fx(-cy)})`);}
   }
+  // the banked turn of the velodrome: background and bike lean together while riding
+  {const tilt=state.playing?(SCENES[sceneId()].tilt||0):0,tw=$('#tiltWrap');
+   if(tilt)tw.setAttribute('transform',`rotate(${-tilt} ${fx((refs.pts.R.x+refs.pts.F.x)/2)} ${fx(-refs.pts.ground)})`);else tw.removeAttribute('transform');}
   if($('#fx'))applyFx(bikeSvg,state.playing?effectPuffs(rideT,sceneId()):[],{x:refs.pts.R.x,y:refs.pts.ground});
   if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR,sceneId()).x;applyRide(bikeSvg,sh);}
 }

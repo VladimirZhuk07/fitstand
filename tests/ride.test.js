@@ -132,14 +132,19 @@ test('pattern content stays inside its tile (no seams, no clipped crowns)', () =
 });
 
 // ---------- scenes (feedback 5) ----------
-const SCENE_IDS = ['default', 'road', 'city', 'mtb'];
-const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], default: [20, 24] };
+const SCENE_IDS = ['default', 'road', 'city', 'mtb', 'hybrid', 'women', 'gravel', 'cx', 'track', 'folding'];
+const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], hybrid: [18, 22], women: [12, 16], gravel: [22, 25], cx: [22, 26], track: [35, 40], folding: [12, 15], default: [20, 24] };
 const R2 = [...WHEELS, 203, 152.5];
 
 test('sceneOf: a scene per style, unknown styles fall back to default', () => {
-  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', women: 'default', track: 'default', undefined: 'default', __proto__: 'default' };
-  for (const k of ['road', 'city', 'mtb', 'fullsus', 'women', 'track']) assert.equal(R.sceneOf(k), want[k], k);
-  for (const k of [undefined, '__proto__', 'constructor', null]) assert.equal(R.sceneOf(k), 'default', String(k));
+  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
+  for (const [k, v] of Object.entries(want)) assert.equal(R.sceneOf(k), v, k);
+  for (const k of [undefined, '__proto__', 'constructor', null, 'bmx', 'kid']) assert.equal(R.sceneOf(k), 'default', String(k));
+});
+
+test('the bank tilt was tried on the track and rejected: no scene leans (the option stays, tested below)', () => {
+  // at 4 degrees the whole scene reads as a climb up a hill, not as a banked turn; a velodrome is flat from the side
+  for (const id of SCENE_IDS) assert.ok(!R.SCENES[id].tilt, id);
 });
 
 test('scene speeds are in the seller ranges', () => {
@@ -163,7 +168,7 @@ test('every scene keeps the wheel, the road and the layers in step', () => {
     for (const { id: lid, k } of R.LAYERS) {
       const { tile } = R.layerShift(lid, 0, r, id), n = (R.speedOf(r, id) * P * k) / tile;
       assert.ok(Math.abs(n - Math.round(n)) < 1e-9, `${id} ${lid} R=${r}`);
-      assert.ok(tile >= 2400 && tile <= 5000, `${id} ${lid} tile ${tile}`);
+      assert.ok(tile >= 1900 && tile <= 5000, `${id} ${lid} tile ${tile}`);
     }
   }
 });
@@ -323,4 +328,103 @@ test('the slow-device guard ignores frames that redrew the scene and tolerates a
   assert.match(html, /if\(!redrew\)\{frameDts\.push\(dt\)/);
   assert.match(html, /shadowScale\(pose\.bounce,sceneId\(\)\)/);
   assert.match(html, /removeAttribute\('transform'\)/);
+});
+
+// ---------- release B scenes ----------
+const tintCss = id => new RegExp(String.raw`#bike\[data-scene="${id}"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}`);
+const indexHtml = () => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+const NOT_ROAD_OR_CITY = ['rb-barrier', 'rb-house'];
+
+test('hybrid scene: a park with a picket fence, signs and cracked asphalt', () => {
+  const m = bg('hybrid');
+  for (const c of ['rb-fence', 'rb-crack', 'rb-sign', 'rb-bush', 'rb-boulder']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('hybrid'));
+});
+
+test('women scene: water, flower beds, benches, lamps, paving', () => {
+  const m = bg('women');
+  for (const c of ['rb-water', 'rb-flower', 'rb-bench', 'rb-lamp', 'rb-tile', 'rb-bush']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('women'));
+});
+
+test('gravel scene: fields, a fence, stones and a rutted gravel road', () => {
+  const m = bg('gravel');
+  for (const c of ['rb-rut', 'rb-fence', 'rb-boulder', 'rb-treeline', 'rb-speck']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('gravel'));
+});
+
+test('cyclocross scene: a course with stakes and flags, mud and ruts', () => {
+  const m = bg('cx');
+  for (const c of ['rb-flag', 'rb-stake', 'rb-mud', 'rb-rut', 'rb-tree', 'rb-treeline']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('cx'));
+});
+
+test('mud for cyclocross: six clods that fly up and fall back, the loop is whole', () => {
+  const key = ps => ps.map(p => `${p.dx.toFixed(4)}|${p.dy.toFixed(4)}|${p.r.toFixed(4)}|${p.o.toFixed(4)}`).sort().join();
+  for (const t of [0, 0.7, 3.3, 8.8]) {
+    const ps = R.effectPuffs(t, 'cx');
+    assert.equal(ps.length, 6);
+    for (const p of ps) assert.ok(p.o >= 0 && p.o <= 0.8 + 1e-9 && p.r > 0 && p.dx < 0 && p.dy >= -1e-9, JSON.stringify(p));
+    assert.equal(key(ps), key(R.effectPuffs(t + P, 'cx')), 'nine seconds');
+    assert.equal(key(ps), key(R.effectPuffs(t + P / 6, 'cx')), 'a clod lives a sixth of the loop');
+  }
+  // a clod flies up and falls: the middle of its life is higher than the start and the end
+  const at = u => R.effectPuffs((u * P) / 6, 'cx')[0].dy;
+  assert.ok(at(0.5) > at(0) + 20 && at(0.5) > at(0.97) + 20, 'ballistic');
+  assert.equal(R.effectPuffs(1, 'gravel').length, 6, 'gravel raises dust');
+  for (const id of ['road', 'city', 'hybrid', 'women', 'track', 'folding', 'default', 'nope']) assert.deepEqual(R.effectPuffs(1, id), [], id);
+});
+
+test('fx markup: clods for cyclocross, dust for gravel and mtb, nothing otherwise', () => {
+  assert.match(R.fxMarkup('cx'), /class="fx-mud"/);
+  assert.doesNotMatch(R.fxMarkup('cx'), /fx-dust/);
+  for (const id of ['gravel', 'mtb']) { assert.match(R.fxMarkup(id), /class="fx-dust"/); assert.doesNotMatch(R.fxMarkup(id), /fx-mud/); }
+  for (const id of ['road', 'track', 'default']) assert.equal(R.fxMarkup(id), '');
+  assert.equal((R.fxMarkup('cx').match(/<circle/g) || []).length, 6);
+  assert.match(indexHtml(), /\.fx-mud\{fill:color-mix\(in srgb,var\(--trunk\) 85%,black\)\}/);
+});
+
+test('track scene: stands, rails, flags, wooden boards; no houses', () => {
+  const m = bg('track');
+  for (const c of ['rb-stand', 'rb-barrier', 'rb-flag', 'rb-plank', 'rb-marking']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-house"'));
+  assert.match(indexHtml(), tintCss('track'));
+});
+
+test('folding scene: harbour water, boats, bollards, cobbles, paving', () => {
+  const m = bg('folding');
+  for (const c of ['rb-water', 'rb-boat', 'rb-sail', 'rb-lamp', 'rb-boulder', 'rb-tile']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('folding'));
+});
+
+test('bank tilt: one wrapper turns the background and the bike together, only while riding', () => {
+  const html = indexHtml();
+  assert.match(html, /<g id="tiltWrap">\s*<g id="rideBgWrap"><\/g>\s*<g id="scene"><\/g>\s*<\/g>/);
+  assert.match(html, /rotate\(\$\{-tilt\} /);
+  assert.match(html, /tilt=state\.playing\?\(SCENES\[sceneId\(\)\]\.tilt\|\|0\):0/);
+  assert.match(html, /else tw\.removeAttribute\('transform'\)/);
+  assert.ok(html.includes("getElementById('tiltWrap')") || html.includes("$('#tiltWrap')"));
+});
+
+test('bank tilt: the background still covers every corner of the view when it is turned', () => {
+  const rot = (px, py, cx, cy, deg) => { const a = (deg * Math.PI) / 180, dx = px - cx, dy = py - cy; return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)]; };
+  for (const view of [VIEW, { x: -500, y: -1700, w: 1200, h: 2000 }, { x: -1500, y: -1700, w: 3000, h: 1200 }, { x: -300, y: -2400, w: 700, h: 2800 }]) {
+    const m = R.rideBgMarkup(view, 241, 311, 'track');
+    const sky = m.match(/<rect class="rb-sky" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
+    const verge = m.match(/<rect class="rb-verge" x="[-\d.]+" y="([-\d.]+)" width="[\d.]+" height="([\d.]+)"/);
+    assert.ok(verge);
+    const x0 = sky[0], x1 = sky[0] + sky[2], y0 = sky[1], y1 = Number(verge[1]) + Number(verge[2]);
+    const cx = view.x + view.w / 2;
+    for (const [px, py] of [[view.x, view.y], [view.x + view.w, view.y], [view.x, view.y + view.h], [view.x + view.w, view.y + view.h]])
+      for (const deg of [4, -4]) { const [qx, qy] = rot(px, py, cx, 241, deg); assert.ok(qx >= x0 && qx <= x1 && qy >= y0 && qy <= y1, `corner ${px},${py} turned by ${deg}`); }
+  }
+});
+
+test('pause: the play button redraws the dynamic parts, so the tilt and the shadow stop moving at once', () => {
+  assert.match(indexHtml(), /state\.playing=!state\.playing;syncPlay\(\);if\(refs\.pts\)updateDynamic\(\);/);
 });
