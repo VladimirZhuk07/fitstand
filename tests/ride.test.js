@@ -329,3 +329,22 @@ test('the slow-device guard ignores frames that redrew the scene and tolerates a
   assert.match(html, /shadowScale\(pose\.bounce,sceneId\(\)\)/);
   assert.match(html, /removeAttribute\('transform'\)/);
 });
+
+// ---------- release B scenes ----------
+const tintCss = id => new RegExp(String.raw`#bike\[data-scene="${id}"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}`);
+const indexHtml = () => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+const NOT_ROAD_OR_CITY = ['rb-barrier', 'rb-house'];
+
+test('hybrid scene: a park with a picket fence, signs and cracked asphalt', () => {
+  const m = bg('hybrid');
+  for (const c of ['rb-fence', 'rb-crack', 'rb-sign', 'rb-bush', 'rb-boulder']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('hybrid'));
+});
+
+test('women scene: water, flower beds, benches, lamps, paving', () => {
+  const m = bg('women');
+  for (const c of ['rb-water', 'rb-flower', 'rb-bench', 'rb-lamp', 'rb-tile', 'rb-bush']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('women'));
+});

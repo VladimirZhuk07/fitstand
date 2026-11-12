@@ -196,11 +196,14 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike[data-scene="road"]{--tint:#9FC4E8;--tk:18%}
 #bike[data-scene="city"]{--tint:#F2B27A;--tk:20%}
 #bike[data-scene="mtb"]{--tint:#7FA070;--tk:24%}
+#bike[data-scene="hybrid"]{--tint:#9CC08A;--tk:18%}
+#bike[data-scene="women"]{--tint:#F3C9A8;--tk:20%}
 .rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
 .rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
 .rb-trunk-dark{fill:color-mix(in srgb,var(--trunk) 70%,black)} .rb-boulder{fill:color-mix(in srgb,var(--roadedge) 65%,var(--trunk))}
 .rb-root{stroke:var(--trunk);stroke-width:12;fill:none;stroke-linecap:round} .rb-fern{stroke:var(--grass);stroke-width:7;fill:none;stroke-linecap:round}
-.rb-light{fill:var(--sun);opacity:.35} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} #bike:not(.riding) #fx{opacity:0}
+.rb-light{fill:var(--sun);opacity:.35}
+.rb-fence{fill:var(--post)} .rb-crack{stroke:var(--speck);stroke-width:3;fill:none;stroke-linecap:round} .rb-water{fill:color-mix(in srgb,var(--sky-bottom),var(--hill) 40%)} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} #bike:not(.riding) #fx{opacity:0}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}

@@ -97,6 +97,9 @@ function specks(tile, h, seed) {
 // ---------- layer builders: each draws the inside of one pattern tile; the scene table says which one a layer uses ----------
 // y of a hill line made by hillPath at x
 const hillY = (tile, base, waves, x) => base - waves.reduce((sum, [a, n, ph]) => sum + a * Math.cos((TAU * n * x) / tile + ph), 0);
+// small props shared by the scenes; all of them stand on the bottom of the tile (y = h) and inside x .. x + width
+const benchAt = (bx, h) => `<rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 64)}" width="170" height="14" rx="3"/><rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 104)}" width="170" height="10" rx="3"/><rect class="rb-bench" x="${f1(bx + 14)}" y="${f1(h - 50)}" width="10" height="48"/><rect class="rb-bench" x="${f1(bx + 146)}" y="${f1(h - 50)}" width="10" height="48"/>`;
+const lampAt = (lx, h) => `<rect class="rb-lamp" x="${f1(lx)}" y="${f1(h - 330)}" width="10" height="330"/><rect class="rb-lamp" x="${f1(lx - 18)}" y="${f1(h - 340)}" width="46" height="14" rx="5"/>`;
 const BUILD = {
   far: {
     default: (tile, h) => `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/><path class="rb-hill" d="${hillPath(tile, h, h * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`,
@@ -106,6 +109,14 @@ const BUILD = {
       let crowns = '';
       for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 40 + rg() * 26, ry = 46 + rg() * 30; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.35)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
       return `<path class="rb-hill2" d="${hillPath(tile, h, base + 20, w)}"/>${crowns}<path class="rb-hill" d="${hillPath(tile, h, h * 0.8, [[30, 3, 0.9], [14, 7, 2.1]])}"/>`;
+    },
+    // a quiet water front: a strip of water, low roofs and trees beyond it
+    water: (tile, h) => {
+      const n = 10, cell = tile / n, rg = rng(73);
+      let out = '';
+      for (let i = 0; i < n; i++) { const H = 70 + rg() * 90; out += `<rect class="rb-hill2" x="${f1(i * cell + 4)}" y="${f1(h * 0.7 - H)}" width="${f1(cell - 8)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 7; i++) { const x = ((i + 0.5) * tile) / 7, rx = 40 + rg() * 20, ry = 30 + rg() * 16; out += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(h * 0.7 - 60 - ry * 0.4)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out + `<rect class="rb-water" x="0" y="${f1(h * 0.7)}" width="${f1(tile)}" height="${f1(h * 0.3)}"/>`;
     },
     // low rooftops in two rows and the crowns of the street trees above them
     roofs: (tile, h) => {
@@ -129,6 +140,31 @@ const BUILD = {
   },
   mid: {
     default: (tile, h) => trees(tile, h, 7),
+    // a park: trees behind, a hedge, a picket fence and a couple of signposts
+    park: (tile, h) => {
+      const rg = rng(61), n = Math.max(1, Math.round(tile / 36)), step = tile / n;
+      let out = trees(tile, h, 23);
+      for (let i = 0; i < 6; i++) { const rx = 90 + rg() * 50; out += `<ellipse class="rb-bush" cx="${f1(((i + 0.5) * tile) / 6)}" cy="${f1(h - 70)}" rx="${f1(rx)}" ry="48"/>`; }
+      out += `<rect class="rb-fence" x="0" y="${f1(h - 66)}" width="${f1(tile)}" height="9"/><rect class="rb-fence" x="0" y="${f1(h - 34)}" width="${f1(tile)}" height="9"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-fence" x="${f1(i * step + step * 0.25)}" y="${f1(h - 84)}" width="${f1(step * 0.5)}" height="84"/>`;
+      for (const px of [tile * 0.28, tile * 0.74]) out += `<rect class="rb-post" x="${f1(px)}" y="${f1(h - 250)}" width="12" height="170"/><rect class="rb-sign" x="${f1(px - 26)}" y="${f1(h - 304)}" width="64" height="50" rx="7"/>`;
+      return out;
+    },
+    // a promenade: flower beds, round shrubs, benches and lamps
+    promenade: (tile, h) => {
+      const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, rg = rng(79);
+      let out = '', front = '';
+      for (let i = 0; i < n; i++) {
+        const cx = i * cell + cell * 0.3;
+        out += `<ellipse class="rb-bush" cx="${f1(cx)}" cy="${f1(h - 80)}" rx="${f1(70 + rg() * 24)}" ry="74"/>`;
+        out += lampAt(i * cell + cell * 0.9, h);
+        const bx = i * cell + cell * 0.08;
+        front += benchAt(bx, h);
+        for (let k = 0; k < 5; k++) front += `<ellipse class="rb-flower" cx="${f1(bx + 190 + k * 26)}" cy="${f1(h - 24 - rg() * 12)}" rx="9" ry="8"/>`;
+        front += `<ellipse class="rb-bush" cx="${f1(bx + 250)}" cy="${f1(h - 14)}" rx="84" ry="12"/>`;
+      }
+      return out + front;
+    },
     // the forest wall: dense crowns, dark trunks in front, boulders by the path
     trunks: (tile, h) => {
       const n = 9, cell = tile / n, rg = rng(43);
@@ -147,9 +183,8 @@ const BUILD = {
         for (let c = 0; c < cols; c++) for (let row = 0; row < 3; row++)
           out += `<rect class="rb-window" x="${f1(x + (w / cols) * (c + 0.5) - 18)}" y="${f1(h - H + 40 + row * 78)}" width="36" height="46" rx="4"/>`;
         const lx = i * cell + cell * 0.9;
-        out += `<rect class="rb-lamp" x="${f1(lx)}" y="${f1(h - 330)}" width="10" height="330"/><rect class="rb-lamp" x="${f1(lx - 18)}" y="${f1(h - 340)}" width="46" height="14" rx="5"/>`;
-        if (i % 2 === 0) { const bx = i * cell + cell * 0.35;
-          front += `<rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 64)}" width="170" height="14" rx="3"/><rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 104)}" width="170" height="10" rx="3"/><rect class="rb-bench" x="${f1(bx + 14)}" y="${f1(h - 50)}" width="10" height="48"/><rect class="rb-bench" x="${f1(bx + 146)}" y="${f1(h - 50)}" width="10" height="48"/>`; }
+        out += lampAt(lx, h);
+        if (i % 2 === 0) front += benchAt(i * cell + cell * 0.35, h);
       }
       return out + front;
     },
@@ -164,6 +199,13 @@ const BUILD = {
   },
   near: {
     default: (tile, h) => grass(tile, 23, h),
+    // the verge of a park path: grass and small stones
+    verge: (tile, h) => {
+      const rg = rng(67);
+      let out = grass(tile, 29, h);
+      for (let i = 0; i < 8; i++) { const rx = 10 + rg() * 12, ry = 7 + rg() * 5; out += `<ellipse class="rb-boulder" cx="${f1(((i + 0.5) * tile) / 8)}" cy="${f1(h - ry - 3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out;
+    },
     // roots across the way, stones and ferns
     roots: (tile, h) => {
       const rg = rng(37), n = 6, cell = tile / n;
@@ -176,6 +218,13 @@ const BUILD = {
         const rx0 = i * cell; // the root stays inside its own cell: nothing is cut off at the tile seam
         out += `<path class="rb-root" d="M${f1(rx0 + cell * 0.55)} ${f1(h - 6)} Q${f1(rx0 + cell * 0.7)} ${f1(h - 48)} ${f1(rx0 + cell * 0.95)} ${f1(h - 20)}"/>`;
       }
+      return out;
+    },
+    // flowers on tall stems in the grass by the promenade
+    flowers: (tile, h) => {
+      const rg = rng(83), n = 12, cell = tile / n;
+      let out = grass(tile, 17, h);
+      for (let i = 0; i < n; i++) { const x = i * cell + cell * (0.2 + rg() * 0.6), y = 24 + rg() * 24; out += `<ellipse class="rb-flower" cx="${f1(x)}" cy="${f1(y)}" rx="9" ry="8"/>`; }
       return out;
     },
     // the pavement edge: a kerb, flower beds
@@ -194,6 +243,17 @@ const BUILD = {
   },
   road: {
     default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // asphalt with a few cracks
+    cracks: (tile, h) => {
+      const rg = rng(71), n = 5, cell = tile / n;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`;
+      for (let i = 0; i < n; i++) {
+        let x = i * cell + cell * 0.2, y = h * 0.3 + rg() * h * 0.3, d = `M${f1(x)} ${f1(y)}`;
+        for (let k = 0; k < 4; k++) { x += 26 + rg() * 24; y = Math.min(h - 6, Math.max(8, y + (rg() - 0.5) * 30)); d += ` L${f1(x)} ${f1(y)}`; }
+        out += `<path class="rb-crack" d="${d}"/>`;
+      }
+      return out;
+    },
     // packed earth with roots across it and patches of sunlight through the leaves
     dirt: (tile, h) => {
       const rg = rng(53), n = 5, cell = tile / n;
