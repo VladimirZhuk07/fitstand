@@ -348,3 +348,17 @@ test('women scene: water, flower beds, benches, lamps, paving', () => {
   for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
   assert.match(indexHtml(), tintCss('women'));
 });
+
+test('gravel scene: fields, a fence, stones and a rutted gravel road', () => {
+  const m = bg('gravel');
+  for (const c of ['rb-rut', 'rb-fence', 'rb-boulder', 'rb-treeline', 'rb-speck']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('gravel'));
+});
+
+test('cyclocross scene: a course with stakes and flags, mud and ruts', () => {
+  const m = bg('cx');
+  for (const c of ['rb-flag', 'rb-stake', 'rb-mud', 'rb-rut', 'rb-tree', 'rb-treeline']) assert.ok(m.includes(`class="${c}"`), c);
+  for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
+  assert.match(indexHtml(), tintCss('cx'));
+});
