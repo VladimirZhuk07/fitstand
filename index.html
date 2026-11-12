@@ -194,7 +194,9 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-grass{stroke:var(--grass);stroke-width:9;fill:none;stroke-linecap:round} .rb-post{fill:var(--post)} .rb-reflector{fill:var(--reflector)}
 /* scenes (feedback 5): a tint mixed into the theme colours, so one definition serves the light and the dark theme */
 #bike[data-scene="road"]{--tint:#9FC4E8;--tk:18%}
+#bike[data-scene="city"]{--tint:#F2B27A;--tk:20%}
 .rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
+.rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}

@@ -241,3 +241,12 @@ test('road scene: the tint is set per scene in CSS', () => {
   assert.match(html, /\.rb-hill\{fill:color-mix\(in srgb,var\(--hill\),var\(--tint,transparent\) var\(--tk,0%\)\)\}/);
   assert.match(html, /bikeSvg\.dataset\.scene\s*=\s*sceneId\(\)/);
 });
+
+test('city scene: houses with windows, lamps, benches, flower beds, paving; not the road or default props', () => {
+  const m = bg('city');
+  for (const c of ['rb-house', 'rb-window', 'rb-lamp', 'rb-bench', 'rb-flower', 'rb-tile', 'rb-treeline']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-barrier"') && !m.includes('class="rb-speck"'));
+  assert.ok(!bg('road').includes('rb-house'), 'the road scene has no houses');
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /#bike\[data-scene="city"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}/);
+});

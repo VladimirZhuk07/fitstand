@@ -10,7 +10,7 @@ const wrap = t => ((t % RIDE.PERIOD) + RIDE.PERIOD) % RIDE.PERIOD;
 const SCENES = {
   default: { kmh: 21.6, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
   road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'open', mid: 'barriers', near: 'asphalt', road: 'smooth' } },
-  city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'roofs', mid: 'street', near: 'curb', road: 'tiles' } },
   mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
 };
 const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb' };
@@ -93,6 +93,15 @@ const hillY = (tile, base, waves, x) => base - waves.reduce((sum, [a, n, ph]) =>
 const BUILD = {
   far: {
     default: (tile, h) => `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/><path class="rb-hill" d="${hillPath(tile, h, h * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`,
+    // low rooftops in two rows and the crowns of the street trees above them
+    roofs: (tile, h) => {
+      const n = 14, cell = tile / n, r = rng(17);
+      let rows = '', crowns = '';
+      for (const [cls, hmax, hmin] of [['rb-hill2', 330, 160], ['rb-hill', 230, 90]])
+        for (let i = 0; i < n; i++) { const H = hmin + r() * (hmax - hmin); rows += `<rect class="${cls}" x="${f1(i * cell + 3)}" y="${f1(h - H)}" width="${f1(cell - 6)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 9; i++) { const x = ((i + 0.5) * tile) / 9, rx = 40 + r() * 25, ry = 36 + r() * 20; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(h - 230 - ry * 0.4)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return rows + crowns;
+    },
     // an open horizon: long low hills and a far line of trees
     open: (tile, h) => {
       const w = [[18, 1, 2.2], [10, 3, 1.1]], base = h * 0.78, r = rng(5), n = 18;
@@ -106,6 +115,22 @@ const BUILD = {
   },
   mid: {
     default: (tile, h) => trees(tile, h, 7),
+    // houses with windows, lamp posts and benches along a street
+    street: (tile, h) => {
+      const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, r = rng(31);
+      let out = '', front = '';
+      for (let i = 0; i < n; i++) {
+        const x = i * cell + cell * 0.1, w = cell * 0.8, H = 300 + r() * 120, cols = Math.max(2, Math.floor(w / 90));
+        out += `<rect class="rb-house" x="${f1(x)}" y="${f1(h - H)}" width="${f1(w)}" height="${f1(H)}"/>`;
+        for (let c = 0; c < cols; c++) for (let row = 0; row < 3; row++)
+          out += `<rect class="rb-window" x="${f1(x + (w / cols) * (c + 0.5) - 18)}" y="${f1(h - H + 40 + row * 78)}" width="36" height="46" rx="4"/>`;
+        const lx = i * cell + cell * 0.9;
+        out += `<rect class="rb-lamp" x="${f1(lx)}" y="${f1(h - 330)}" width="10" height="330"/><rect class="rb-lamp" x="${f1(lx - 18)}" y="${f1(h - 340)}" width="46" height="14" rx="5"/>`;
+        if (i % 2 === 0) { const bx = i * cell + cell * 0.35;
+          front += `<rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 64)}" width="170" height="14" rx="3"/><rect class="rb-bench" x="${f1(bx)}" y="${f1(h - 104)}" width="170" height="10" rx="3"/><rect class="rb-bench" x="${f1(bx + 14)}" y="${f1(h - 50)}" width="10" height="48"/><rect class="rb-bench" x="${f1(bx + 146)}" y="${f1(h - 50)}" width="10" height="48"/>`; }
+      }
+      return out + front;
+    },
     // a guardrail along the road, with posts, and two signs on poles
     barriers: (tile, h) => {
       const n = Math.max(1, Math.round(tile / 140)), step = tile / n;
@@ -117,11 +142,29 @@ const BUILD = {
   },
   near: {
     default: (tile, h) => grass(tile, 23, h),
+    // the pavement edge: a kerb, flower beds
+    curb: (tile, h) => {
+      const n = 7, cell = tile / n, r = rng(13);
+      let out = `<rect class="rb-tile" x="0" y="${f1(h * 0.4)}" width="${f1(tile)}" height="${f1(h * 0.2)}"/>`;
+      for (let i = 0; i < n; i++) {
+        const x = (i + 0.5) * cell;
+        out += `<ellipse class="rb-bush" cx="${f1(x)}" cy="${f1(h * 0.4 - 8)}" rx="${f1(60 + r() * 20)}" ry="22"/>`;
+        for (let k = 0; k < 4; k++) out += `<ellipse class="rb-flower" cx="${f1(x - 36 + k * 24)}" cy="${f1(h * 0.4 - 20 - r() * 8)}" rx="7" ry="6"/>`;
+      }
+      return out + `<rect class="rb-road" x="0" y="${f1(h * 0.62)}" width="${f1(tile)}" height="${f1(h * 0.38)}"/>`;
+    },
     // smooth asphalt of the road shoulder with a long marking line: the blur makes it a fast stripe
     asphalt: (tile, h) => `<rect class="rb-road" x="0" y="${f1(h * 0.3)}" width="${f1(tile)}" height="${f1(h * 0.7)}"/><rect class="rb-marking" x="0" y="${f1(h * 0.3 + 8)}" width="${f1(tile)}" height="8"/>`,
   },
   road: {
     default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // asphalt with a stretch of paving under the kerb
+    tiles: (tile, h) => {
+      const n = Math.max(8, Math.round(tile / 66)), step = tile / n;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-tile" x="${f1(i * step + 3)}" y="${f1(h * 0.55)}" width="${f1(step - 6)}" height="26" rx="3"/>`;
+      return out;
+    },
     // flawless asphalt with a dashed centre line
     smooth: (tile, h) => {
       const n = Math.max(1, Math.round(tile / 340)), step = tile / n;
