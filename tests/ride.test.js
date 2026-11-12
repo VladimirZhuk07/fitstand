@@ -250,3 +250,45 @@ test('city scene: houses with windows, lamps, benches, flower beds, paving; not 
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
   assert.match(html, /#bike\[data-scene="city"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}/);
 });
+
+test('mtb scene: forest, dark trunks, boulders, roots, dappled light', () => {
+  const m = bg('mtb');
+  for (const c of ['rb-trunk-dark', 'rb-boulder', 'rb-root', 'rb-fern', 'rb-light', 'rb-treeline']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-barrier"') && !m.includes('class="rb-house"'));
+  assert.deepEqual(R.SCENES.mtb.layers, { far: 'forest', mid: 'trunks', near: 'roots', road: 'dirt' });
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /#bike\[data-scene="mtb"\]\{--tint:#[0-9A-Fa-f]{6};--tk:\d+%\}/);
+});
+
+test('dust behind the rear wheel: six puffs, they drift back and fade, the loop is whole', () => {
+  const key = ps => ps.map(p => `${p.dx.toFixed(4)}|${p.dy.toFixed(4)}|${p.r.toFixed(4)}|${p.o.toFixed(4)}`).sort().join();
+  for (const t of [0, 0.7, 3.3, 8.8]) {
+    const ps = R.effectPuffs(t, 'mtb');
+    assert.equal(ps.length, 6);
+    for (const p of ps) assert.ok(p.o >= 0 && p.o <= 0.65 + 1e-9 && p.r > 0 && p.dx < 0 && p.dy >= 0, JSON.stringify(p));
+    assert.equal(key(ps), key(R.effectPuffs(t + P, 'mtb')), 'nine seconds');
+    assert.equal(key(ps), key(R.effectPuffs(t + P / 6, 'mtb')), 'a puff lives a sixth of the loop');
+  }
+  // at t = 0 puff i is at i/6 of its life: further back, higher, bigger, fainter
+  const ps = R.effectPuffs(0, 'mtb');
+  for (let i = 1; i < 6; i++) assert.ok(ps[i].dx < ps[i - 1].dx && ps[i].dy > ps[i - 1].dy && ps[i].r > ps[i - 1].r && ps[i].o < ps[i - 1].o, `puff ${i}`);
+  for (const id of ['road', 'city', 'default', 'nope']) assert.deepEqual(R.effectPuffs(1, id), []);
+});
+
+test('fx markup and applyFx', () => {
+  assert.equal(R.fxMarkup('road'), '');
+  const m = R.fxMarkup('mtb');
+  assert.match(m, /^<g id="fx"/);
+  assert.equal((m.match(/class="fx-dust"/g) || []).length, 6);
+  const set = {};
+  const el = sel => ({ setAttribute: (k, v) => { (set[sel] = set[sel] || {})[k] = v; } });
+  R.applyFx({ querySelector: el }, R.effectPuffs(1, 'mtb'), { x: -400, y: 311 });
+  assert.equal(Object.keys(set).filter(k => /^#fx-\d$/.test(k)).length, 6);
+  assert.ok(Number.isFinite(+set['#fx-0'].cx) && +set['#fx-0'].cx < -400, 'behind the rear wheel');
+  assert.equal(set['#fx'].display, 'inline');
+  R.applyFx({ querySelector: el }, [], { x: -400, y: 311 });
+  assert.equal(set['#fx'].display, 'none');
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.match(html, /fxMarkup\(sceneId\(\)\)/);
+  assert.match(html, /applyFx\(bikeSvg,state\.playing\?effectPuffs\(rideT,sceneId\(\)\):\[\]/);
+});

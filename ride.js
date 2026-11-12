@@ -11,7 +11,7 @@ const SCENES = {
   default: { kmh: 21.6, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
   road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'open', mid: 'barriers', near: 'asphalt', road: 'smooth' } },
   city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'roofs', mid: 'street', near: 'curb', road: 'tiles' } },
-  mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'forest', mid: 'trunks', near: 'roots', road: 'dirt' } },
 };
 const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb' };
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -61,7 +61,8 @@ function trees(tile, h, seed) {
   const r = rng(seed), n = 6;
   let out = '';
   for (let i = 0; i < n; i++) {
-    const x = ((i + 0.2 + r() * 0.6) * tile) / n, th = 140 + r() * 120, cw = 110 + r() * 90, ch = 150 + r() * 130;
+    const x0 = ((i + 0.2 + r() * 0.6) * tile) / n, th = 140 + r() * 120, cw = 110 + r() * 90, ch = 150 + r() * 130;
+    const x = Math.min(tile - cw * 1.1 - 2, Math.max(cw * 1.1 + 2, x0)); // a crown never crosses the tile edge: no seam
     if (r() < 0.3) { out += `<ellipse class="rb-bush" cx="${f1(x)}" cy="${f1(h - ch * 0.35 - 2)}" rx="${f1(cw * 1.1)}" ry="${f1(ch * 0.35)}"/>`; continue; }
     out += `<rect class="rb-trunk" x="${f1(x - 14)}" y="${f1(h - th)}" width="28" height="${f1(th)}"/>`;
     out += `<ellipse class="rb-tree" cx="${f1(x)}" cy="${f1(h - th - ch * 0.6)}" rx="${f1(cw)}" ry="${f1(ch)}"/>`;
@@ -93,6 +94,13 @@ const hillY = (tile, base, waves, x) => base - waves.reduce((sum, [a, n, ph]) =>
 const BUILD = {
   far: {
     default: (tile, h) => `<path class="rb-hill2" d="${hillPath(tile, h, h * 0.42, [[90, 1, 0.4], [50, 2, 1.7], [25, 3, 2.9]])}"/><path class="rb-hill" d="${hillPath(tile, h, h * 0.68, [[70, 1, 2.2], [40, 2, 0.3], [20, 4, 1.1]])}"/>`,
+    // a dense forest on the hills with the sky showing through
+    forest: (tile, h) => {
+      const w = [[40, 2, 0.5], [22, 5, 1.3]], base = h * 0.55, rg = rng(29), n = 30;
+      let crowns = '';
+      for (let i = 0; i < n; i++) { const x = ((i + 0.5) * tile) / n, rx = 40 + rg() * 26, ry = 46 + rg() * 30; crowns += `<ellipse class="rb-treeline" cx="${f1(x)}" cy="${f1(hillY(tile, base, w, x) - ry * 0.35)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return `<path class="rb-hill2" d="${hillPath(tile, h, base + 20, w)}"/>${crowns}<path class="rb-hill" d="${hillPath(tile, h, h * 0.8, [[30, 3, 0.9], [14, 7, 2.1]])}"/>`;
+    },
     // low rooftops in two rows and the crowns of the street trees above them
     roofs: (tile, h) => {
       const n = 14, cell = tile / n, r = rng(17);
@@ -115,6 +123,14 @@ const BUILD = {
   },
   mid: {
     default: (tile, h) => trees(tile, h, 7),
+    // the forest wall: dense crowns, dark trunks in front, boulders by the path
+    trunks: (tile, h) => {
+      const n = 9, cell = tile / n, rg = rng(43);
+      let out = trees(tile, h, 19);
+      for (let i = 0; i < n; i++) { const w = 40 + rg() * 44, H = 560 + rg() * 320; out += `<rect class="rb-trunk-dark" x="${f1(i * cell + cell * (0.2 + rg() * 0.5))}" y="${f1(h - H)}" width="${f1(w)}" height="${f1(H)}"/>`; }
+      for (let i = 0; i < 4; i++) { const rx = 70 + rg() * 40, ry = 44 + rg() * 20; out += `<ellipse class="rb-boulder" cx="${f1(((i + 0.5) * tile) / 4 + rg() * 60 - 30)}" cy="${f1(h - ry - 2)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`; }
+      return out;
+    },
     // houses with windows, lamp posts and benches along a street
     street: (tile, h) => {
       const n = Math.max(3, Math.round(tile / 420)), cell = tile / n, r = rng(31);
@@ -142,6 +158,19 @@ const BUILD = {
   },
   near: {
     default: (tile, h) => grass(tile, 23, h),
+    // roots across the way, stones and ferns
+    roots: (tile, h) => {
+      const rg = rng(37), n = 6, cell = tile / n;
+      let out = '';
+      for (let i = 0; i < n; i++) {
+        const x = i * cell + cell * 0.25, y = h - 10;
+        out += `<path class="rb-fern" d="M${f1(x)} ${f1(y)} Q${f1(x + 6)} ${f1(y - 45)} ${f1(x - 18)} ${f1(y - 70)} M${f1(x + 10)} ${f1(y)} Q${f1(x + 22)} ${f1(y - 50)} ${f1(x + 40)} ${f1(y - 66)}"/>`;
+        const rx = 18 + rg() * 14, ry = 12 + rg() * 8;
+        out += `<ellipse class="rb-boulder" cx="${f1(x + cell * 0.45)}" cy="${f1(h - ry - 3)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
+        out += `<path class="rb-root" d="M${f1(x + cell * 0.55)} ${f1(h - 6)} Q${f1(x + cell * 0.7)} ${f1(h - 48)} ${f1(x + cell * 0.95)} ${f1(h - 20)}"/>`;
+      }
+      return out;
+    },
     // the pavement edge: a kerb, flower beds
     curb: (tile, h) => {
       const n = 7, cell = tile / n, r = rng(13);
@@ -158,6 +187,17 @@ const BUILD = {
   },
   road: {
     default: (tile, h) => `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`,
+    // packed earth with roots across it and patches of sunlight through the leaves
+    dirt: (tile, h) => {
+      const rg = rng(53), n = 5, cell = tile / n;
+      let out = `<rect class="rb-road" x="0" y="0" width="${f1(tile)}" height="${f1(h)}"/><rect class="rb-roadedge" x="0" y="0" width="${f1(tile)}" height="5"/>${specks(tile, h, 11)}`;
+      for (let i = 0; i < n; i++) {
+        const x = i * cell + cell * 0.35;
+        out += `<path class="rb-root" d="M${f1(x)} ${f1(h - 8)} Q${f1(x + 30)} ${f1(h * 0.2)} ${f1(x + 90)} ${f1(h - 14)}"/>`;
+        out += `<ellipse class="rb-light" cx="${f1(x + cell * 0.3)}" cy="${f1(h * 0.5)}" rx="${f1(50 + rg() * 30)}" ry="14"/>`;
+      }
+      return out;
+    },
     // asphalt with a stretch of paving under the kerb
     tiles: (tile, h) => {
       const n = Math.max(8, Math.round(tile / 66)), step = tile / n;
@@ -216,7 +256,29 @@ function applyRide(svg, shifts) {
 // a slow device: the last 60 frame intervals (s) average above 28 ms — then the depth blur is dropped
 const slowFrames = dts => dts.length >= 60 && dts.slice(-60).reduce((a, b) => a + b, 0) / 60 > 0.028;
 
-const api = { slowFrames, RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
+// ---------- dust behind the rear wheel (mountain bike): six puffs, each lives a sixth of the loop, so the loop has no seam ----------
+const FX_N = 6;
+// relative to the rear wheel and the ground, in mm: dx back, dy up; r radius; o opacity
+function effectPuffs(t, sceneId) {
+  if (sceneData(sceneId).effect !== 'dust' || sceneData(sceneId) === SCENES.default) return [];
+  const tau = wrap(t) / RIDE.PERIOD, out = [];
+  for (let i = 0; i < FX_N; i++) {
+    const u = (tau * FX_N + i / FX_N) % 1;
+    out.push({ dx: -(40 + u * 300), dy: 20 + u * 90, r: 22 + u * 46, o: 0.65 * (1 - u) });
+  }
+  return out;
+}
+const fxMarkup = sceneId => (sceneData(sceneId).effect === 'dust' ? `<g id="fx">${Array.from({ length: FX_N }, (_, i) => `<circle id="fx-${i}" class="fx-dust" cx="0" cy="0" r="1" opacity="0"/>`).join('')}</g>` : '');
+// w: the rear wheel's x and the ground line (model mm, y up); the markup has y down
+function applyFx(svg, puffs, w) {
+  svg.querySelector('#fx').setAttribute('display', puffs.length ? 'inline' : 'none');
+  puffs.forEach((p, i) => {
+    const el = svg.querySelector('#fx-' + i);
+    for (const [k, v] of Object.entries({ cx: +(w.x + p.dx).toFixed(1), cy: +(-(w.y + p.dy)).toFixed(1), r: +p.r.toFixed(1), opacity: +p.o.toFixed(3) })) el.setAttribute(k, v);
+  });
+}
+
+const api = { effectPuffs, fxMarkup, applyFx, slowFrames, RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
