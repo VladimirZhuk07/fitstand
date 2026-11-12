@@ -5,30 +5,43 @@ const RIDE = { PERIOD: 9, CRANK_REVS: 12, SPEED: 6000 }; // s, crank turns a loo
 const TAU = 2 * Math.PI;
 const wrap = t => ((t % RIDE.PERIOD) + RIDE.PERIOD) % RIDE.PERIOD;
 
+// a scene per kind of ride (feedback 5): speed of the background, roughness of the road, what fills the layers.
+// bounce: [amplitude mm, whole periods a loop, phase] — every wobble has a whole number of periods, so the loop has no seam
+const SCENES = {
+  default: { kmh: 21.6, bounce: [[1.5, 13, 0], [1.5, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  road:    { kmh: 32.5, bounce: [[0.6, 13, 0], [0.6, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  city:    { kmh: 16.5, bounce: [[1.2, 13, 0], [1.2, 29, 0.7]], effect: 'none', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+  mtb:     { kmh: 24, bounce: [[3.5, 7, 0], [2.5, 17, 0.7], [2, 31, 1.9]], effect: 'dust', layers: { far: 'default', mid: 'default', near: 'default', road: 'default' } },
+};
+const STYLE_SCENE = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb' };
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const sceneOf = style => (typeof style === 'string' && has(STYLE_SCENE, style) ? STYLE_SCENE[style] : 'default');
+const sceneData = id => (typeof id === 'string' && has(SCENES, id) ? SCENES[id] : SCENES.default);
+
 // a whole number of wheel turns a loop, so the valve mark comes back to its place; the road then moves exactly with the wheel
-const wheelRevs = wheelR => Math.max(1, Math.round((RIDE.SPEED * RIDE.PERIOD) / (TAU * wheelR)));
-const speedOf = wheelR => (wheelRevs(wheelR) * TAU * wheelR) / RIDE.PERIOD;
+const wheelRevs = (wheelR, sceneId) => Math.max(1, Math.round(((sceneData(sceneId).kmh / 3.6) * 1000 * RIDE.PERIOD) / (TAU * wheelR)));
+const speedOf = (wheelR, sceneId) => (wheelRevs(wheelR, sceneId) * TAU * wheelR) / RIDE.PERIOD;
 
 // every wobble has a whole number of periods a loop: no seam, and mixed periods read as irregular
-function ridePose(t, wheelR) {
+function ridePose(t, wheelR, sceneId) {
   const tau = wrap(t) / RIDE.PERIOD, s = (n, ph = 0) => Math.sin(TAU * n * tau + ph);
   return {
     crank: 360 * RIDE.CRANK_REVS * tau,
-    wheel: 360 * wheelRevs(wheelR) * tau,
-    ground: speedOf(wheelR) * RIDE.PERIOD * tau,
+    wheel: 360 * wheelRevs(wheelR, sceneId) * tau,
+    ground: speedOf(wheelR, sceneId) * RIDE.PERIOD * tau,
     torso: 0.35 * s(2 * RIDE.CRANK_REVS),                   // a hint towards each pushing leg; more reads as a saddle set too high
     breath: 3 * (1 - Math.cos(TAU * 3 * tau)),             // 3 breaths a loop
     bar: 0.6 * s(2, 0.3) + 0.45 * s(5, 1.1) + 0.3 * s(7, 2), // small steering corrections
-    bounce: 1.5 * s(13) + 1.5 * s(29, 0.7),                 // the tyres on a not quite smooth road
+    bounce: sceneData(sceneId).bounce.reduce((sum, [a, n, ph]) => sum + a * s(n, ph), 0), // the tyres on the road
   };
 }
 
 // parallax: far hills barely move, trees faster, the grass by the road faster than the road itself
 const LAYERS = [{ id: 'far', k: 0.06 }, { id: 'mid', k: 0.35 }, { id: 'near', k: 1.3 }, { id: 'road', k: 1 }];
-function layerShift(id, t, wheelR) {
-  const { k } = LAYERS.find(l => l.id === id), run = speedOf(wheelR) * RIDE.PERIOD * k;
+function layerShift(id, t, wheelR, sceneId) {
+  const { k } = LAYERS.find(l => l.id === id), speed = speedOf(wheelR, sceneId), run = speed * RIDE.PERIOD * k;
   const n = Math.max(1, Math.round(run / 3500)), tile = run / n;   // a whole number of tiles a loop
-  return { x: -((speedOf(wheelR) * wrap(t) * k) % tile), tile };
+  return { x: -((speed * wrap(t) * k) % tile), tile };
 }
 
 // ---------- background, drawn in mm like the bike; y grows downwards as in the markup ----------
@@ -113,7 +126,7 @@ function applyRide(svg, shifts) {
   for (const id of ['far', 'mid', 'near', 'road']) svg.querySelector('#rb-' + id).setAttribute('patternTransform', `translate(${+shifts[id].toFixed(2)} 0)`);
 }
 
-const api = { RIDE, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
+const api = { RIDE, SCENES, sceneOf, wheelRevs, speedOf, ridePose, LAYERS, layerShift, rideBgMarkup, applyRide };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

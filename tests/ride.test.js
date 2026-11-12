@@ -108,8 +108,8 @@ test('the head holds steady: only the breath moves it', () => {
 
 test('the scene speed follows the target wheel, not the tweening one', () => {
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
-  assert.match(html, /ridePose\(rideT,target\.wheelR\)/);
-  assert.match(html, /layerShift\(id,rideT,target\.wheelR\)/);
+  assert.match(html, /ridePose\(rideT,target\.wheelR,sceneId\(\)\)/);
+  assert.match(html, /layerShift\(id,rideT,target\.wheelR,sceneId\(\)\)/);
 });
 
 test('the road is a band under the wheels, the grass is on the verge below it', () => {
@@ -128,5 +128,63 @@ test('pattern content stays inside its tile (no seams, no clipped crowns)', () =
     const p = m.match(new RegExp(String.raw`<pattern id="rb-${id}"[^>]* height="([\d.]+)">(.*?)</pattern>`)), h = Number(p[1]);
     for (const e of p[2].matchAll(/<ellipse[^>]* cy="([-\d.]+)"[^>]* ry="([\d.]+)"/g)) assert.ok(Number(e[1]) - Number(e[2]) >= 2 && Number(e[1]) + Number(e[2]) <= h, `${id}: ellipse ${e[1]}±${e[2]} in ${h}`);
     for (const e of p[2].matchAll(/<rect class="rb-(?:trunk|post)" x="[-\d.]+" y="([-\d.]+)"/g)) assert.ok(Number(e[1]) >= 2, `${id}: rect at ${e[1]}`);
+  }
+});
+
+// ---------- scenes (feedback 5) ----------
+const SCENE_IDS = ['default', 'road', 'city', 'mtb'];
+const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], default: [20, 24] };
+const R2 = [...WHEELS, 203, 152.5];
+
+test('sceneOf: a scene per style, unknown styles fall back to default', () => {
+  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', women: 'default', track: 'default', undefined: 'default', __proto__: 'default' };
+  for (const k of ['road', 'city', 'mtb', 'fullsus', 'women', 'track']) assert.equal(R.sceneOf(k), want[k], k);
+  for (const k of [undefined, '__proto__', 'constructor', null]) assert.equal(R.sceneOf(k), 'default', String(k));
+});
+
+test('scene speeds are in the seller ranges', () => {
+  for (const id of SCENE_IDS) {
+    const kmh = (R.speedOf(311, id) * 3.6) / 1000, [lo, hi] = KMH[id];
+    assert.ok(kmh >= lo * 0.99 && kmh <= hi * 1.01, `${id}: ${kmh}`);
+  }
+  assert.equal(R.speedOf(311), R.speedOf(311, 'default'));
+});
+
+test('every scene keeps the wheel, the road and the layers in step', () => {
+  for (const id of SCENE_IDS) for (const r of R2) {
+    assert.ok(Number.isInteger(R.wheelRevs(r, id)) && R.wheelRevs(r, id) >= 1, `${id} R=${r}`);
+    for (const t of frames().filter((_, i) => i % 6 === 0)) {
+      const p = R.ridePose(t, r, id);
+      assert.ok(Math.abs(p.ground - (p.wheel / 360) * 2 * Math.PI * r) < 0.5, `${id} road R=${r} t=${t}`);
+      assert.ok(Math.abs(p.crank - 360 * 12 * (t / P)) < 1e-6);
+    }
+    const end = R.ridePose(P - 1e-9, r, id);
+    assert.ok(Math.abs(end.wheel - 360 * R.wheelRevs(r, id)) < 1e-3, `${id} wheel loop`);
+    for (const { id: lid, k } of R.LAYERS) {
+      const { tile } = R.layerShift(lid, 0, r, id), n = (R.speedOf(r, id) * P * k) / tile;
+      assert.ok(Math.abs(n - Math.round(n)) < 1e-9, `${id} ${lid} R=${r}`);
+      assert.ok(tile >= 2400 && tile <= 5000, `${id} ${lid} tile ${tile}`);
+    }
+  }
+});
+
+test('roughness: bounded by the scene table, mtb rougher than road, seams invisible', () => {
+  const peak = id => Math.max(...frames().map(t => Math.abs(R.ridePose(t, 311, id).bounce)));
+  for (const id of SCENE_IDS) {
+    const amp = R.SCENES[id].bounce.reduce((s, [a]) => s + a, 0);
+    assert.ok(peak(id) <= amp + 0.01, id);
+    const bn = t => R.ridePose(t, 311, id).bounce, step = Math.max(...frames().map(t => Math.abs(bn(t + 1 / 60) - bn(t))));
+    assert.ok(Math.abs(bn(P - 1 / 60) - bn(0)) <= step + 1e-6, `${id} seam`);
+  }
+  assert.ok(peak('mtb') > peak('road') * 3);
+});
+
+test('changing the scene between frames never gives NaN', () => {
+  for (const from of SCENE_IDS) for (const to of SCENE_IDS) for (const t of [0, 1.3, 4.4, 8.9]) {
+    for (const id of [from, to]) {
+      const p = R.ridePose(t, 311, id);
+      for (const v of Object.values(p)) assert.ok(Number.isFinite(v), `${id} ${t}`);
+      for (const { id: lid } of R.LAYERS) assert.ok(Number.isFinite(R.layerShift(lid, t, 311, id).x));
+    }
   }
 });

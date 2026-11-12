@@ -743,15 +743,17 @@ function computeUx(b){
   const r=bikeSvg.getBoundingClientRect(); if(!r.width||!r.height)return 1;
   return 1/Math.min(r.width/b.w,r.height/b.h);
 }
+// the scene of the ride follows the chosen style (road, city, mountain; the rest keep the default one)
+const sceneId=()=>sceneOf(state.style);
 function rebuild(){
   const scene=$('#scene');
   scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
   refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
   refs.pts=geomPts(cur);
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
-  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR):'';
+  $('#rideBgWrap').innerHTML=vb?rideBgMarkup(vb,-refs.pts.ground,target.wheelR,sceneId()):'';
   // the rider: the far leg behind the frame, the rest over the cockpit
-  const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR));
+  const j=riderJoints(cur,refs.pts,ridePose(rideT,target.wheelR,sceneId()));
   $('#riderFarSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'far');
   $('#riderSlot').innerHTML=riderMarkup(cur,j,{t:rideT},'near');
 }
@@ -763,7 +765,7 @@ function riderJoints(g,pts,pose){
 }
 function updateDynamic(){
   // the scene runs at the speed of the target wheel: it does not change while the drawing tweens to a new size
-  const g=cur, pose=ridePose(rideT,target.wheelR), j=riderJoints(g,refs.pts,pose);
+  const g=cur, pose=ridePose(rideT,target.wheelR,sceneId()), j=riderJoints(g,refs.pts,pose);
   for (const [side,l] of [['n',j.near],['f',j.far]]){
     setL(refs[side+'Crank'],V(0,0),l.pedal);
     setL(refs[side+'Pedal'],sub(l.pedal,V(48,0)),add(l.pedal,V(48,0)));
@@ -774,7 +776,7 @@ function updateDynamic(){
   applyRider(bikeSvg,riderShapes(g,j,{t:rideT}));
   if(refs.cockpitG)refs.cockpitG.setAttribute('transform',`rotate(${fx(-pose.bar)} ${fx(ck.C.x)} ${fx(-ck.C.y)})`);
   $('#scene').setAttribute('transform',`translate(0 ${fx(-pose.bounce)})`);
-  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR).x;applyRide(bikeSvg,sh);}
+  if($('#rideBg')){const sh={};for(const {id} of LAYERS)sh[id]=layerShift(id,rideT,target.wheelR,sceneId()).x;applyRide(bikeSvg,sh);}
 }
 let last=performance.now();
 function tick(now){
