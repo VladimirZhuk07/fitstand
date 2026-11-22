@@ -101,6 +101,7 @@ const defs = `<defs>
   <linearGradient id="la-g-oil" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ECC26E"/><stop offset="0.5" stop-color="#D9A441"/><stop offset="1" stop-color="#B8872D"/></linearGradient>
   <linearGradient id="la-g-oilV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECC26E"/><stop offset="0.5" stop-color="#D9A441"/><stop offset="1" stop-color="#B8872D"/></linearGradient>
   <linearGradient id="la-g-rubber" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4048"/><stop offset="1" stop-color="#14181c"/></linearGradient>
+  <linearGradient id="la-g-seal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9aa4ae"/><stop offset="1" stop-color="#5d6772"/></linearGradient>
   <pattern id="la-g-hatch" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 5 L5 0" stroke="#0e1318" stroke-width="0.7" opacity="0.28"/></pattern>
   <marker id="la-g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#6b3f04"/></marker>
 </defs>`;
@@ -110,6 +111,7 @@ const FS = { fork: 26, shock: 28 };
 // where the leader lines of the front-view fork end: left of the crown, left of the lower leg, right of the lower leg
 const EDGE_CROWN = 190, EDGE_L = 244, EDGE_R = 666;
 const LEADER_W = 2, DOT_R = 4.5;
+const SEAL_Y = 409;                // the middle of the seal ring at the top of the lower leg (y 400…418), at rest
 // the viewBox of each drawing is its measured content (labels, leaders and the impact arrow in its far position) plus a small margin:
 // forks end at the far hit arrow (y 894), the shock is wide and low
 const VIEWBOX = { fork: '-6 10 912 890', shock: '10 44 984 438' };
@@ -133,8 +135,8 @@ function legShell(cx, id) {
     <rect x="${x + t}" y="${top}" width="${iw}" height="${h - t}" fill="#141a20"/>
     <path d="M ${x} ${top} h ${w} v ${h} h ${-w} z M ${x + t} ${top} h ${iw} v ${h - t} h ${-iw} z" fill="url(#la-g-alum)" fill-rule="evenodd"/>
     <path d="M ${x} ${top} h ${t} v ${h} h ${-t} z M ${x + w - t} ${top} h ${t} v ${h} h ${-t} z M ${x} ${top + h - t} h ${w} v ${t} h ${-w} z" fill="url(#la-g-hatch)" opacity="0.5"/>
-    <rect x="${cx - 37}" y="${top}" width="9" height="16" rx="2" fill="url(#la-g-rubber)"/>
-    <rect x="${cx + 28}" y="${top}" width="9" height="16" rx="2" fill="url(#la-g-rubber)"/>
+    <rect x="${cx - 39}" y="${top}" width="11" height="18" rx="2" fill="url(#la-g-seal)" stroke="#c5ced6" stroke-width="1"/>
+    <rect x="${cx + 28}" y="${top}" width="11" height="18" rx="2" fill="url(#la-g-seal)" stroke="#c5ced6" stroke-width="1"/>
     <circle cx="${cx}" cy="725" r="9" fill="#22282f" stroke="#c5ced6" stroke-width="2"/>
   </g>`;
 }
@@ -206,8 +208,9 @@ function forkLeaders(g) {
   return [
     leader(228, 158, EDGE_CROWN, 'Корона', 'l'),
     leader(LX - 24, 262, EDGE_L, 'Верхняя нога', 'l'),
-    // the seal point is the stanchion bushing: the stanchion never moves, so the dot stays on metal through the whole travel
-    leader(LX - 25, 528, EDGE_L, 'Сальник', 'l'),
+    // the seal is the ring at the top of the lower leg (right leg, so the label does not share a line with the piston of the air fork);
+    // it rises with the legs, so its leader moves with them (the dot stays on the ring)
+    `<g id="la-lead-seal" transform="translate(0 0)">${leader(RX + 34, SEAL_Y, EDGE_R, 'Сальник', 'r')}</g>`,
     leader(LX - 44, 600, EDGE_L, 'Нижняя нога', 'l'),
     // from the top of the pivot straight up, above the arc the lever sweeps, then to the label
     leader(lv.x - 12, lv.y - 18, EDGE_R, 'Рычаг блокировки', 'r', 66),
@@ -306,7 +309,7 @@ function airMarkup() {
   const nipple = `<rect x="${LX - 8}" y="104" width="16" height="30" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${LX - 5}" y="95" width="10" height="11" rx="2" fill="url(#la-g-brass)"/>`;
   const leaders = [
     leader(LX, 112, EDGE_L, 'Ниппель', 'l'),
-    leader(LX, 209, EDGE_L, 'Позитивная камера', 'l'),
+    leader(LX + 12, 222, EDGE_L, 'Позитивная камера', 'l'), // inside the chamber, clear of the particles (also at full compression)
     // the piston rises with the legs: its leader moves with it (the line stays level, the label follows)
     `<g id="la-lead-piston" transform="translate(0 0)">${leader(LX, AIR.pist + 7, EDGE_L, 'Поршень', 'l')}</g>`,
     leader(TUBE.x + TUBE.w / 2, 440, EDGE_L, 'Байпас', 'l'),
@@ -438,7 +441,7 @@ function sharedPose(g, st) {
 const airPose = (g, st) => {
   const a = airParticles(st.c, g.travel), pistY = AIR.pist - st.c * g.travel; // the chamber boxes follow the real piston
   return [
-    rise('la-apiston', g, st), rise('la-lead-piston', g, st),
+    rise('la-apiston', g, st), rise('la-lead-piston', g, st), rise('la-lead-seal', g, st),
     { id: 'la-pos-bg', attrs: { height: nr(pistY - AIR.top) } },
     { id: 'la-neg-bg', attrs: { y: nr(pistY + AIR.pistH), height: nr(AIR.bot - pistY - AIR.pistH) } },
     ...a.pos.map((p, i) => ({ id: 'la-p' + i, attrs: { cx: nr(p[0]), cy: nr(p[1]) } })),
@@ -452,7 +455,7 @@ const PARTS = {
     // the positive air chamber follows the air piston and gets denser (c only)
     { id: 'la-sh-pos', attrs: { width: nr(SH.airPist - SH.bodyR - 12 - st.c * g.travel), 'fill-opacity': nr(AIR_OP0 + (AIR_OP1 - AIR_OP0) * st.c) } },
   ],
-  spring: (g, st) => [rise('la-cup', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c, g.travel) } }],
+  spring: (g, st) => [rise('la-cup', g, st), rise('la-lead-seal', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c, g.travel) } }],
 };
 
 function lockPose(kind, st) {
@@ -490,7 +493,7 @@ function lockBlock(kind) {
   const step = (i, on) => `<button class="chip" type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-lock-step="${i + 1}">${STEP_NAMES[i]}</button>`;
   return `<section class="lock-anim" data-lock-kind="${kind}"><div class="la-stage">${drawing}</div>`
     + `<p class="la-caption" aria-live="polite">${captionOf(kind, 1)}</p>`
-    + `<div class="la-ctl"><div class="la-steps" role="radiogroup" aria-label="Шаги">${STEP_NAMES.map((_, i) => step(i, i === 0)).join('')}</div>`
+    + `<div class="la-ctl"><div class="la-steps" role="radiogroup" aria-label="Шаги анимации блокировки">${STEP_NAMES.map((_, i) => step(i, i === 0)).join('')}</div>`
     + `<button class="chip" type="button" data-lock-play>${PAUSE_TEXT}</button></div></section>`;
 }
 
@@ -523,31 +526,38 @@ function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? windo
   const steps = [...rootEl.querySelectorAll('[data-lock-step]')];
   const apply = svg ? lockApplier(svg) : null;
   let last = null, stopped = false, shown = 0, touched = false; // touched: the user has pressed something
+  let capDue = false; // the caption is written on the next frame (see select)
   function setLive() { // the autoplay does not narrate itself; a pause or a step button the user pressed does
     const v = st.playing || !touched ? 'off' : 'polite';
-    if (cap && cap.getAttribute('aria-live') !== v) cap.setAttribute('aria-live', v);
+    if (cap && cap.getAttribute('aria-live') !== v) { cap.setAttribute('aria-live', v); return true; }
+    return false;
   }
-  function sync() {
+  function writeCap() { // the caption of the step that is shown now
+    capDue = false;
+    const text = captionOf(kind, shown);
+    if (cap && cap.textContent !== text) cap.textContent = text; // the markup already shows step 1
+  }
+  function sync(later) {
     const step = lockState(st.t).step;
     if (step !== shown) { // touch the page only when the step changes
       shown = step;
       steps.forEach(b => { const on = Number(b.dataset.lockStep) === step; b.setAttribute('aria-checked', String(on)); b.setAttribute('tabindex', on ? '0' : '-1'); });
-      const text = captionOf(kind, step);
-      if (cap && cap.textContent !== text) cap.textContent = text; // the markup already shows step 1
+      if (later) capDue = true; else writeCap();
     }
     const label = st.playing ? PAUSE_TEXT : PLAY_TEXT;
     if (play && play.textContent !== label) play.textContent = label;
   }
-  function draw() {
+  function draw(later) {
     if (apply) apply(lockPose(kind, lockState(st.t)));
-    sync();
+    sync(later);
   }
-  function select(n) { touched = true; st.t = STEP_START[n - 1]; st.playing = false; setLive(); draw(); }
+  // a region that has just been switched on from «off» may miss a text change made in the same call: the caption waits for the next frame
+  function select(n) { touched = true; st.t = STEP_START[n - 1]; st.playing = false; draw(setLive()); }
   function onClick(e) {
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b) return;
     if (b.hasAttribute('data-lock-step')) select(Number(b.dataset.lockStep));
-    else if (b.hasAttribute('data-lock-play')) { touched = true; st.playing = !st.playing; last = null; setLive(); draw(); }
+    else if (b.hasAttribute('data-lock-play')) { touched = true; st.playing = !st.playing; last = null; draw(setLive()); }
   }
   // the step buttons are radios: arrows move the selection (and the focus), wrapping at the ends
   function onKey(e) {
@@ -563,6 +573,7 @@ function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? windo
   }
   function frame(now) {
     if (stopped || !rootEl.isConnected) return;
+    if (capDue) writeCap();
     if (st.playing) {
       if (last !== null) st.t = wrap(st.t + Math.min(0.05, (now - last) / 1000)); // a tab back from the background does not jump
       last = now;

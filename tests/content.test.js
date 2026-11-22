@@ -661,3 +661,24 @@ test('no suspension makers in the content', () => {
   const s = JSON.stringify(CONTENT).toLowerCase();
   for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
 });
+
+// ---------- final review: usage must not say again what care and lockout already say ----------
+test('usage does not repeat a sentence of care or lockout on the same detail', () => {
+  // clauses of a point: split at the sentence marks and the colon; a word is cut to 5 letters so that inflections match
+  const clauses = s => s.split(/[.!?;:]\s*/).map(c => c.toLowerCase().replace(/[«»"“”,()–—-]/g, ' ').split(/\s+/).filter(w => w.length > 2).map(w => w.slice(0, 5))).filter(w => w.length >= 4);
+  const near = (a, b) => {
+    const A = new Set(a), B = new Set(b);
+    let both = 0;
+    for (const w of A) if (B.has(w)) both++;
+    return both / (A.size + B.size - both) >= 0.5;
+  };
+  const dups = [];
+  for (const id of ['springFork', 'airFork', 'rearShock']) {
+    const d = forkDetail(id);
+    const known = [...d.lockout, ...d.care].flatMap(clauses);
+    for (const u of d.usage) for (const line of u.list) for (const c of clauses(line)) {
+      for (const k of known) if (near(c, k)) dups.push(`${id} / ${u.title}: «${line}» repeats «${k.join(' ')}»`);
+    }
+  }
+  assert.deepEqual(dups, []);
+});

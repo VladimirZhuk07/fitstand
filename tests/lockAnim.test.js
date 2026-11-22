@@ -205,15 +205,28 @@ test('the hit arrow stays inside the picture even when far', () => {
   }
 });
 
-test('the seal leader points at a part that does not move', () => {
-  const svg = L.lockMarkup('spring');
-  const move = groupInner(svg, 'la-move');
-  const dot = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"[^>]*\/><text class="la-label"[^>]*>Сальник</.exec(svg);
-  assert.ok(dot, 'seal dot');
-  assert.ok(!move.includes('la-leader-dot'), 'the dot is not inside la-move');
-  // the dot is static (no pose entry belongs to a leader) and sits on the stanchion bushing (y 520…536) whatever the compression
-  for (const c of [0, 0.35, 0.7]) assert.ok(L.lockPose('spring', { ...L.lockState(0), c }).every(p => !p.id.includes('lead')), `c=${c}`);
-  assert.ok(Number(dot[2]) >= 520 && Number(dot[2]) <= 536, `dot y ${dot[2]}`);
+test('the seal leader sits on the rubber ring of the lower leg through the whole travel', () => {
+  for (const kind of ['spring', 'air']) {
+    const svg = L.lockMarkup(kind);
+    const lead = groupInner(svg, 'la-lead-seal');
+    assert.ok(lead, `${kind}: the seal leader is a group of its own`);
+    assert.ok(!groupInner(svg, 'la-move').includes('la-leader-dot'), 'the dot is not inside la-move');
+    const dot = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"/.exec(lead);
+    assert.ok(dot && />Сальник</.test(lead), `${kind}: seal dot and label`);
+    // the rings are the seal rects at the top of the lower leg (at rest, in the leg's own frame)
+    const rings = [...groupInner(svg, 'la-leg-r').matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*url\(#la-g-seal\)/g)].map(m => m.slice(1).map(Number));
+    assert.equal(rings.length, 2, 'two rings per leg');
+    const on = ([x, y, w, h]) => Number(dot[1]) >= x && Number(dot[1]) <= x + w && Number(dot[2]) >= y && Number(dot[2]) <= y + h;
+    assert.ok(rings.some(on), `${kind}: dot (${dot[1]},${dot[2]}) is on a ring`);
+    // the leader goes up with the legs by exactly the same translate, so the dot stays on the ring whatever the compression
+    for (const c of [0, 0.35, 0.7]) {
+      const pose = poseOf(kind, { ...L.lockState(0), c });
+      assert.equal(pose['la-lead-seal'].transform, pose['la-move'].transform, `${kind} c=${c}: the leader moves with the legs`);
+    }
+  }
+  // the ring is lighter than the cavity, so it can be seen
+  assert.ok(L.lockMarkup('air').includes('id="la-g-seal"'));
+  assert.ok(!L.lockPose('shock', L.lockState(1)).some(p => p.id === 'la-lead-seal'), 'the shock has no seal leader');
 });
 
 // ---- Task 3: the air fork ----
@@ -703,6 +716,7 @@ test('a step button jumps and pauses', () => {
   assert.equal(a.state().t, 5);
   assert.equal(a.state().playing, false);
   assert.equal(root.steps[2].getAttribute('aria-checked'), 'true');
+  win.q.shift()(1016); // the caption is written on the next frame (the live region has just been switched on)
   assert.equal(root.cap.textContent, L.captionOf('spring', 3));
   assert.equal(root.play.textContent, 'Пуск');
   root.click(root.steps[3]);
@@ -755,6 +769,10 @@ test('the page loads lockAnim.js before guide.js and styles the block', () => {
   assert.ok(a > 0 && g > a, 'lockAnim.js before guide.js');
   for (const cls of ['.lock-anim', '.la-svg', '.la-caption', '.la-ind.la-open', '.la-ind.la-closed', '.la-label']) assert.ok(html.includes(cls), cls);
   assert.ok(html.includes('#3FAE5C') && html.includes('#D9473F'));
+  // `.pg p` (0,1,1) would win over a bare class: the caption and the note must be at least as specific to keep their own margins
+  assert.match(html, /\.pg \.la-caption\{margin-top:10px/);
+  assert.match(html, /\.pg \.pg-note\{margin:14px 0 0/);
+  assert.ok(!/^\.la-caption\{/m.test(html) && !/^\.pg-note\{/m.test(html), 'no bare rule that .pg p overrides');
 });
 
 // ---- Task 5 fix round 1: keyboard steps, quiet captions, cached elements ----
@@ -851,6 +869,7 @@ test('the caption is a quiet live region while the loop plays', () => {
   assert.equal(r2.cap.textContent, L.captionOf('air', 4));
   r2.click(r2.steps[0]);
   assert.equal(r2.cap.getAttribute('aria-live'), 'polite');
+  w2.q.shift()(1000);
   assert.equal(r2.cap.textContent, L.captionOf('air', 1));
 });
 
@@ -874,4 +893,44 @@ test('the pose elements are looked up once and attributes are set only when they
   const el = { v: null, setAttribute(k, v) { this.v = [k, v]; } };
   L.applyLock({ querySelector: () => el }, [{ id: 'x', attrs: { a: 1 } }]);
   assert.deepEqual(el.v, ['a', 1]);
+});
+
+// ---- final review fixes ----
+test('the positive chamber leader dot is inside the chamber, clear of the particles at every compression', () => {
+  const svg = L.lockMarkup('air');
+  const m = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"[^>]*\/><text class="la-label"[^>]*>Позитивная камера</.exec(svg);
+  assert.ok(m, 'dot');
+  const x = Number(m[1]), y = Number(m[2]);
+  assert.ok(x - 4.5 >= 280 && x + 4.5 <= 320 && y - 4.5 >= 213, `the dot (${x},${y}) is inside the chamber, not on the steel cap`);
+  for (let c = 0; c <= 0.7 + 1e-9; c += 0.01) {
+    for (const [px, py] of [...particles(c, 'p'), ...particles(c, 'n')]) {
+      const d = Math.hypot(px - x, py - y);
+      assert.ok(d >= 4.5 + 3.8, `c=${c.toFixed(2)}: a particle at (${px},${py}) touches the dot (${d.toFixed(1)})`);
+    }
+  }
+});
+
+test('the step radiogroup says what the steps are', () => {
+  for (const kind of ['spring', 'air', 'shock']) assert.match(L.lockBlock(kind), /role="radiogroup" aria-label="Шаги анимации блокировки"/);
+});
+
+test('a step pressed during autoplay turns the live region on first and writes the caption on the next frame', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  L.startLockAnim(root, 'air', win);
+  let now = 1000;
+  for (let i = 0; i < 3; i++) win.q.shift()(now += 16);
+  assert.equal(root.cap.getAttribute('aria-live'), 'off');
+  root.click(root.steps[2]);                       // playing: the region was off
+  assert.equal(root.cap.getAttribute('aria-live'), 'polite', 'switched on at once');
+  assert.equal(root.cap.textContent, L.captionOf('air', 1), 'the text is not written in the same call');
+  assert.equal(root.steps[2].getAttribute('aria-checked'), 'true', 'the radios follow at once');
+  win.q.shift()(now += 16);                        // the next frame
+  assert.equal(root.cap.textContent, L.captionOf('air', 3));
+  // a region that is already on needs no delay
+  root.click(root.steps[1]);
+  assert.equal(root.cap.textContent, L.captionOf('air', 2));
+  // the frame after that writes nothing more
+  const w = root.cap.writes;
+  win.q.shift()(now += 16);
+  assert.equal(root.cap.writes, w);
 });
