@@ -12,6 +12,7 @@ const CORE = [
   './content.js',
   './quiz.js',
   './forkAnim.js',
+  './lockAnim.js',
   './guide.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
