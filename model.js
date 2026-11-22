@@ -47,7 +47,7 @@ Object.assign(STYLES,{
   special:{...KID,name:'Одноколёсный',unicycle:true,crankMax:125,size:{n:'Один',st:400,reach:300,stack:500,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   kidTrike:   {...KID,name:'Трёхколёсный',trike:true,frontPedals:true,crankMax:80,size:{n:'12″',st:220,reach:240,stack:330,ht:90,wheel:'12'},rider:{H:95,I:40,A:30,W:24}},
   balance:    {...KID,name:'Беговел',noPedals:true,crankMax:80,size:{n:'12″',st:200,reach:250,stack:320,ht:90,wheel:'12'},rider:{H:95,I:40,A:30,W:24}},
-  kidTraining:{...KID,name:'С поддерживающими колёсами',trainingWheels:true,crankMax:102,rimAccent:true,bell:true,parentHandle:true,oneSize:false,kidFit:{range:[85,125],def:110},
+  kidTraining:{...KID,name:'С подпорными колёсами',trainingWheels:true,crankMax:102,rimAccent:true,bell:true,parentHandle:true,oneSize:false,kidFit:{range:[85,125],def:110},
     kidSizes:[
       {n:'12″',wheel:'12',st:200,reach:250,stack:330,ht:90,crank:85,h:[85,100]},
       {n:'14″',wheel:'14',st:230,reach:270,stack:360,ht:95,crank:89,h:[95,110]},
@@ -99,9 +99,11 @@ function kidSizeFor(style,H){
 function heightRowOf(style,H,sizeIndex){
   const st=STYLES[style], value=`${Math.round(H)} см`;
   if(st.kidFit){
-    const ks=st.kidSizes, z=ks[sizeIndex], next=ks[sizeIndex+1];
+    const ks=st.kidSizes, z=ks[sizeIndex];
     let hint=`на рост ${z.h[0]}–${z.h[1]} см`, status='good';
-    if(next&&H>=z.h[1]-3){hint+=` · скоро вырастет — следующий ${next.n}`;status='warn';}
+    // soon outgrown: three centimetres more and the size picked for the child is the next one
+    const ni=kidSizeFor(style,H+3);
+    if(ni>sizeIndex){hint+=` · скоро вырастет — следующий ${ks[ni].n}`;status='warn';}
     return {value,hint,status};
   }
   if(st.heightRange){

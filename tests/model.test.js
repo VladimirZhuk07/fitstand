@@ -304,18 +304,25 @@ test('folding height range and the largest kid crank', () => {
   assert.equal(M.STYLES.teen.crankMax, 160);
 });
 
-test('heightRowOf: kids\' sizes show their height range and warn near the next size', () => {
-  const r = M.heightRowOf('kidTraining', 118, 2);
+test('heightRowOf: kids\' sizes show their height range and warn before the next size is picked', () => {
+  const row = (style, H) => M.heightRowOf(style, H, M.kidSizeFor(style, H));
+  assert.equal(M.kidSizeFor('kidTraining', 114), 2);
+  const r = row('kidTraining', 114);
   assert.equal(r.status, 'warn');
   assert.match(r.hint, /на рост 105–120 см/);
-  assert.match(r.hint, /следующий 18″/);
-  assert.equal(r.value, '118 см');
-  const g = M.heightRowOf('kidTraining', 110, 2);
+  assert.match(r.hint, /скоро вырастет — следующий 18″/);
+  assert.equal(r.value, '114 см');
+  const g = row('kidTraining', 110);
   assert.equal(g.status, 'good');
   assert.match(g.hint, /на рост 105–120 см/);
   assert.doesNotMatch(g.hint, /следующий/);
+  assert.equal(M.kidSizeFor('teen', 144), 0);
+  const t0 = row('teen', 144);
+  assert.equal(t0.status, 'warn');
+  assert.match(t0.hint, /следующий 26″/);
   // the last size has nothing to grow into
-  const t = M.heightRowOf('teen', 163, 1);
+  assert.equal(M.kidSizeFor('teen', 163), 1);
+  const t = row('teen', 163);
   assert.equal(t.status, 'good');
   assert.doesNotMatch(t.hint, /следующий/);
 });

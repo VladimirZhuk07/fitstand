@@ -55,3 +55,13 @@ test('the e-bike always has its motor; the drawing gets it from the style too', 
 test('the riser-bar height tweens with the rest of the geometry', () => {
   assert.match(html, /const NUM=\[[^\]]*'rise'/);
 });
+
+test('kids\' styles drop the reach row and its vote in the verdict', () => {
+  const specs = html.slice(html.indexOf('function renderSpecs'), html.indexOf('/* ---------- animation loop'));
+  assert.match(specs, /st\.kidFit\)\s*rows=rows\.filter\([^)]*Дотягивание/);
+  assert.match(specs, /const reachS=st\.kidFit\|\|/);
+});
+
+test('the training-wheels style carries the button\'s name', () => {
+  assert.equal(require('../model.js').STYLES.kidTraining.name, 'С подпорными колёсами');
+});

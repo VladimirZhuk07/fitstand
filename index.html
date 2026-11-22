@@ -742,7 +742,8 @@ function renderSpecs(F){
   else ladder.innerHTML=sizes.map((s,i)=>`<div class="rung${i===best.i?' on':F.near.includes(i)?' near':''}" title="${i===best.i?'Подобранный размер':F.near.includes(i)?'Тоже подойдёт с другим выносом':''}">${s.n}<small>${ru(s.st/10)}</small></div>`).join('');
   const tn=[st.torsoNorm[0]+F.upright,st.torsoNorm[1]+F.upright];
   const kS=stat(F.knee,25,35,6), aS=stat(F.alpha,tn[0],tn[1],6);
-  const reachS=best.err<22?'good':best.err<50?'warn':'bad';
+  // the adult reach calibration does not fit a child: no row and no vote in the verdict for kids' styles
+  const reachS=st.kidFit||best.err<22?'good':best.err<50?'warn':'bad';
   const stemS=g.stemL<=st.stemMin||g.stemL>=st.stemMax?'warn':stat(g.stemL,st.stemIdeal-30,st.stemIdeal+30,15);
   const eS=st.oneSize?'good':best.expo<90||best.expo>best.expoMax?'warn':'good';
   const rider=riderOf(state,FIT_ONLY,kidBody), hRow=heightRowOf(state.style,rider.H,best.i);
@@ -759,6 +760,7 @@ function renderSpecs(F){
     ['Подседел над рамой',`${Math.round(best.expo)}<span>мм</span>`,`комфортно 90–${best.expoMax} мм`,eS],
   ];
   if(st.oneSize||st.kidFit) rows=rows.filter(r=>r[0]!=='Проставки'&&r[0]!=='Подседел над рамой');
+  if(st.kidFit) rows=rows.filter(r=>r[0]!=='Дотягивание');
   if(hRow) rows.push(['Рост',hRow.value.replace(/ см$/,'<span>см</span>'),hRow.hint,hRow.status]);
   metrics.innerHTML=rows.map(r=>`<div class="m" data-s="${r[3]}"><dt>${r[0]}</dt><dd>${r[1]}</dd><div class="hint">${r[2]}</div></div>`).join('');
   const worst=[kS,reachS,eS,aS].includes('bad')?'bad':[kS,reachS,eS,aS,stemS,hS].includes('warn')?'warn':'good';
