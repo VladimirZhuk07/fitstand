@@ -372,7 +372,9 @@ const boxOf = (l, dx = 0) => {
   return [x0 + dx, l.y - 14, x0 + w + dx, l.y + 4];
 };
 const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
-const SHOCK_CY = 330;
+const SH = L.SHOCK_LAYOUT, SHOCK_CY = SH.cy, TS = L.TRAVEL_SHOCK;
+const AIR_X0 = SH.bodyR + 12;          // the inner face of the left can cap
+const hitTip = SH.eye2 + SH.eyeR + 6;  // the tip of the impact arrow when it touches the far eye
 
 test('shock cutaway: two eyes, a shaft, labels, moving ids', () => {
   const svg = L.lockMarkup('shock'), have = ids(svg);
@@ -421,7 +423,7 @@ test('shock: the shaft moves horizontally', () => {
 });
 
 test('shock: the oil flow mirrors about a vertical axis and keeps clear of the valve and the piston', () => {
-  const svg = L.lockMarkup('shock'), segs = flowSegments(svg), px = 200, cy = SHOCK_CY;
+  const svg = L.lockMarkup('shock'), segs = flowSegments(svg), px = SH.px, cy = SHOCK_CY;
   assert.ok(segs.length >= 4);
   const fwd = poseOf('shock', L.lockState(1))['la-flow'], back = poseOf('shock', L.lockState(4))['la-flow'];
   assert.equal(fwd.transform, 'translate(0 0)');
@@ -441,8 +443,8 @@ test('shock: the oil flow mirrors about a vertical axis and keeps clear of the v
       assert.ok(y >= cy - 42 + 6 && y <= cy + 42 - 6, `arrow end y=${y} is outside the oil`);
     }
   }
-  // the right-hand tails stop short of the piston head at c = 0.7 (left face 352 - 0.7 * 120)
-  assert.ok(Math.max(...xs) + 2 <= 352 - 0.7 * 120, `rightmost arrow x ${Math.max(...xs)}`);
+  // the right-hand tails stop short of the piston head at c = 0.7 (left face pistX - 0.7 * travel)
+  assert.ok(Math.max(...xs) + 2 <= SH.pistX - 0.7 * TS, `rightmost arrow x ${Math.max(...xs)}`);
   assert.equal(poseOf('shock', L.lockState(8))['la-flow'].opacity, 0);
 });
 
@@ -464,7 +466,7 @@ test('shock: the hit arrow comes from the right and stays inside the picture eve
   const poly = /<g id="la-hit"[^>]*><polygon points="([^"]+)"/.exec(svg)[1].trim().split(/\s+/).map(p => p.split(',').map(Number));
   const tip = poly.reduce((a, p) => (p[0] < a[0] ? p : a)), tail = Math.max(...poly.map(p => p[0]));
   assert.equal(tip[1], SHOCK_CY, 'the tip is on the axis');
-  assert.ok(tip[0] > 810 + 26, 'the tip is right of the far eye');
+  assert.equal(tip[0], hitTip, 'the tip touches the far eye');
   assert.ok(tail + 60 + 1 <= 1000, `tail at ${tail + 60}`);
   assert.ok(/translate\(60 0\)/.test(/<g id="la-hit"[^>]*transform="([^"]+)"/.exec(svg)[1]));
 });
@@ -482,16 +484,20 @@ test('shock: the lever label line stays above the lever arc', () => {
 test('shock: labels stay clear of every moving part through the whole travel', () => {
   const svg = L.lockMarkup('shock'), cy = SHOCK_CY, eye2Group = groupInner(svg, 'la-lead-eye2');
   const all = labelsOf(svg), movingText = labelsOf(eye2Group)[0];
+  const hit = /<g id="la-hit"[^>]*><polygon points="([^"]+)"/.exec(svg)[1].trim().split(/\s+/).map(p => p.split(',').map(Number));
+  const farShift = Number(/translate\(([\d.]+) 0\)/.exec(poseOf('shock', { ...L.lockState(0), hitD: 1 })['la-hit'].transform)[1]);
+  const hitBox = [hitTip, cy - 20, Math.max(...hit.map(p => p[0])) + farShift, cy + 20];
   assert.ok(movingText && movingText.text === 'Проушина');
   const still = all.filter(l => !(l.x === movingText.x && l.y === movingText.y && l.text === movingText.text));
   assert.equal(still.length, all.length - 1);
   for (let c = 0; c <= 1.0001; c += 0.1) {
-    const d = -c * 120;
+    const d = -c * TS;
     const moving = [
-      [784 + d, cy - 26, 836 + d, cy + 26],   // the far eye
-      [352 + d, cy - 38, 368 + d, cy + 38],   // the damper piston head
-      [368 + d, cy - 6, 810 + d, cy + 6],     // the shaft
-      [842, cy - 20, 986, cy + 20],           // the impact arrow (near … far)
+      [SH.eye2 - SH.eyeR + d, cy - SH.eyeR, SH.eye2 + SH.eyeR + d, cy + SH.eyeR],   // the far eye
+      [SH.pistX + d, cy - 38, SH.pistX + SH.pistW + d, cy + 38],                    // the damper piston head
+      [SH.pistX + SH.pistW + d, cy - 6, SH.eye2 + d, cy + 6],                       // the shaft
+      [SH.airPist + d, cy - 67, SH.airPist + SH.airW + d, cy + 67],                 // the air piston
+      hitBox,                                                                       // the impact arrow (near … far)
     ];
     for (const l of still) for (const b of moving) assert.ok(!overlap(boxOf(l), b), `${l.text} meets a moving part at c=${c.toFixed(1)}`);
     for (const l of still) assert.ok(!overlap(boxOf(l), boxOf(movingText, d)), `${l.text} meets the moving label at c=${c.toFixed(1)}`);
@@ -502,7 +508,7 @@ test('shock: labels stay clear of every moving part through the whole travel', (
   // no label sits on another
   for (let i = 0; i < still.length; i++) for (let j = i + 1; j < still.length; j++) assert.ok(!overlap(boxOf(still[i]), boxOf(still[j])), `${still[i].text} / ${still[j].text}`);
   // the static leader lines (after their first 8 px) never enter the swept area of the far eye, the shaft or the hit arrow
-  const sweep = [[664, cy - 26, 836, cy + 26], [842, cy - 20, 986, cy + 20]];
+  const sweep = [[SH.eye2 - TS - SH.eyeR, cy - SH.eyeR, SH.eye2 + SH.eyeR, cy + SH.eyeR], hitBox];
   const stripped = svg.replace(eye2Group, '');
   for (const m of stripped.matchAll(/<line class="la-leader" x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)"/g)) {
     const [x1, y1, x2, y2] = m.slice(1).map(Number), len = Math.hypot(x2 - x1, y2 - y1);
@@ -518,17 +524,18 @@ test('shock: the leader dots sit on their parts', () => {
   const dotOf = name => { const m = new RegExp('<circle class="la-leader-dot" cx="([\\d.]+)" cy="([\\d.]+)"[^>]*/><text class="la-label"[^>]*>' + name + '<').exec(svg); assert.ok(m, name); return [Number(m[1]), Number(m[2])]; };
   const [sx, sy] = dotOf('Шток');
   assert.equal(sy, cy);
-  assert.ok(sx > 644 && sx < 664, 'the shaft dot is on the part of the shaft that is always outside the can');
+  assert.ok(sx > SH.canR && sx < SH.eye2 - TS - SH.eyeR, 'the shaft dot is on the part of the shaft that is always outside the can');
   const [nx, ny] = dotOf('Игла');
-  assert.equal(nx, 200);
+  assert.equal(nx, SH.px);
   assert.ok(ny > cy - 78 && ny < cy - 50, 'the needle dot is on the stem between the lever housing and the body');
   const [vx, vy] = dotOf('Клапан');
-  assert.equal(vx, 200);
+  assert.equal(vx, SH.px);
   assert.ok(vy >= cy + 14 && vy <= cy + 42, 'the valve dot is on the lower half of the partition');
   const [dx, dy] = dotOf('Демпфер');
-  assert.ok(dx > 368 && dx < 436 && dy > cy + 6 && dy < cy + 42, 'the damper dot is in the oil right of the piston, which never goes there');
+  assert.ok(dx > SH.pistX + SH.pistW && dx < SH.bodyR - 14 && dy > cy + 6 && dy < cy + 42, 'the damper dot is in the oil right of the piston, which never goes there');
   const [ax, ay] = dotOf('Воздушная камера');
-  assert.ok(ax > 462 && ax < 632 && ay > cy - 67 && ay < cy - 6, 'the air dot is in the can');
+  // left of the full sweep of the air piston: inside the positive chamber for every c from 0 to 1
+  assert.ok(ax > AIR_X0 && ax < SH.airPist - TS && ay > cy - 67 && ay < cy - 6, 'the air dot is in the positive chamber');
 });
 
 // ---- carried from the Task 3 review: the lower fork arrows end clear of the valve plate ----
@@ -541,5 +548,47 @@ test('fork: the lower oil arrows end in the valve gap, not on the plate undersid
       assert.ok(Math.abs(x2 - 600) <= 4.5, `${kind}: tip x=${x2}`);
       assert.ok(y2 >= 282 + 3, `${kind}: tip y=${y2} is too close to the plate underside (y 282)`);
     }
+  }
+});
+
+// ---- Task 4, fix round 1: the air spring compresses ----
+const chamber = c => poseOf('shock', { ...L.lockState(0), c })['la-sh-pos'];
+
+test('shock: the positive air chamber shrinks and gets denser as the shock compresses', () => {
+  const w = c => chamber(c).width, o = c => chamber(c)['fill-opacity'];
+  near(w(0), SH.airPist - AIR_X0, 0.01);
+  near(w(0.7), SH.airPist - 0.7 * TS - AIR_X0, 0.01);
+  let prevW = Infinity, prevO = -Infinity;
+  for (let c = 0; c <= 1.0001; c += 0.1) {
+    assert.ok(w(c) < prevW && o(c) > prevO, `c=${c.toFixed(1)}`);
+    assert.ok(w(c) > 0, 'the chamber never closes');
+    prevW = w(c); prevO = o(c);
+  }
+  assert.ok(o(0.7) <= 1 && o(0) > 0);
+  // it depends on c only: not on the step, the lever or the time
+  assert.deepEqual(chamber(0.35), poseOf('shock', { ...L.lockState(0), c: 0.35, step: 3, lever: 1, valve: 1, flow: 0, hitD: 0.2 })['la-sh-pos']);
+});
+
+test('shock: the air piston is on the shaft, inside the can, and slides with it', () => {
+  const svg = L.lockMarkup('shock'), move = groupInner(svg, 'la-move');
+  assert.ok(move.includes('id="la-sh-apiston"'), 'the air piston is a child of la-move');
+  assert.match(svg, /id="la-sh-pos"[^>]*fill="#5EB8F0"/);
+  const x = Number(/id="la-sh-apiston"[^>]*\sx="([\d.]+)"/.exec(move)[1]), wd = Number(/id="la-sh-apiston"[^>]*\swidth="([\d.]+)"/.exec(move)[1]);
+  assert.equal(x, SH.airPist);
+  assert.equal(wd, SH.airW);
+  // at full travel it still stands right of the left cap, at rest left of the right cap
+  assert.ok(x - TS > AIR_X0 && x + wd < SH.canR - 12);
+  // the positive chamber starts at the left cap and ends at the piston face, whatever c is
+  assert.match(svg, new RegExp('id="la-sh-pos"[^>]*x="' + AIR_X0 + '"'));
+});
+
+test('shock: the lever housing stands on the body', () => {
+  const svg = L.lockMarkup('shock'), cy = SHOCK_CY;
+  const posts = [...svg.matchAll(/<rect class="la-post" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)].map(m => m.slice(1).map(Number));
+  assert.equal(posts.length, 2, 'two posts, the needle stem stays visible between them');
+  for (const [x, y, w, h] of posts) {
+    assert.ok(y + h >= cy - 50, 'the post reaches the body top');
+    assert.ok(y <= cy - 100 + 22 + 1, 'the post starts at the housing');
+    assert.ok(Math.abs(x + w / 2 - SH.px) > 3 + w / 2, 'the post is off the needle stem');
   }
 });
