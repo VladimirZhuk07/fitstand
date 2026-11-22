@@ -49,11 +49,14 @@ const FORK_GEOM = {
   flowMirror: FLOW_TOP + FLOW_BOT,   // mirror axis (2 * the band's middle) of the oil arrows
   hitShift: 60,                      // px the impact arrow is held back while it is "far" (its tail stays inside the picture)
   travel: 160,                       // px the lower legs rise at full compression (c = 1)
+  dir: [0, -1],                      // the direction the lower part moves when it compresses (a side-view shock uses [-1, 0] or [1, 0])
 };
 const GEOM = { spring: FORK_GEOM, air: FORK_GEOM };
 const TRAVEL = FORK_GEOM.travel;
 
 const nr = v => Math.round(v * 100) / 100;
+// a translate() of d px along the geometry's compression axis (sign -1: against it); + 0 turns -0 into 0
+const shift = (g, d, sign = 1) => `translate(${nr(g.dir[0] * d * sign) + 0} ${nr(g.dir[1] * d * sign) + 0})`;
 
 // zig-zag of the coil spring: turns get closer when the lower end rises by c * TRAVEL
 function springPoints(c) {
@@ -130,11 +133,11 @@ function damperLeg(g, cx) {
   const piston = `<g id="la-piston" transform="translate(0 0)"><rect x="${cx - 3}" y="446" width="6" height="285" fill="url(#la-g-steel)"/><rect x="${cx - 19}" y="430" width="38" height="16" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${cx - 19}" y="435" width="38" height="3" fill="#14181c" opacity="0.5"/></g>`;
   const arrow = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6b3f04" stroke-width="2.4" marker-end="url(#la-g-arr)"/>`;
   // below the plate the oil comes up to the seat (the lower pair), above it the oil leaves (the upper pair, the lower
-  // pair mirrored); all four stay outside the needle cone, so the needle is visible while the oil flows
-  const out = 20, inn = 14, m = g.flowMirror;
+  // pair mirrored); the upper pair starts in the valve gap and all four stay off the needle cone, so the needle is visible
+  const out = 17, seat = 7, run = 30, m = g.flowMirror; // out: at the wall side (inside the column), seat: in the valve gap
   const flow = `<g id="la-flow" opacity="0" transform="translate(0 0)">`
-    + arrow(cx - out, FLOW_BOT, cx - inn, FLOW_BOT - 28) + arrow(cx + out, FLOW_BOT, cx + inn, FLOW_BOT - 28)
-    + arrow(cx - inn, m - (FLOW_BOT - 28), cx - out, m - FLOW_BOT) + arrow(cx + inn, m - (FLOW_BOT - 28), cx + out, m - FLOW_BOT) + `</g>`;
+    + arrow(cx - out, FLOW_BOT, cx - seat, FLOW_BOT - run) + arrow(cx + out, FLOW_BOT, cx + seat, FLOW_BOT - run)
+    + arrow(cx - seat, m - (FLOW_BOT - run), cx - out, m - FLOW_BOT) + arrow(cx + seat, m - (FLOW_BOT - run), cx + out, m - FLOW_BOT) + `</g>`;
   const cross = `<g id="la-cross" opacity="0"><path d="M ${cx - 14} 258 L ${cx + 14} 286 M ${cx + 14} 258 L ${cx - 14} 286" stroke="#D9473F" stroke-width="6" stroke-linecap="round"/></g>`;
   return `<rect x="${cx - 20}" y="205" width="40" height="315" fill="url(#la-g-oil)"/>${plate}${needle}${piston}${flow}${cross}`;
 }
@@ -156,7 +159,7 @@ function forkTop(g) {
 
 // the red arrow that hits the axle from below; "far" means held back by g.hitShift
 function hitArrow(g) {
-  return `<g id="la-hit" opacity="0" transform="translate(0 ${g.hitShift})"><polygon points="450,752 430,784 443,784 443,834 457,834 457,784 470,784" fill="#D9473F" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></g>`;
+  return `<g id="la-hit" opacity="0" transform="${shift(g, g.hitShift, -1)}"><polygon points="450,752 430,784 443,784 443,834 457,834 457,784 470,784" fill="#D9473F" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></g>`;
 }
 
 // the leaders every fork has: crown, upper leg, seal, lower leg, and the right-hand ones of the lever and the damper leg
@@ -177,14 +180,14 @@ function forkLeaders(g) {
   ];
 }
 
-// the frame every fork shares: left = markup of the left leg, leaders = the labels of that leg, before = drawn under the crown
-function forkSvg(kind, aria, left, leaders, before = '') {
+// the frame every fork shares: left = markup of the left leg, leaders = the labels of that leg, before = drawn under the crown, after = drawn over the stanchions
+function forkSvg(kind, aria, left, leaders, before = '', after = '') {
   const g = GEOM[kind];
   return `<svg class="la-svg" data-lock="${kind}" viewBox="0 0 900 900" role="img" aria-label="${aria}">${defs}
   ${lowerLegs()}
   ${left}
   ${damperLeg(g, RX)}
-  ${before}${forkTop(g)}
+  ${before}${forkTop(g)}${after}
   <g class="la-leaders">${[...forkLeaders(g), ...leaders].join('')}</g>
   ${hitArrow(g)}
 </svg>`;
@@ -198,15 +201,15 @@ function springMarkup() {
   return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, 190, 'Пружина', 'l')]);
 }
 
-// ---- the air fork: the left leg holds two air chambers split by a piston, a channel (bypass) runs beside them ----
-const AIR = { x0: 290, x1: 320, rodX: 305, top: 213, bot: 512, pist: 400, pistH: 14 }; // chamber box and the piston at rest
-const BYPASS_X = 284;              // the bypass strip (x 280…288) runs along the chambers; ports at both ends
-const PORT_TOP = 232, PORT_BOT = 484; // the wall between the strip and the chambers has gaps above and below these y
+// ---- the air fork: the left leg holds two air chambers split by a piston; the bypass tube runs outside its wall ----
+const AIR = { x0: 280, x1: 320, rodX: 300, top: 213, bot: 512, pist: 400, pistH: 14 }; // chamber box (the full inner width) and the piston at rest
+const TUBE = { x: 262, w: 8, top: 218, bot: 508, portH: 10 }; // the bypass tube outside the left stanchion wall (x 272…280), ports through the wall
 const POS_N = 18, NEG_N = 12;      // particles of the positive (blue) and the negative (orange) chamber
-const BYPASS_FROM = 8;             // negative particles from this index go through the bypass under compression
-const COL_POS = '#5EB8F0', COL_NEG = '#F29A4A';
+const BYPASS_P = [0, 2, 3, 5];     // blue particles that travel through the bypass into the negative chamber under compression
+const PR = 3.8;                    // particle radius
+const COL_POS = '#5EB8F0', COL_NEG = '#F29A4A', BG_POS = '#D4ECFB', BG_NEG = '#FDE3CC', COL_TUBE = '#B9C8D4';
 
-// a fixed shift for particle k, -0.25…0.25 of a cell: the same on every frame, so nothing flickers
+// a fixed shift for particle k, -0.25…0.25: the same on every frame, so nothing flickers
 const jit = (k, salt) => (((k * 7919 + salt * 104729) % 97) / 97 - 0.5) * 0.5;
 
 // the point at fraction f of the length of a polyline
@@ -223,51 +226,53 @@ function along(pts, f) {
 
 // every particle position depends on the compression c only (not on the time), so a held pose stands still.
 // The tiny give of a locked fork (c <= BUMP_AMP) is not shown by the air: it is counted as BUMP_AMP.
-function airParticles(c) {
+function airParticles(c, travel) {
   const cp = Math.max(c, BUMP_AMP);
   const q = clamp01((cp - BUMP_AMP) / (C_MAX - BUMP_AMP)); // 0 at rest, 1 at full compression
-  const pistY = AIR.pist - cp * TRAVEL;
-  const pos = [], neg = [];
-  const ya = AIR.top + 4, yb = pistY - 5; // the positive chamber: from the top down to the piston
-  for (let k = 0; k < POS_N; k++) {
-    const col = k % 3, row = Math.floor(k / 3);
-    pos.push([AIR.x0 + 1.5 + (col + 0.5 + jit(k, 1)) * 9, ya + (row + 0.5 + jit(k, 2)) * (yb - ya) / 6]);
+  const pistY = AIR.pist - cp * travel;
+  const ya = AIR.top + 5, yb = pistY - 5;                  // the positive chamber: from the top down to the piston
+  const na = pistY + AIR.pistH + 6, nb = AIR.bot - 4;      // the negative chamber: under the piston, down to the bottom
+  const neg = [];
+  for (let k = 0; k < NEG_N; k++) { // two columns (the rod stands between them), six rows
+    neg.push([AIR.x0 + (k % 2 ? 32 : 8) + jit(k, 3) * 4.8, na + (Math.floor(k / 2) + 0.5 + jit(k, 4) * 0.5) * (nb - na) / 6]);
   }
-  const na = pistY + AIR.pistH + 6, nb = AIR.bot - 4; // the negative chamber: under the piston, down to the bottom
-  for (let k = 0; k < NEG_N; k++) {
-    const col = k % 2, row = Math.floor(k / 2);
-    const home = [AIR.x0 + (col ? 24.5 : 5.5) + jit(k, 3) * 3, na + (row + 0.5 + jit(k, 4)) * (nb - na) / 6];
-    if (k < BYPASS_FROM) { neg.push(home); continue; }
-    // the last four leave their chamber through the bottom port, climb the strip and enter the positive chamber
-    const r = k - BYPASS_FROM;
-    const path = [home, [BYPASS_X, PORT_BOT + 17], [BYPASS_X, AIR.top + 11], [AIR.x0 + 7 + (r % 2) * 16, PORT_TOP + Math.floor(r / 2) * 12]];
-    neg.push(along(path, q * 1.36 - 0.12 * r));
+  const pos = [];
+  for (let k = 0; k < POS_N; k++) { // three columns, six rows
+    const home = [AIR.x0 + 8 + (k % 3) * 12 + jit(k, 1) * 4.8, ya + (Math.floor(k / 3) + 0.5 + jit(k, 2) * 0.5) * (yb - ya) / 6];
+    const r = BYPASS_P.indexOf(k);
+    if (r < 0) { pos.push(home); continue; }
+    // the travellers leave through the top port, go down the tube and enter the negative chamber through the bottom port;
+    // they end between the orange rows (x on an orange column, y on a row boundary)
+    const end = [AIR.x0 + (r % 2 ? 32 : 8), na + (r + 1) * (nb - na) / 6];
+    const path = [home, [AIR.x0 + 2, TUBE.top + 5], [TUBE.x + TUBE.w / 2, TUBE.top + 5], [TUBE.x + TUBE.w / 2, TUBE.bot - 5], [AIR.x0 + 2, TUBE.bot - 5], end];
+    pos.push(along(path, q * 1.36 - 0.12 * r));
   }
   return { pos, neg };
 }
 
 function airMarkup() {
-  const a = airParticles(0);
-  const dot = (id, cls, col, p) => `<circle id="${id}" class="${cls}" cx="${nr(p[0])}" cy="${nr(p[1])}" r="2.8" fill="${col}" stroke="#fff" stroke-width="0.7"/>`;
+  const g = GEOM.air, a = airParticles(0, g.travel);
+  const dot = (id, cls, col, p) => `<circle id="${id}" class="${cls}" cx="${nr(p[0])}" cy="${nr(p[1])}" r="${PR}" fill="${col}" stroke="#1c2630" stroke-width="0.8"/>`;
   const left = `<rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
-  <rect id="la-bypass" x="${LX - 20}" y="${AIR.top}" width="8" height="${AIR.bot - AIR.top}" fill="#33424e"/>
-  <rect x="${AIR.x0 - 2}" y="${PORT_TOP}" width="2" height="${PORT_BOT - PORT_TOP}" fill="url(#la-g-steel)"/>
-  <rect id="la-pos-bg" x="${AIR.x0}" y="${AIR.top}" width="${AIR.x1 - AIR.x0}" height="${AIR.pist - AIR.top}" fill="${COL_POS}" opacity="0.34"/>
-  <rect id="la-neg-bg" x="${AIR.x0}" y="${AIR.pist + AIR.pistH}" width="${AIR.x1 - AIR.x0}" height="${AIR.bot - AIR.pist - AIR.pistH}" fill="${COL_NEG}" opacity="0.36"/>
+  <rect id="la-pos-bg" x="${AIR.x0}" y="${AIR.top}" width="${AIR.x1 - AIR.x0}" height="${AIR.pist - AIR.top}" fill="${BG_POS}"/>
+  <rect id="la-neg-bg" x="${AIR.x0}" y="${AIR.pist + AIR.pistH}" width="${AIR.x1 - AIR.x0}" height="${AIR.bot - AIR.pist - AIR.pistH}" fill="${BG_NEG}"/>
   ${a.pos.map((p, i) => dot('la-p' + i, 'la-pos', COL_POS, p)).join('')}${a.neg.map((p, i) => dot('la-n' + i, 'la-neg', COL_NEG, p)).join('')}
   <g id="la-apiston" transform="translate(0 0)"><rect x="${AIR.rodX - 3}" y="${AIR.pist + AIR.pistH}" width="6" height="${731 - AIR.pist - AIR.pistH}" fill="url(#la-g-steel)"/><rect x="${AIR.x0}" y="${AIR.pist}" width="${AIR.x1 - AIR.x0}" height="${AIR.pistH}" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${AIR.x0}" y="${AIR.pist + 5}" width="${AIR.x1 - AIR.x0}" height="3" fill="#14181c" opacity="0.5"/></g>
   <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>`;
+  // the bypass: a tube along the outside of the stanchion with a short port through the wall at each end (drawn over the wall)
+  const port = y => `<rect x="${TUBE.x + TUBE.w - 1}" y="${y}" width="${AIR.x0 - TUBE.x - TUBE.w + 1}" height="${TUBE.portH}" fill="${COL_TUBE}" stroke="#5c6770" stroke-width="1"/>`;
+  const tube = `<g id="la-bypass"><rect x="${TUBE.x}" y="${TUBE.top - 1}" width="${TUBE.w}" height="${TUBE.bot - TUBE.top + 2}" rx="3" fill="${COL_TUBE}" stroke="#5c6770" stroke-width="1"/>${port(TUBE.top)}${port(TUBE.bot - TUBE.portH)}</g>`;
   // the air valve (nipple) sticks out of the crown above the left leg
   const nipple = `<rect x="${LX - 8}" y="104" width="16" height="30" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${LX - 5}" y="95" width="10" height="11" rx="2" fill="url(#la-g-brass)"/>`;
   const leaders = [
     leader(LX, 112, 190, 'Ниппель', 'l'),
-    leader(AIR.rodX, 232, 190, 'Позитивная камера', 'l'),
+    leader(LX, 216, 190, 'Позитивная камера', 'l'),
     // the piston rises with the legs: its leader moves with it (the line stays level, the label follows)
-    `<g id="la-lead-piston" transform="translate(0 0)">${leader(AIR.rodX, AIR.pist + 7, 190, 'Поршень', 'l')}</g>`,
-    leader(BYPASS_X, 440, 190, 'Байпас', 'l'),
-    leader(LX - 3, 480, 190, 'Негативная камера', 'l'),
+    `<g id="la-lead-piston" transform="translate(0 0)">${leader(LX, AIR.pist + 7, 190, 'Поршень', 'l')}</g>`,
+    leader(TUBE.x + TUBE.w / 2, 440, 190, 'Байпас', 'l'),
+    leader(LX, 480, 190, 'Негативная камера', 'l'),
   ];
-  return forkSvg('air', 'Воздушная вилка в разрезе, вид спереди', left, leaders, nipple);
+  return forkSvg('air', 'Воздушная вилка в разрезе, вид спереди', left, leaders, nipple, tube);
 }
 
 // kind 'shock' is drawn in a later task; until then it returns an empty string
@@ -276,27 +281,31 @@ function lockMarkup(kind) {
 }
 
 // ---- one frame: attribute changes only, the list of ids is the same for every state ----
-const rise = (id, g, st) => ({ id, attrs: { transform: `translate(0 ${nr(-st.c * g.travel)})` } });
+// the lower part moves along g.dir by c * travel
+const rise = (id, g, st) => ({ id, attrs: { transform: shift(g, st.c * g.travel) } });
 
-// what every kind has: the lower legs, the lever, the indicator, the needle, the oil arrows, the cross, the impact arrow
+// what every kind has: the moving lower part, the lever, the indicator, the needle, the damper piston, the oil arrows,
+// the cross, the impact arrow. The axis g.dir decides the direction of the travel, of the hit and of the flow mirror.
 function sharedPose(g, st) {
-  const lv = g.lever;
+  const lv = g.lever, horiz = g.dir[0] !== 0;
+  const mirror = horiz ? `translate(${g.flowMirror} 0) scale(-1 1)` : `translate(0 ${g.flowMirror}) scale(1 -1)`;
   return [
     rise('la-move', g, st),
+    rise('la-piston', g, st),
     { id: 'la-lever', attrs: { transform: `translate(${lv.x} ${lv.y}) rotate(${nr(st.lever * 90)})` } },
     { id: 'la-ind', attrs: { class: st.lever < 0.5 ? 'la-ind la-open' : 'la-ind la-closed' } },
     { id: 'la-needle', attrs: { transform: `translate(0 ${nr(st.valve * g.needleDrop)})` } },
-    { id: 'la-flow', attrs: { opacity: Math.abs(st.flow), transform: st.flow < 0 ? `translate(0 ${g.flowMirror}) scale(1 -1)` : 'translate(0 0)' } },
+    { id: 'la-flow', attrs: { opacity: Math.abs(st.flow), transform: st.flow < 0 ? mirror : 'translate(0 0)' } },
     { id: 'la-cross', attrs: { opacity: st.valve > 0.5 && st.hitA > 0 ? 1 : 0 } },
-    { id: 'la-hit', attrs: { transform: `translate(0 ${nr(st.hitD * g.hitShift)})`, opacity: nr(st.hitA) } },
+    { id: 'la-hit', attrs: { transform: shift(g, st.hitD * g.hitShift, -1), opacity: nr(st.hitA) } },
   ];
 }
 
 // the parts that belong to one kind; lockPose appends them to the shared ones in a fixed order
 const airPose = (g, st) => {
-  const a = airParticles(st.c), pistY = AIR.pist - st.c * g.travel; // the chamber boxes follow the real piston
+  const a = airParticles(st.c, g.travel), pistY = AIR.pist - st.c * g.travel; // the chamber boxes follow the real piston
   return [
-    rise('la-apiston', g, st), rise('la-lead-piston', g, st), rise('la-piston', g, st),
+    rise('la-apiston', g, st), rise('la-lead-piston', g, st),
     { id: 'la-pos-bg', attrs: { height: nr(pistY - AIR.top) } },
     { id: 'la-neg-bg', attrs: { y: nr(pistY + AIR.pistH), height: nr(AIR.bot - pistY - AIR.pistH) } },
     ...a.pos.map((p, i) => ({ id: 'la-p' + i, attrs: { cx: nr(p[0]), cy: nr(p[1]) } })),
@@ -305,7 +314,7 @@ const airPose = (g, st) => {
 };
 const PARTS = {
   air: airPose,
-  spring: (g, st) => [rise('la-cup', g, st), rise('la-piston', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c) } }],
+  spring: (g, st) => [rise('la-cup', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c) } }],
 };
 
 function lockPose(kind, st) {

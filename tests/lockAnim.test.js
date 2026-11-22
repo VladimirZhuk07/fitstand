@@ -161,9 +161,19 @@ test('flow arrows keep clear of the needle, mirrored or not', () => {
     const svg = L.lockMarkup(kind), segs = flowSegments(svg), m = mirrorOf(kind, 4);
     assert.ok(segs.length >= 4);
     const all = [...segs, ...segs.map(([x1, y1, x2, y2]) => [x1, m - y1, x2, m - y2])];
-    for (const [x1, y1, x2, y2] of all) for (const [x, y] of [[x1, y1], [x2, y2]]) {
-      if (y >= 224 && y <= 296) assert.ok(Math.abs(x - 600) >= 13, `arrow end (${x},${y}) is on the needle`);
+    for (const [x1, y1, x2, y2] of all) {
+      // not clipped under the stanchion walls (the damper column is x 580…620)
+      for (const x of [x1, x2]) assert.ok(Math.abs(x - 600) <= 17.5, `arrow end x=${x} too far out`);
+      // no point of the arrow is on the needle cone (half-width 9 at y 234 down to 0 at y 264, 2 px of air)
+      for (let u = 0; u <= 1; u += 0.05) {
+        const x = x1 + (x2 - x1) * u, y = y1 + (y2 - y1) * u;
+        if (y >= 234 && y <= 264) assert.ok(Math.abs(x - 600) >= 9 * (1 - (y - 234) / 30) + 2, `arrow point (${x},${y}) is on the needle`);
+      }
     }
+    // the upper pair starts at the valve seat (the gap between the plate pieces), not on the solid plate
+    const upper = all.filter(s => s[1] >= 250 && s[1] <= 262);
+    assert.ok(upper.length >= 2);
+    for (const s of upper) assert.ok(Math.abs(s[0] - 600) <= 9, `starts at x=${s[0]}`);
     // the mirror axis is the sum of the group's extreme y: the mirrored group lands on the same spots, reversed
     const ys = segs.flatMap(s => [s[1], s[3]]);
     assert.equal(m, Math.min(...ys) + Math.max(...ys));
@@ -198,8 +208,9 @@ test('the seal leader points at a part that does not move', () => {
   const move = groupInner(svg, 'la-move');
   const dot = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"[^>]*\/><text class="la-label"[^>]*>Сальник</.exec(svg);
   assert.ok(dot, 'seal dot');
-  assert.ok(!move.includes(dot[0].slice(0, 40)));
-  // the stanchion bushing (static, drawn over the legs): y 520…536
+  assert.ok(!move.includes('la-leader-dot'), 'the dot is not inside la-move');
+  // the dot is static (no pose entry belongs to a leader) and sits on the stanchion bushing (y 520…536) whatever the compression
+  for (const c of [0, 0.35, 0.7]) assert.ok(L.lockPose('spring', { ...L.lockState(0), c }).every(p => !p.id.includes('lead')), `c=${c}`);
   assert.ok(Number(dot[2]) >= 520 && Number(dot[2]) <= 536, `dot y ${dot[2]}`);
 });
 
@@ -239,21 +250,49 @@ test('air front view: two legs inside la-move, the lever above the damper leg', 
 
 test('positive chamber gets denser under compression', () => {
   assert.equal(particles(0).length, 18);
-  assert.ok(meanDist(particles(0.7)) < meanDist(particles(0)), `${meanDist(particles(0.7))} < ${meanDist(particles(0))}`);
+  const pist = 400 - 0.7 * 160;
+  const left = particles(0.7).filter(([, y]) => y < pist); // the particles still in the shrunk chamber
+  assert.equal(left.length, 14);
+  assert.ok(meanDist(left) < meanDist(particles(0)), `${meanDist(left)} < ${meanDist(particles(0))}`);
 });
 
-test('negative particles: all in their chamber at rest, four on the bypass under compression', () => {
-  const at = c => particles(c, 'n');
-  const rest = at(0), full = at(0.7);
-  assert.equal(rest.length, 12);
-  // at rest every one is inside the leg's cavity (x 290…320 for the chamber), under the piston
-  for (const [x, y] of rest) assert.ok(x >= 290 && x <= 320 && y > 400, `(${x},${y})`);
-  // at full compression four of them are up in the positive chamber (above the piston), the other eight stay below it
+test('bypass: four blue particles go from the positive to the negative chamber, the orange ones stay', () => {
+  const blue = c => particles(c, 'p'), orange = c => particles(c, 'n');
+  assert.equal(orange(0).length, 12);
+  // at rest all blue are above the piston (y < 400), all orange below it (y > 414), inside the cavity (x 280…320)
+  for (const [x, y] of blue(0)) assert.ok(x >= 280 && x <= 320 && y < 400, `blue (${x},${y})`);
+  for (const [x, y] of orange(0)) assert.ok(x >= 280 && x <= 320 && y > 414, `orange (${x},${y})`);
+  // at full compression four blue ones are below the piston, in the negative chamber, 14 stay above it
   const pist = 400 - 0.7 * 160;
-  assert.equal(full.filter(([, y]) => y < pist).length, 4);
-  assert.equal(full.filter(([, y]) => y > pist + 14).length, 8);
-  // on the way they stand in the bypass strip (x < 290)
-  assert.ok(at(0.3).some(([x]) => x < 290), 'someone is in the strip at c=0.3');
+  assert.equal(blue(0.7).filter(([, y]) => y > pist + 14).length, 4);
+  assert.equal(blue(0.7).filter(([, y]) => y < pist).length, 14);
+  // the orange ones never leave their chamber
+  for (const c of [0, 0.1, 0.3, 0.5, 0.7]) for (const [x, y] of orange(c)) assert.ok(x >= 280 && x <= 320 && y > 400 - c * 160 + 14, `orange c=${c} (${x},${y})`);
+  // on the way the travellers stand in the bypass tube outside the left stanchion wall (x 262…270)
+  assert.ok(blue(0.3).some(([x]) => x >= 262 && x <= 270), 'someone is in the tube at c=0.3');
+});
+
+test('particles do not overlap at rest and at full compression', () => {
+  for (const c of [0, 0.04, 0.7]) {
+    const all = [...particles(c, 'p'), ...particles(c, 'n')];
+    for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
+      const d = Math.hypot(all[i][0] - all[j][0], all[i][1] - all[j][1]);
+      assert.ok(d >= 7.6, `c=${c}: ${i} and ${j} are ${d.toFixed(1)} px apart`);
+    }
+  }
+});
+
+test('chambers are light, particles have a dark outline, the bypass is a light tube outside the stanchion', () => {
+  const svg = L.lockMarkup('air');
+  assert.match(svg, /id="la-pos-bg"[^>]*fill="#D4ECFB"/);
+  assert.match(svg, /id="la-neg-bg"[^>]*fill="#FDE3CC"/);
+  assert.match(svg, /id="la-p0"[^>]*stroke="#1c2630"/);
+  const tube = groupInner(svg, 'la-bypass');
+  assert.ok(tube.includes('#B9C8D4'));
+  assert.ok(Number(/<rect x="([\d.]+)"/.exec(tube)[1]) < 272, 'the tube is left of the stanchion wall (x 272)');
+  // the Байпас leader dot is on the tube
+  const dot = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"[^>]*\/><text class="la-label"[^>]*>Байпас</.exec(svg);
+  assert.ok(dot && Number(dot[1]) >= 262 && Number(dot[1]) <= 270, 'bypass dot x');
 });
 
 test('particles depend only on the compression, not on the time', () => {
@@ -295,4 +334,12 @@ test('air: every id lockPose touches exists', () => {
 test('air: the legs rise with the compression and the piston with them', () => {
   const y = (id, c) => Number(/translate\(0 (-?[\d.]+)\)/.exec(L.lockPose('air', { ...L.lockState(0), c }).find(p => p.id === id).attrs.transform)[1]);
   for (const id of ['la-move', 'la-apiston', 'la-piston']) near(y(id, 0.7), -0.7 * 160, 0.01);
+});
+
+test('the damper piston is posed once per kind, with the shared parts', () => {
+  for (const kind of ['spring', 'air']) {
+    const list = L.lockPose(kind, L.lockState(2)).map(p => p.id);
+    assert.equal(list.filter(id => id === 'la-piston').length, 1, kind);
+    assert.ok(list.indexOf('la-piston') < list.indexOf('la-hit'), 'la-piston belongs to the shared part');
+  }
 });
