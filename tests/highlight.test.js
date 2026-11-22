@@ -27,9 +27,9 @@ test('catalog groups and sections have room around them', () => {
   assert.match(html, /\.pg \.acc-sec\{margin:22px 0 10px/);
 });
 
-test('ten fit buttons in FIT_STYLES order, hybrid by default', () => {
+test('fourteen fit buttons in FIT_STYLES order, hybrid by default', () => {
   const { FIT_STYLES } = require('../model.js');
-  const LABELS = { city: 'Город', hybrid: 'Гибрид', women: 'Женский', gravel: 'Грэвел', cx: 'Циклокросс', road: 'Шоссе', track: 'Трековый', mtb: 'MTB', fullsus: 'Двухподвес', folding: 'Складной' };
+  const LABELS = { city: 'Город', hybrid: 'Гибрид', women: 'Женский', gravel: 'Грэвел', cx: 'Циклокросс', road: 'Шоссе', track: 'Трековый', mtb: 'MTB', fullsus: 'Двухподвес', folding: 'Складной', ebike: 'Электро', bmx: 'BMX', teen: 'Подростковый', kidTraining: 'С подпорными колёсами' };
   const seg = html.slice(html.indexOf('id="seg"'), html.indexOf('</div>', html.indexOf('id="seg"')));
   const found = [...seg.matchAll(/<button role="radio" data-style="(\w+)"[^>]*>([^<]+)<\/button>/g)].map(m => [m[1], m[2]]);
   assert.deepEqual(found, FIT_STYLES.map(s => [s, LABELS[s]]));

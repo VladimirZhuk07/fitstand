@@ -95,6 +95,21 @@ function kidSizeFor(style,H){
   ks.forEach((z,i)=>{const d=Math.abs(H-(z.h[0]+z.h[1])/2); if(d<bd){bd=d;best=i;}});
   return best;
 }
+// the «Рост» row of the result: a kids' size shows the heights it fits, a folding bike its usual range; other styles have none
+function heightRowOf(style,H,sizeIndex){
+  const st=STYLES[style], value=`${Math.round(H)} см`;
+  if(st.kidFit){
+    const ks=st.kidSizes, z=ks[sizeIndex], next=ks[sizeIndex+1];
+    let hint=`на рост ${z.h[0]}–${z.h[1]} см`, status='good';
+    if(next&&H>=z.h[1]-3){hint+=` · скоро вырастет — следующий ${next.n}`;status='warn';}
+    return {value,hint,status};
+  }
+  if(st.heightRange){
+    const [lo,hi]=st.heightRange;
+    return {value,hint:`складные обычно на ${lo}–${hi} см`,status:H<lo||H>hi?'warn':'good'};
+  }
+  return null;
+}
 function bodyOf(p){
   const H=p.H*10, I=p.I*10;
   const hipH=I+0.06*H, ankleH=0.039*H, leg=hipH-ankleH;
@@ -233,7 +248,7 @@ function finish(p,st,b,best,near,upright,crank,crank0,cands){
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, FIT_STYLES, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,
-  summaryOf, sizesFor, kidSizeFor, bodyOf, kidBody, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
+  summaryOf, sizesFor, kidSizeFor, heightRowOf, bodyOf, kidBody, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

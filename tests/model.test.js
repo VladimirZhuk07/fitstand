@@ -303,3 +303,28 @@ test('folding height range and the largest kid crank', () => {
   assert.equal(M.STYLES.kidTraining.crankMax, 102);
   assert.equal(M.STYLES.teen.crankMax, 160);
 });
+
+test('heightRowOf: kids\' sizes show their height range and warn near the next size', () => {
+  const r = M.heightRowOf('kidTraining', 118, 2);
+  assert.equal(r.status, 'warn');
+  assert.match(r.hint, /на рост 105–120 см/);
+  assert.match(r.hint, /следующий 18″/);
+  assert.equal(r.value, '118 см');
+  const g = M.heightRowOf('kidTraining', 110, 2);
+  assert.equal(g.status, 'good');
+  assert.match(g.hint, /на рост 105–120 см/);
+  assert.doesNotMatch(g.hint, /следующий/);
+  // the last size has nothing to grow into
+  const t = M.heightRowOf('teen', 163, 1);
+  assert.equal(t.status, 'good');
+  assert.doesNotMatch(t.hint, /следующий/);
+});
+
+test('heightRowOf: folding keeps its 150–195 range, other styles have no height row', () => {
+  const f = M.heightRowOf('folding', 140, 0);
+  assert.equal(f.status, 'warn');
+  assert.match(f.hint, /складные обычно на 150–195 см/);
+  assert.equal(M.heightRowOf('folding', 170, 0).status, 'good');
+  assert.equal(M.heightRowOf('bmx', 170, 0), null);
+  assert.equal(M.heightRowOf('road', 178, 2), null);
+});

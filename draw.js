@@ -252,7 +252,7 @@ function boundsOf(g,rider,ux){
   return {x:minX,y:-top,w:maxX-minX,h:top-minY};
 }
 
-// Copies every non-numeric geometry key that changed from target into cur; true if anything changed.
+// Copies every key not in numKeys that changed from target into cur; true if anything changed.
 function copyFlags(cur,target,numKeys){
   let changed=false;
   for(const key of Object.keys(target)){

@@ -527,6 +527,10 @@ body.page-open{overflow:hidden}
             <button role="radio" data-style="mtb" aria-checked="false">MTB</button>
             <button role="radio" data-style="fullsus" aria-checked="false">Двухподвес</button>
             <button role="radio" data-style="folding" aria-checked="false">Складной</button>
+            <button role="radio" data-style="ebike" aria-checked="false">Электро</button>
+            <button role="radio" data-style="bmx" aria-checked="false">BMX</button>
+            <button role="radio" data-style="teen" aria-checked="false">Подростковый</button>
+            <button role="radio" data-style="kidTraining" aria-checked="false">С подпорными колёсами</button>
           </div>
           <a class="more" id="aboutType" href="#types/hybrid">Об этом виде ›</a>
           <div class="health-row" id="healthRow" hidden><span id="healthText"></span><label class="switch"><input type="checkbox" id="tHealth" checked> Учитывать</label></div>
@@ -587,22 +591,32 @@ const SAVE_KEY='fitstand:v1';
 let saved=null; try{saved=localStorage.getItem(SAVE_KEY);}catch(e){}
 const FIT_ONLY=Object.fromEntries(FIT_STYLES.map(s=>[s,STYLES[s]]));
 const state=loadSaved(saved,DEFAULTS,FIT_ONLY,COLORS.map(c=>c[0]));
+// a kids' style takes only the child's height; its other measures come from riderOf
+const kidOf=s=>STYLES[s].kidFit||null;
 let saveT=0;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,flex,style,color,rider,dims,motor,quiz,health,healthOn}));}catch(e){}},300);}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const {H,I,A,W,kidH,flex,style,color,rider,dims,motor,quiz,health,healthOn}=state;localStorage.setItem(SAVE_KEY,JSON.stringify({H,I,A,W,kidH,flex,style,color,rider,dims,motor,quiz,health,healthOn}));}catch(e){}},300);}
 
 /* ---------- controls ---------- */
 const inputs={H:$('#inH'),I:$('#inI'),A:$('#inA'),W:$('#inW'),flex:$('#inF')};
 const outs={H:$('#outH'),I:$('#outI'),A:$('#outA'),W:$('#outW'),flex:$('#outF')};
 function setP(el){const p=(el.value-el.min)/(el.max-el.min)*100;el.style.setProperty('--p',p+'%')}
 function syncControls(){
-  for(const k of ['H','I','A','W']){inputs[k].value=state[k];outs[k].innerHTML=`${fmt(Math.round(state[k]*2)/2)}<span>см</span>`;setP(inputs[k]);}
+  const kid=kidOf(state.style), r=riderOf(state,FIT_ONLY,kidBody);
+  // a child: the height slider runs over the style's own range and only it is shown
+  const [hMin,hMax]=kid?kid.range:[145,210]; inputs.H.min=hMin; inputs.H.max=hMax;
+  for(const k of ['H','I','A','W']){inputs[k].value=r[k];outs[k].innerHTML=`${fmt(Math.round(r[k]*2)/2)}<span>см</span>`;setP(inputs[k]);}
+  document.querySelectorAll('[data-dim="I"],[data-dim="A"],[data-dim="W"],.presets').forEach(e=>{e.hidden=!!kid;});
   inputs.flex.value=state.flex;outs.flex.textContent=FLEX[state.flex-1];setP(inputs.flex);
   document.querySelectorAll('[data-preset]').forEach(b=>{const p=PRESETS[+b.dataset.preset];
     b.setAttribute('aria-pressed',String(Math.abs(p.H-state.H)<.6&&Math.abs(p.I-state.I)<.6&&Math.abs(p.A-state.A)<.6&&Math.abs(p.W-state.W)<.6));});
 }
 inputs.H.addEventListener('input',()=>{
-  const nh=+inputs.H.value, r=nh/state.H; state.H=nh;
-  state.I=clamp(state.I*r,62,102); state.A=clamp(state.A*r,46,78); state.W=clamp(state.W*r,32,52);
+  const nh=+inputs.H.value;
+  if(kidOf(state.style)) state.kidH[state.style]=nh; // the adult measures stay as they were
+  else{
+    const r=nh/state.H; state.H=nh;
+    state.I=clamp(state.I*r,62,102); state.A=clamp(state.A*r,46,78); state.W=clamp(state.W*r,32,52);
+  }
   changed();
 });
 for(const k of ['I','A','W']) inputs[k].addEventListener('input',()=>{state[k]=+inputs[k].value;changed();});
@@ -619,13 +633,15 @@ function healthText(h){
   return p.length?'Учтено здоровье: '+p.join(', '):'';
 }
 function syncHealth(){
-  const t=state.health?healthText(state.health):'';
+  const t=state.health&&!kidOf(state.style)?healthText(state.health):'';
   $('#healthRow').hidden=!t; $('#healthText').textContent=t; $('#tHealth').checked=state.healthOn;
 }
 function syncStyle(){
   document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-checked',String(x.dataset.style===state.style)));
   $('#aboutType').href='#types/'+state.style;
-  $('#tMotor').checked=state.motor;
+  // the e-bike always has its motor; the saved choice returns on the other styles
+  const eb=!!STYLES[state.style].motor;
+  $('#tMotor').checked=eb||state.motor; $('#tMotor').disabled=eb;
   syncHealth();
 }
 document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{state.style=b.dataset.style;syncStyle();changed();}));
@@ -729,7 +745,8 @@ function renderSpecs(F){
   const reachS=best.err<22?'good':best.err<50?'warn':'bad';
   const stemS=g.stemL<=st.stemMin||g.stemL>=st.stemMax?'warn':stat(g.stemL,st.stemIdeal-30,st.stemIdeal+30,15);
   const eS=st.oneSize?'good':best.expo<90||best.expo>best.expoMax?'warn':'good';
-  const hS=st.oneSize&&(state.H<FOLDING_RANGE[0]||state.H>FOLDING_RANGE[1])?'warn':'good';
+  const rider=riderOf(state,FIT_ONLY,kidBody), hRow=heightRowOf(state.style,rider.H,best.i);
+  const hS=hRow?hRow.status:'good';
   let rows=[
     ['Высота седла',`${Math.round(g.saddleH)}<span>мм</span>`,'от оси каретки до верха седла','good'],
     ['Сгиб колена внизу',`${Math.round(F.knee)}<span>°</span>`,'норма 25–35°',kS],
@@ -741,29 +758,27 @@ function renderSpecs(F){
     ['Ширина руля',`${F.barW}<span>мм</span>`,st.flat?'прямой руль':'по ширине плеч','good'],
     ['Подседел над рамой',`${Math.round(best.expo)}<span>мм</span>`,`комфортно 90–${best.expoMax} мм`,eS],
   ];
-  if(st.oneSize){
-    rows=rows.filter(r=>r[0]!=='Проставки'&&r[0]!=='Подседел над рамой');
-    rows.push(['Рост',`${Math.round(state.H)}<span>см</span>`,`складные обычно на ${FOLDING_RANGE[0]}–${FOLDING_RANGE[1]} см`,hS]);
-  }
+  if(st.oneSize||st.kidFit) rows=rows.filter(r=>r[0]!=='Проставки'&&r[0]!=='Подседел над рамой');
+  if(hRow) rows.push(['Рост',hRow.value.replace(/ см$/,'<span>см</span>'),hRow.hint,hRow.status]);
   metrics.innerHTML=rows.map(r=>`<div class="m" data-s="${r[3]}"><dt>${r[0]}</dt><dd>${r[1]}</dd><div class="hint">${r[2]}</div></div>`).join('');
   const worst=[kS,reachS,eS,aS].includes('bad')?'bad':[kS,reachS,eS,aS,stemS,hS].includes('warn')?'warn':'good';
   const st_=$('#status');st_.dataset.s=worst;
   st_.textContent=worst==='good'?'Посадка в норме':worst==='warn'?'Есть компромисс':'Нужна доработка';
   const ss=$('#stageStatus'); ss.dataset.s=worst; ss.textContent=st_.textContent;
-  const b=bodyOf(state);
-  $('#roLeg').innerHTML=`${fmt(state.I/state.H*100)}<small>%</small>`;
+  const b=bodyOf({...state,...rider});
+  $('#roLeg').innerHTML=`${fmt(rider.I/rider.H*100)}<small>%</small>`;
   $('#roTorso').innerHTML=`${fmt(b.torso/10)}<small>см</small>`;
-  $('#roSaddle').innerHTML=`${fmt(state.I*0.883)}<small>см</small>`;
+  $('#roSaddle').innerHTML=`${fmt(rider.I*0.883)}<small>см</small>`;
 }
 
 /* ---------- animation loop ---------- */
 let target=null, cur=null, curP=null, vb=null, ux=1, rideT=0, dirty=true, personDirty=true, refs={};
 const BOTTOM_ROOM=110; // mm below the ground for the grass by the road
-const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot'];
+const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot','rise'];
 function changed(){
   syncControls();
-  const F=fit({...state,health:healthNow()}); target=F.g; renderSpecs(F);
-  if(!cur){cur={...target};curP={H:state.H,I:state.I,A:state.A,W:state.W};}
+  const F=fit({...state,...riderOf(state,FIT_ONLY,kidBody),health:kidOf(state.style)?null:healthNow()}); target=F.g; renderSpecs(F);
+  if(!cur){const rp=riderOf(state,FIT_ONLY,kidBody);cur={...target};curP={H:rp.H,I:rp.I,A:rp.A,W:rp.W};}
   dirty=true; personDirty=true; save();
 }
 function computeUx(b){
@@ -776,7 +791,7 @@ const sceneId=()=>sceneOf(state.style);
 const isFemale=()=>state.style==='women';
 function rebuild(){
   const scene=$('#scene');
-  scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor});
+  scene.innerHTML=bikeMarkup(cur,ux,{motor:state.motor||target.motor});
   refs={}; ['fCrank','fPedal','nCrank','nPedal','wR','wF','cockpitG'].forEach(id=>refs[id]=document.getElementById(id));
   bikeSvg.dataset.scene = sceneId(); refs.pts=geomPts(cur); refs.shadow=document.getElementById('shadow');
   // the background is drawn in mm like the bike, for the current view; the ground of both is the same line
@@ -824,7 +839,8 @@ function tick(now){
     let moving=false;
     for(const key of NUM){const d=target[key]-cur[key];if(Math.abs(d)>0.02){cur[key]+=d*k;moving=true;}else cur[key]=target[key];}
     if(copyFlags(cur,target,NUM))dirty=true;
-    for(const key of ['H','I','A','W']){const d=state[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==state[key]){curP[key]=state[key];personDirty=true;}}
+    const rp=riderOf(state,FIT_ONLY,kidBody);
+    for(const key of ['H','I','A','W']){const d=rp[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==rp[key]){curP[key]=rp[key];personDirty=true;}}
     const tb=boundsOf(cur,state.rider,ux); tb.h+=BOTTOM_ROOM;
     if(!vb)vb={...tb};
     let vbMove=false;
@@ -863,7 +879,8 @@ window.fitstand={
   getQuiz:()=>state.quiz?JSON.parse(JSON.stringify(state.quiz)):null,
   setQuiz(q){state.quiz=q?JSON.parse(JSON.stringify(q)):null;save();},
   fitSummary(opts){
-    return summaryOf(fit({...state,style:opts.style,health:opts.health||null}));
+    // a kids' style is summed up for the child's body, not the adult's
+    return summaryOf(fit({...state,...riderOf({...state,style:opts.style},FIT_ONLY,kidBody),style:opts.style,health:opts.health||null}));
   },
   eraseAnswers(){state.quiz=null;state.health=null;syncStyle();dirty=true;changed();},
 };
