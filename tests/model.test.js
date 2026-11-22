@@ -121,7 +121,7 @@ test('summary bar height includes the riser bar rise', () => {
 const CATALOG = ['cx', 'track', 'trike', 'cargo', 'bmx', 'special', 'kidTrike', 'balance', 'kidTraining', 'kid', 'teen'];
 
 test('FIT_STYLES', () => {
-  assert.deepEqual(M.FIT_STYLES, ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding']);
+  assert.deepEqual(M.FIT_STYLES.slice(0, 10), ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding']);
   for (const s of M.FIT_STYLES) assert.ok(M.STYLES[s], s);
 });
 
@@ -241,7 +241,6 @@ test('kid fit at the edges: no NaN, saddle above the crank, knee sane', () => {
     for (const [k, v] of Object.entries(F.g)) if (typeof v === 'number') assert.ok(Number.isFinite(v), `${style} g.${k}`);
     assert.ok(F.g.saddleH > F.g.crank, `${style} saddle`);
     assert.ok(Number.isFinite(F.knee) && F.knee >= 0 && F.knee <= 90, `${style} knee ${F.knee}`);
-    console.log(`kid knee ${style} H=${H}: ${F.knee.toFixed(1)}`);
   }
 });
 
@@ -270,4 +269,37 @@ test('rear tyre clears the bottom bracket on every size of every style', () => {
       assert.ok(F.g.cs > F.g.wheelR + 25, `${style} fit: cs ${F.g.cs} wheelR ${F.g.wheelR}`);
     });
   }
+});
+
+// ---------- e-bike, detail flags, 14 styles (feedback 6, Task 4) ----------
+test('ebike: hybrid sizes, a fork, a motor and a display', () => {
+  assert.deepEqual(M.sizesFor('ebike'), M.sizesFor('hybrid'));
+  const g = M.fit({ ...P178, style: 'ebike' }).g;
+  assert.equal(g.susp, true);
+  assert.equal(g.motor, true);
+  assert.equal(g.display, true);
+});
+
+test('detail flags reach the geometry', () => {
+  const bmx = M.fit({ ...M.STYLES.bmx.rider, style: 'bmx', flex: 3 }).g;
+  assert.equal(bmx.gyro, true);
+  assert.equal(bmx.gumwall, true);
+  assert.equal(bmx.brake, 'rearRim');
+  const kt = M.fit({ H: 110, style: 'kidTraining', flex: 3 }).g;
+  assert.deepEqual([kt.rimAccent, kt.bell, kt.parentHandle], [true, true, true]);
+  const teen = M.fit({ H: 145, style: 'teen', flex: 3 }).g;
+  assert.equal(teen.reflectors, true);
+  assert.equal(teen.fender, 1);
+  const road = M.fit({ ...P178, style: 'road' }).g;
+  for (const k of ['motor', 'display', 'gyro', 'gumwall', 'rimAccent', 'bell', 'parentHandle', 'reflectors']) assert.equal(road[k], false, k);
+});
+
+test('14 styles on the main screen, in this order', () => {
+  assert.deepEqual(M.FIT_STYLES, ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding', 'ebike', 'bmx', 'teen', 'kidTraining']);
+});
+
+test('folding height range and the largest kid crank', () => {
+  assert.deepEqual(M.STYLES.folding.heightRange, [150, 195]);
+  assert.equal(M.STYLES.kidTraining.crankMax, 102);
+  assert.equal(M.STYLES.teen.crankMax, 160);
 });

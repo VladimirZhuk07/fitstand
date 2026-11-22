@@ -29,36 +29,37 @@ const STYLES={
   city:  {name:'Город', STA:71,HTA:69,drop:60,cs:450,tyre:42,rake:50,stemIdeal:80,stemMin:40,stemMax:120,stemAng:20,stemAngs:[20,7,35],spMax:60,barReach:0,barDrop:0,sweep:150,fender:1,guard:1,ring:38,saddleK:0.875,alpha:68,alphaFlex:2.5,beta:62,torsoNorm:[60,78],reachAdj:-40,heightAdj:0,crankMax:170,expoMax:380,barAdd:180,barMin:560,barMax:680,flat:true,brake:'rim',susp:false,hinge:false,oneSize:false},
   hybrid:{name:'Гибрид',STA:72,HTA:70.5,drop:70,cs:440,tyre:38,rake:50,stemIdeal:90,stemMin:60,stemMax:120,stemAng:7,stemAngs:[7,-7,17],spMax:40,barReach:0,barDrop:0,sweep:60,fender:0,guard:0,ring:44,saddleK:0.88,alpha:58,alphaFlex:3,beta:75,torsoNorm:[50,65],reachAdj:-60,heightAdj:0,crankMax:175,expoMax:340,barAdd:200,barMin:580,barMax:680,flat:true,brake:'disc',susp:false,hinge:false,oneSize:false},
   mtb:   {name:'MTB',   STA:75,HTA:66,drop:40,cs:435,tyre:58,rake:44,stemIdeal:50,stemMin:35,stemMax:80,stemAng:0,stemAngs:[0,-6,6],spMax:30,barReach:0,barDrop:0,sweep:30,fender:0,guard:0,ring:32,saddleK:0.883,alpha:50,alphaFlex:3,beta:80,torsoNorm:[42,58],reachAdj:-40,heightAdj:0,crankMax:175,expoMax:380,barAdd:340,barMin:720,barMax:800,flat:true,brake:'disc',susp:true,hinge:false,oneSize:false},
-  folding:{name:'Складной',STA:70,HTA:72,drop:-40,cs:400,tyre:35,rake:40,stemIdeal:60,stemMin:40,stemMax:100,stemAng:10,stemAngs:[10],spMax:250,barReach:0,barDrop:0,sweep:120,fender:1,guard:1,ring:52,saddleK:0.875,alpha:65,alphaFlex:2.5,beta:65,torsoNorm:[58,78],reachAdj:-40,heightAdj:0,crankMax:170,expoMax:9999,barAdd:140,barMin:540,barMax:600,flat:true,brake:'rim',susp:false,hinge:true,oneSize:true}
+  folding:{name:'Складной',STA:70,HTA:72,drop:-40,cs:400,tyre:35,rake:40,stemIdeal:60,stemMin:40,stemMax:100,stemAng:10,stemAngs:[10],spMax:250,barReach:0,barDrop:0,sweep:120,fender:1,guard:1,ring:52,saddleK:0.875,alpha:65,alphaFlex:2.5,beta:65,torsoNorm:[58,78],reachAdj:-40,heightAdj:0,crankMax:170,expoMax:9999,barAdd:140,barMin:540,barMax:600,flat:true,brake:'rim',susp:false,hinge:true,oneSize:true,heightRange:[150,195]}
 };
 // Новые виды. fullsus, cx, track, women — и для подбора размера; остальные — только для схем в каталоге:
 // parent — берут размеры родителя; size — один размер; rider — манекен для схемы (детские, BMX, одноколёсный).
 const KID = {STA:70,HTA:70,drop:-20,cs:280,tyre:40,rake:25,stemIdeal:40,stemMin:20,stemMax:60,stemAng:20,stemAngs:[20,35,7],spMax:60,barReach:0,barDrop:0,sweep:60,fender:0,guard:1,ring:28,saddleK:0.875,alpha:68,alphaFlex:2,beta:62,torsoNorm:[60,80],reachAdj:0,heightAdj:0,expoMax:9999,barAdd:0,barMin:300,barMax:560,flat:true,brake:'rim',susp:false,hinge:false,oneSize:true};
 Object.assign(STYLES,{
+  ebike:  {...STYLES.hybrid,name:'Электро',susp:true,motor:true,display:true,parent:'hybrid'},
   fullsus:{...STYLES.mtb,name:'Двухподвес',rearShock:true,parent:'mtb'},
   cx:     {...STYLES.gravel,name:'Циклокросс',tyre:33,drop:60,parent:'gravel'},
   track:  {...STYLES.road,name:'Трековый',brake:'none',parent:'road'},
   trike:  {...STYLES.city,name:'Трицикл',trike:true,parent:'city'},
   cargo:  {...STYLES.city,name:'Грузовой',cargoBox:true,parent:'city'},
   women:  {...STYLES.hybrid,name:'Женский',stepThrough:true,crankMax:170,barMin:540,barMax:640,parent:'hybrid'},
-  bmx:    {...KID,name:'BMX',drop:-30,cs:360,tyre:55,rake:30,HTA:74.5,STA:71,stemIdeal:50,stemMin:40,stemMax:60,stemAngs:[0,20],spMax:20,sweep:30,rise:60,saddleK:0.62,alpha:40,beta:85,crankMax:175,barMin:700,barMax:740,brake:'rim',
+  bmx:    {...KID,name:'BMX',drop:-30,cs:360,tyre:55,rake:30,HTA:74.5,STA:71,stemIdeal:50,stemMin:40,stemMax:60,stemAngs:[0,20],spMax:20,sweep:30,rise:60,saddleK:0.62,alpha:40,beta:85,crankMax:175,barMin:700,barMax:740,brake:'rearRim',gyro:true,gumwall:true,
            size:{n:'Один',st:230,reach:540,stack:200,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   special:{...KID,name:'Одноколёсный',unicycle:true,crankMax:125,size:{n:'Один',st:400,reach:300,stack:500,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   kidTrike:   {...KID,name:'Трёхколёсный',trike:true,frontPedals:true,crankMax:80,size:{n:'12″',st:220,reach:240,stack:330,ht:90,wheel:'12'},rider:{H:95,I:40,A:30,W:24}},
   balance:    {...KID,name:'Беговел',noPedals:true,crankMax:80,size:{n:'12″',st:200,reach:250,stack:320,ht:90,wheel:'12'},rider:{H:95,I:40,A:30,W:24}},
-  kidTraining:{...KID,name:'С поддерживающими колёсами',trainingWheels:true,crankMax:95,oneSize:false,kidFit:{range:[85,125],def:110},
+  kidTraining:{...KID,name:'С поддерживающими колёсами',trainingWheels:true,crankMax:102,rimAccent:true,bell:true,parentHandle:true,oneSize:false,kidFit:{range:[85,125],def:110},
     kidSizes:[
       {n:'12″',wheel:'12',st:200,reach:250,stack:330,ht:90,crank:85,h:[85,100]},
       {n:'14″',wheel:'14',st:230,reach:270,stack:360,ht:95,crank:89,h:[95,110]},
       {n:'16″',wheel:'16',st:260,reach:290,stack:400,ht:100,crank:95,h:[105,120]},
       {n:'18″',wheel:'18',st:280,reach:310,stack:430,ht:105,crank:102,h:[115,125]}],size:{n:'16″',st:260,reach:290,stack:400,ht:100,wheel:'16'},rider:{H:110,I:47,A:35,W:27}},
   kid:        {...KID,name:'Детский',crankMax:114,size:{n:'20″',st:300,reach:330,stack:460,ht:110,wheel:'20'},rider:{H:125,I:55,A:41,W:30}},
-  teen:       {...KID,name:'Подростковый',crankMax:152,susp:true,brake:'disc',cs:410,drop:-10,HTA:69,STA:72,oneSize:false,kidFit:{range:[125,165],def:145},
+  teen:       {...KID,name:'Подростковый',crankMax:160,reflectors:true,fender:1,susp:true,brake:'disc',cs:410,drop:-10,HTA:69,STA:72,oneSize:false,kidFit:{range:[125,165],def:145},
     kidSizes:[
       {n:'24″',wheel:'24',st:360,reach:360,stack:520,ht:110,crank:152,h:[125,150]},
       {n:'26″',wheel:'26',st:380,reach:380,stack:560,ht:110,crank:160,h:[145,165]}],size:{n:'24″',st:360,reach:360,stack:520,ht:110,wheel:'24'},rider:{H:145,I:66,A:49,W:34}},
 });
-const FIT_STYLES=['city','hybrid','women','gravel','cx','road','track','mtb','fullsus','folding'];
+const FIT_STYLES=['city','hybrid','women','gravel','cx','road','track','mtb','fullsus','folding','ebike','bmx','teen','kidTraining'];
 const WHEEL_R={'700c':311,'650b':292,'29':311,'27.5':292,'24':253.5,'26':279.5,'20':203,'18':177.5,'16':152.5,'14':127,'12':101.5};
 const FOLDING_RANGE=[150,195];
 const CITY={reach:30,stack:5,ht:20};
@@ -155,7 +156,7 @@ function evalSize(p,st,b,sz,i,alpha,crank){
     wheelR:WHEEL_R[sz.wheel]+tyre,reach:sz.reach,stack:sz.stack,ST:sz.st,HT:sz.ht,
     saddleH:p.I*10*st.saddleK-(crank-172.5*p.H/178),crank,stemAng:st.stemAng,barReach:st.barReach,barDrop:st.barDrop,sweep:st.sweep,
     fender:st.fender,guard:st.guard,ring:st.ring,brake:st.brake,susp:st.susp||gear.includes('suspFork'),suspPost:gear.includes('suspPost'),stepThrough:!!(st.stepThrough||(h&&h.stepThrough)),rise:(st.rise||0)+(riser?30:0),
-    rearShock:!!st.rearShock,trike:!!st.trike,cargoBox:!!st.cargoBox,noPedals:!!st.noPedals,trainingWheels:!!st.trainingWheels,frontPedals:!!st.frontPedals,unicycle:!!st.unicycle,hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
+    rearShock:!!st.rearShock,trike:!!st.trike,cargoBox:!!st.cargoBox,noPedals:!!st.noPedals,trainingWheels:!!st.trainingWheels,frontPedals:!!st.frontPedals,unicycle:!!st.unicycle,motor:!!st.motor,display:!!st.display,gyro:!!st.gyro,gumwall:!!st.gumwall,rimAccent:!!st.rimAccent,bell:!!st.bell,parentHandle:!!st.parentHandle,reflectors:!!st.reflectors,hinge:st.hinge,sp:0,stemL:0,sc:p.H/178,
     torso:b.torso,thigh:b.thigh,shin:b.shin,arm:b.arm,headR:b.headR,foot:b.foot};
   const S=saddlePt(g), hip=add(S,mul(HIP_OFF,g.sc));
   const sh=add(hip,mul(dirv(alpha),b.torso));
