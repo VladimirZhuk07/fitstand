@@ -212,3 +212,62 @@ test('wheel radii for 18 and 26 inch', () => {
   assert.equal(M.WHEEL_R['18'], 177.5);
   assert.equal(M.WHEEL_R['26'], 279.5);
 });
+
+// ---------- kids' bikes sized by the child's height (feedback 6, Task 3) ----------
+test('kidSizeFor picks by the middle of the height range', () => {
+  const k = h => M.kidSizeFor('kidTraining', h), t = h => M.kidSizeFor('teen', h);
+  assert.deepEqual([85, 100, 105, 112, 120, 125].map(k), [0, 1, 1, 2, 3, 3]);
+  assert.equal(k(97.5), 0); // exactly between 92.5 and 102.5: the smaller size
+  assert.deepEqual([125, 146, 147, 165].map(t), [0, 0, 1, 1]);
+  assert.equal(M.sizesFor('kidTraining').length, 4);
+  assert.equal(M.sizesFor('teen').length, 2);
+  assert.deepEqual(M.STYLES.kidTraining.kidFit, { range: [85, 125], def: 110 });
+  assert.deepEqual(M.STYLES.teen.kidFit, { range: [125, 165], def: 145 });
+});
+
+test('kid fit: size, wheel and crank follow the height', () => {
+  const run = (style, H) => { const F = M.fit({ H, style, flex: 3 }); return [F.best.sz.wheel, F.g.crank]; };
+  assert.deepEqual([90, 100, 112, 122].map(H => run('kidTraining', H)), [['12', 85], ['14', 89], ['16', 95], ['18', 102]]);
+  assert.deepEqual(run('teen', 135), ['24', 152]);
+  assert.deepEqual(run('teen', 160), ['26', 160]);
+  const F = M.fit({ H: 112, style: 'kidTraining', flex: 3 });
+  assert.equal(F.best.i, 2);
+  assert.deepEqual(F.near, []);
+});
+
+test('kid fit at the edges: no NaN, saddle above the crank, knee sane', () => {
+  for (const [style, H] of [['kidTraining', 85], ['teen', 165]]) {
+    const F = M.fit({ H, style, flex: 3 });
+    for (const [k, v] of Object.entries(F.g)) if (typeof v === 'number') assert.ok(Number.isFinite(v), `${style} g.${k}`);
+    assert.ok(F.g.saddleH > F.g.crank, `${style} saddle`);
+    assert.ok(Number.isFinite(F.knee) && F.knee >= 0 && F.knee <= 90, `${style} knee ${F.knee}`);
+    console.log(`kid knee ${style} H=${H}: ${F.knee.toFixed(1)}`);
+  }
+});
+
+test('kid fit ignores the health limits', () => {
+  const a = M.fit({ H: 110, style: 'kidTraining', flex: 3 });
+  const b = M.fit({ H: 110, style: 'kidTraining', flex: 3, health: { crankMax: 60, upright: 20, gear: ['riseBar'] } });
+  assert.deepEqual(a.g, b.g);
+});
+
+test('catalog dummies keep their wheels', () => {
+  for (const [style, wheel] of [['kidTraining', '16'], ['teen', '24'], ['bmx', '20']]) {
+    assert.equal(M.fit({ ...M.STYLES[style].rider, style, flex: 3 }).best.sz.wheel, wheel, style);
+  }
+});
+
+test('rear tyre clears the bottom bracket on every size of every style', () => {
+  for (const style of [...M.FIT_STYLES, 'kidTraining', 'teen']) {
+    const st = M.STYLES[style];
+    M.sizesFor(style).forEach((sz, i) => {
+      const H = st.kidFit ? (st.kidSizes[i].h[0] + st.kidSizes[i].h[1]) / 2 : 178;
+      const F = M.fit({ H, I: 83, A: 61, W: 42, style, flex: 3 });
+      // for adults fit picks the size itself; evaluate this size directly so none is skipped
+      const body = st.kidFit ? { H, flex: 3, ...M.kidBody(H) } : { H, I: 83, A: 61, W: 42, flex: 3 };
+      const e = M.evalSize({ ...body, style }, st, M.bodyOf(body), sz, i, st.alpha, Math.min(175, st.crankMax));
+      assert.ok(e.g.cs > e.g.wheelR + 25, `${style} ${sz.n}: cs ${e.g.cs} wheelR ${e.g.wheelR}`);
+      assert.ok(F.g.cs > F.g.wheelR + 25, `${style} fit: cs ${F.g.cs} wheelR ${F.g.wheelR}`);
+    });
+  }
+});
