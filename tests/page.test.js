@@ -101,3 +101,16 @@ test('a style switch (button and applyStyle) takes the style colour; page load d
   const load = html.slice(html.indexOf('// restore saved view state'), html.indexOf('// tabs (phone layout)'));
   assert.doesNotMatch(load, /STYLE_COLOR/);
 });
+
+test('the dark theme lightens the logo accent so a black frame colour stays readable', () => {
+  // both dark variants: the system preference and the data-theme="dark" switch
+  assert.match(html, /@media \(prefers-color-scheme: dark\)\{\s*:root:not\(\[data-theme="light"\]\) \.brand h1 b\{color:color-mix/);
+  assert.match(html, /:root\[data-theme="dark"\] \.brand h1 b\{color:color-mix\(in srgb,var\(--frame\) 55%,white\)\}/);
+});
+
+test('the verdict comes from verdictOf; kids\' and standing styles mark rows that do not vote', () => {
+  const fn = html.slice(html.indexOf('function renderSpecs('), html.indexOf('/* ---------- animation loop'));
+  assert.match(fn, /verdictOf\(/);
+  assert.match(fn, /st\.standing/);
+  assert.match(fn, /на BMX катаются стоя/);
+});

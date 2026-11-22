@@ -335,3 +335,22 @@ test('heightRowOf: folding keeps its 150–195 range, other styles have no heigh
   assert.equal(M.heightRowOf('bmx', 170, 0), null);
   assert.equal(M.heightRowOf('road', 178, 2), null);
 });
+
+test('verdictOf: bad beats warn beats good; rows with votes:false and soft rows are respected', () => {
+  const r = (status, extra) => ({ status, votes: true, ...extra });
+  assert.equal(typeof M.verdictOf, 'function');
+  assert.equal(M.verdictOf([r('good'), r('good')]), 'good');
+  assert.equal(M.verdictOf([r('good'), r('warn')]), 'warn');
+  assert.equal(M.verdictOf([r('warn'), r('bad'), r('good')]), 'bad');
+  assert.equal(M.verdictOf([]), 'good');
+  // a row that does not vote never changes the verdict
+  assert.equal(M.verdictOf([r('good'), r('bad', { votes: false }), r('warn', { votes: false })]), 'good');
+  // a soft row can lower the verdict to warn at most
+  assert.equal(M.verdictOf([r('good'), r('bad', { soft: true })]), 'warn');
+  assert.equal(M.verdictOf([r('bad'), r('bad', { soft: true })]), 'bad');
+});
+
+test('only BMX is ridden standing', () => {
+  assert.equal(M.STYLES.bmx.standing, true);
+  for (const k of Object.keys(M.STYLES)) if (k !== 'bmx') assert.ok(!M.STYLES[k].standing, k);
+});

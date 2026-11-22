@@ -42,7 +42,7 @@ Object.assign(STYLES,{
   trike:  {...STYLES.city,name:'Трицикл',trike:true,parent:'city'},
   cargo:  {...STYLES.city,name:'Грузовой',cargoBox:true,parent:'city'},
   women:  {...STYLES.hybrid,name:'Женский',stepThrough:true,crankMax:170,barMin:540,barMax:640,parent:'hybrid'},
-  bmx:    {...KID,name:'BMX',drop:-30,cs:360,tyre:55,rake:30,HTA:74.5,STA:71,stemIdeal:50,stemMin:40,stemMax:60,stemAngs:[0,20],spMax:20,sweep:30,rise:60,saddleK:0.62,alpha:40,beta:85,crankMax:175,barMin:700,barMax:740,brake:'rearRim',gyro:true,gumwall:true,
+  bmx:    {...KID,name:'BMX',drop:-30,cs:360,tyre:55,rake:30,HTA:74.5,STA:71,stemIdeal:50,stemMin:40,stemMax:60,stemAngs:[0,20],spMax:20,sweep:30,rise:60,saddleK:0.62,alpha:40,beta:85,standing:true,crankMax:175,barMin:700,barMax:740,brake:'rearRim',gyro:true,gumwall:true,
            size:{n:'Один',st:230,reach:540,stack:200,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   special:{...KID,name:'Одноколёсный',unicycle:true,crankMax:125,size:{n:'Один',st:400,reach:300,stack:500,ht:110,wheel:'20'},rider:{H:170,I:79,A:58,W:40}},
   kidTrike:   {...KID,name:'Трёхколёсный',trike:true,frontPedals:true,crankMax:80,size:{n:'12″',st:220,reach:240,stack:330,ht:90,wheel:'12'},rider:{H:95,I:40,A:30,W:24}},
@@ -111,6 +111,13 @@ function heightRowOf(style,H,sizeIndex){
     return {value,hint:`складные обычно на ${lo}–${hi} см`,status:H<lo||H>hi?'warn':'good'};
   }
   return null;
+}
+// the overall verdict of the result rows [{status, votes, soft}]: a row with votes:false is shown but not counted,
+// a soft row can lower the verdict to «warn» at most
+function verdictOf(rows){
+  const v=rows.filter(r=>r.votes!==false);
+  if(v.some(r=>r.status==='bad'&&!r.soft)) return 'bad';
+  return v.some(r=>r.status==='warn'||r.status==='bad')?'warn':'good';
 }
 function bodyOf(p){
   const H=p.H*10, I=p.I*10;
@@ -250,7 +257,7 @@ function finish(p,st,b,best,near,upright,crank,crank0,cands){
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, FIT_STYLES, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,
-  summaryOf, sizesFor, kidSizeFor, heightRowOf, bodyOf, kidBody, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
+  summaryOf, sizesFor, kidSizeFor, heightRowOf, verdictOf, bodyOf, kidBody, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
