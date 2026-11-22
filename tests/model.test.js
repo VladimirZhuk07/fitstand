@@ -173,3 +173,42 @@ test('catalog styles give finite geometry', () => {
   assert.equal(M.sizesFor('balance').length, 1);
   assert.equal(M.sizesFor('balance')[0].wheel, '12');
 });
+
+const KID_ROWS = [[95,0.421,0.316,0.253,0.080],[110,0.427,0.318,0.245,0.076],[125,0.440,0.328,0.240,0.072],[145,0.455,0.338,0.234,0.067],[178,0.466,0.343,0.236,0.062]];
+const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} vs ${b}`);
+
+test('kidBody hits the anchor rows', () => {
+  for (const [H, i, a, w, hk] of KID_ROWS) {
+    const k = M.kidBody(H);
+    near(k.I / H, i); near(k.A / H, a); near(k.W / H, w); near(k.headK, hk);
+  }
+  near(M.kidBody(110).I, 0.427 * 110);
+});
+
+test('kidBody is linear between anchors and clamped outside', () => {
+  const k = M.kidBody(117.5);
+  near(k.I / 117.5, (0.427 + 0.440) / 2);
+  near(k.A / 117.5, (0.318 + 0.328) / 2);
+  near(k.W / 117.5, (0.245 + 0.240) / 2);
+  near(k.headK, (0.076 + 0.072) / 2);
+  const lo = M.kidBody(80);
+  near(lo.I / 80, 0.421); near(lo.headK, 0.080);
+  const hi = M.kidBody(200);
+  near(hi.I / 200, 0.466); near(hi.W / 200, 0.236); near(hi.headK, 0.062);
+});
+
+test('bodyOf: adults unchanged, a child gets a larger head', () => {
+  const b = M.bodyOf({ H: 178, I: 83, A: 61, W: 42 });
+  near(b.headR, 0.062 * 1780);
+  near(b.torso, 0.818 * 1780 - (830 + 0.06 * 1780));
+  near(b.thigh, (830 + 0.06 * 1780 - 0.039 * 1780) / 2);
+  near(b.arm, 680); near(b.foot, 0.15 * 1780);
+  assert.deepEqual(Object.keys(b).sort(), ['arm', 'foot', 'headR', 'shin', 'thigh', 'torso']);
+  const c = M.bodyOf({ H: 110, ...M.kidBody(110) });
+  near(c.headR, 0.076 * 1100);
+});
+
+test('wheel radii for 18 and 26 inch', () => {
+  assert.equal(M.WHEEL_R['18'], 177.5);
+  assert.equal(M.WHEEL_R['26'], 279.5);
+});

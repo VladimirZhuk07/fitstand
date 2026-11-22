@@ -51,7 +51,7 @@ Object.assign(STYLES,{
   teen:       {...KID,name:'Подростковый',crankMax:152,susp:true,brake:'disc',size:{n:'24″',st:360,reach:360,stack:520,ht:110,wheel:'24'},rider:{H:145,I:66,A:49,W:34}},
 });
 const FIT_STYLES=['city','hybrid','women','gravel','cx','road','track','mtb','fullsus','folding'];
-const WHEEL_R={'700c':311,'650b':292,'29':311,'27.5':292,'24':253.5,'20':203,'16':152.5,'14':127,'12':101.5};
+const WHEEL_R={'700c':311,'650b':292,'29':311,'27.5':292,'24':253.5,'26':279.5,'20':203,'18':177.5,'16':152.5,'14':127,'12':101.5};
 const FOLDING_RANGE=[150,195];
 const CITY={reach:30,stack:5,ht:20};
 const ROAD_SIZES=[['XS',480,372,522,110],['S',510,378,543,130],['M',540,385,565,150],['L',560,392,588,172],['XL',580,400,612,195],['XXL',610,410,636,218]];
@@ -69,10 +69,19 @@ function sizesFor(style){
     return {n,st,reach:r,stack:s,ht,wheel};
   });
 }
+// Child proportions by height: [H cm, I/H, A/H, W/H, head radius/H]; shares are interpolated linearly between rows.
+const KID_BODY=[[95,0.421,0.316,0.253,0.080],[110,0.427,0.318,0.245,0.076],[125,0.440,0.328,0.240,0.072],[145,0.455,0.338,0.234,0.067],[178,0.466,0.343,0.236,0.062]];
+function kidBody(H){
+  const h=clamp(H,KID_BODY[0][0],KID_BODY[KID_BODY.length-1][0]);
+  let i=0; while(i<KID_BODY.length-2&&h>KID_BODY[i+1][0]) i++;
+  const a=KID_BODY[i], b=KID_BODY[i+1], t=(h-a[0])/(b[0]-a[0]);
+  const sh=k=>a[k]+(b[k]-a[k])*t;
+  return {I:sh(1)*H, A:sh(2)*H, W:sh(3)*H, headK:sh(4)};
+}
 function bodyOf(p){
   const H=p.H*10, I=p.I*10;
   const hipH=I+0.06*H, ankleH=0.039*H, leg=hipH-ankleH;
-  return {torso:0.818*H-hipH, thigh:leg*0.5, shin:leg*0.5, arm:p.A*10+70, headR:0.062*H, foot:0.15*H};
+  return {torso:0.818*H-hipH, thigh:leg*0.5, shin:leg*0.5, arm:p.A*10+70, headR:(p.headK||0.062)*H, foot:0.15*H};
 }
 function saddlePt(g){return mul(V(-Math.cos(g.STA*D),Math.sin(g.STA*D)),g.saddleH)}
 function barGeom(g,C){
@@ -194,7 +203,7 @@ function fit(p){
 }
 
 const api = { WHEEL_R, FOLDING_RANGE, FIT_STYLES, D, V, add, sub, mul, len, nrm, dirv, angOf, clamp, ik2, HIP_OFF, ANK, AEK, STYLES, CITY, ROAD_SIZES,
-  summaryOf, sizesFor, bodyOf, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
+  summaryOf, sizesFor, bodyOf, kidBody, saddlePt, barGeom, cockpit, legAt, upperOf, upperAt, rot, kneeFlex, evalSize, fit };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
