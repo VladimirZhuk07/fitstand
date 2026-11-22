@@ -207,6 +207,8 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike[data-scene="folding"]{--tint:#F0D9A8;--tk:18%}
 #bike[data-scene="ebike"]{--tint:#A9D3E0;--tk:18%}
 #bike[data-scene="kidTraining"]{--tint:#F4DC8E;--tk:18%}
+#bike[data-scene="teen"]{--tint:#A8C47E;--tk:20%}
+#bike[data-scene="bmx"]{--tint:#B7B2C9;--tk:20%}
 .rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
 .rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
 .rb-trunk-dark{fill:color-mix(in srgb,var(--trunk) 70%,black)} .rb-boulder{fill:color-mix(in srgb,var(--roadedge) 65%,var(--trunk))}
@@ -219,6 +221,10 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-roof{fill:color-mix(in srgb,var(--reflector) 40%,var(--roadedge))} .rb-lawn{fill:color-mix(in srgb,color-mix(in srgb,var(--grass) 75%,var(--verge)),var(--tint,transparent) var(--tk,0%))}
 .rb-lanebed{fill:color-mix(in srgb,var(--reflector) 45%,var(--road))} .rb-laneline{fill:var(--post)}
 .rb-slide{fill:color-mix(in srgb,var(--reflector) 65%,var(--sun))} .rb-swing{fill:none;stroke:var(--trunk);stroke-width:10;stroke-linecap:round} .rb-swing-post{fill:var(--trunk)} .rb-swingchain{fill:var(--post)} .rb-swingseat{fill:var(--reflector)} .rb-sandbox{fill:color-mix(in srgb,var(--sun) 55%,var(--roadedge))}
+/* teen and BMX scenes: a skate spot (everything from theme variables; the graffiti is abstract colour) */
+.rb-ramp{fill:color-mix(in srgb,var(--roadedge) 75%,var(--trunk))} .rb-rampedge{fill:var(--post)} .rb-wall{fill:color-mix(in srgb,var(--roadedge) 85%,var(--hill2))} .rb-wallcap{fill:var(--post)}
+.rb-graffiti{fill:var(--reflector)} .rb-graffiti2{fill:color-mix(in srgb,var(--sky-top) 65%,var(--grass))} .rb-graffiti3{fill:color-mix(in srgb,var(--sun) 80%,var(--reflector))} .rb-graffitiline{stroke:var(--post);stroke-width:14;fill:none;stroke-linecap:round}
+.rb-ledge{fill:color-mix(in srgb,var(--roadedge) 80%,var(--road))} .rb-ledgetop{fill:var(--post)} .rb-rail{fill:var(--trunk)} .rb-joint{fill:var(--speck)}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}
