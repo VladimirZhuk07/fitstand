@@ -533,5 +533,8 @@ test('the catalog opens every main-screen style', () => {
   assert.equal(types.ebike.drawAs, undefined, 'the e-bike card draws by its own style');
   assert.equal(types.ebike.motor, true);
   assert.equal(types.kidTraining.name, 'С подпорными колёсами');
-  assert.ok(!JSON.stringify(types).includes('поддерживающ'), 'one term for the supporting wheels');
+  const all = JSON.stringify(CONTENT).toLowerCase();
+  assert.ok(!all.includes('поддерживающ'), 'one term for the supporting wheels in all content');
+  assert.ok(!all.includes('стабилизатор'), 'no third term for the supporting wheels');
+  assert.equal(CONTENT.accessories.trainingWheels.name, 'Подпорные колёса');
 });
