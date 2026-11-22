@@ -198,9 +198,81 @@ function springMarkup() {
   return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, 190, 'Пружина', 'l')]);
 }
 
+// ---- the air fork: the left leg holds two air chambers split by a piston, a channel (bypass) runs beside them ----
+const AIR = { x0: 290, x1: 320, rodX: 305, top: 213, bot: 512, pist: 400, pistH: 14 }; // chamber box and the piston at rest
+const BYPASS_X = 284;              // the bypass strip (x 280…288) runs along the chambers; ports at both ends
+const PORT_TOP = 232, PORT_BOT = 484; // the wall between the strip and the chambers has gaps above and below these y
+const POS_N = 18, NEG_N = 12;      // particles of the positive (blue) and the negative (orange) chamber
+const BYPASS_FROM = 8;             // negative particles from this index go through the bypass under compression
+const COL_POS = '#5EB8F0', COL_NEG = '#F29A4A';
+
+// a fixed shift for particle k, -0.25…0.25 of a cell: the same on every frame, so nothing flickers
+const jit = (k, salt) => (((k * 7919 + salt * 104729) % 97) / 97 - 0.5) * 0.5;
+
+// the point at fraction f of the length of a polyline
+function along(pts, f) {
+  const seg = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); total += d; }
+  let rest = clamp01(f) * total;
+  for (let i = 0; i < seg.length; i++) {
+    if (rest <= seg[i] || i === seg.length - 1) { const u = seg[i] ? rest / seg[i] : 0; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * u, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * u]; }
+    rest -= seg[i];
+  }
+}
+
+// every particle position depends on the compression c only (not on the time), so a held pose stands still.
+// The tiny give of a locked fork (c <= BUMP_AMP) is not shown by the air: it is counted as BUMP_AMP.
+function airParticles(c) {
+  const cp = Math.max(c, BUMP_AMP);
+  const q = clamp01((cp - BUMP_AMP) / (C_MAX - BUMP_AMP)); // 0 at rest, 1 at full compression
+  const pistY = AIR.pist - cp * TRAVEL;
+  const pos = [], neg = [];
+  const ya = AIR.top + 4, yb = pistY - 5; // the positive chamber: from the top down to the piston
+  for (let k = 0; k < POS_N; k++) {
+    const col = k % 3, row = Math.floor(k / 3);
+    pos.push([AIR.x0 + 1.5 + (col + 0.5 + jit(k, 1)) * 9, ya + (row + 0.5 + jit(k, 2)) * (yb - ya) / 6]);
+  }
+  const na = pistY + AIR.pistH + 6, nb = AIR.bot - 4; // the negative chamber: under the piston, down to the bottom
+  for (let k = 0; k < NEG_N; k++) {
+    const col = k % 2, row = Math.floor(k / 2);
+    const home = [AIR.x0 + (col ? 24.5 : 5.5) + jit(k, 3) * 3, na + (row + 0.5 + jit(k, 4)) * (nb - na) / 6];
+    if (k < BYPASS_FROM) { neg.push(home); continue; }
+    // the last four leave their chamber through the bottom port, climb the strip and enter the positive chamber
+    const r = k - BYPASS_FROM;
+    const path = [home, [BYPASS_X, PORT_BOT + 17], [BYPASS_X, AIR.top + 11], [AIR.x0 + 7 + (r % 2) * 16, PORT_TOP + Math.floor(r / 2) * 12]];
+    neg.push(along(path, q * 1.36 - 0.12 * r));
+  }
+  return { pos, neg };
+}
+
+function airMarkup() {
+  const a = airParticles(0);
+  const dot = (id, cls, col, p) => `<circle id="${id}" class="${cls}" cx="${nr(p[0])}" cy="${nr(p[1])}" r="2.8" fill="${col}" stroke="#fff" stroke-width="0.7"/>`;
+  const left = `<rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
+  <rect id="la-bypass" x="${LX - 20}" y="${AIR.top}" width="8" height="${AIR.bot - AIR.top}" fill="#33424e"/>
+  <rect x="${AIR.x0 - 2}" y="${PORT_TOP}" width="2" height="${PORT_BOT - PORT_TOP}" fill="url(#la-g-steel)"/>
+  <rect id="la-pos-bg" x="${AIR.x0}" y="${AIR.top}" width="${AIR.x1 - AIR.x0}" height="${AIR.pist - AIR.top}" fill="${COL_POS}" opacity="0.34"/>
+  <rect id="la-neg-bg" x="${AIR.x0}" y="${AIR.pist + AIR.pistH}" width="${AIR.x1 - AIR.x0}" height="${AIR.bot - AIR.pist - AIR.pistH}" fill="${COL_NEG}" opacity="0.36"/>
+  ${a.pos.map((p, i) => dot('la-p' + i, 'la-pos', COL_POS, p)).join('')}${a.neg.map((p, i) => dot('la-n' + i, 'la-neg', COL_NEG, p)).join('')}
+  <g id="la-apiston" transform="translate(0 0)"><rect x="${AIR.rodX - 3}" y="${AIR.pist + AIR.pistH}" width="6" height="${731 - AIR.pist - AIR.pistH}" fill="url(#la-g-steel)"/><rect x="${AIR.x0}" y="${AIR.pist}" width="${AIR.x1 - AIR.x0}" height="${AIR.pistH}" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${AIR.x0}" y="${AIR.pist + 5}" width="${AIR.x1 - AIR.x0}" height="3" fill="#14181c" opacity="0.5"/></g>
+  <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>`;
+  // the air valve (nipple) sticks out of the crown above the left leg
+  const nipple = `<rect x="${LX - 8}" y="104" width="16" height="30" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${LX - 5}" y="95" width="10" height="11" rx="2" fill="url(#la-g-brass)"/>`;
+  const leaders = [
+    leader(LX, 112, 190, 'Ниппель', 'l'),
+    leader(AIR.rodX, 232, 190, 'Позитивная камера', 'l'),
+    // the piston rises with the legs: its leader moves with it (the line stays level, the label follows)
+    `<g id="la-lead-piston" transform="translate(0 0)">${leader(AIR.rodX, AIR.pist + 7, 190, 'Поршень', 'l')}</g>`,
+    leader(BYPASS_X, 440, 190, 'Байпас', 'l'),
+    leader(LX - 3, 480, 190, 'Негативная камера', 'l'),
+  ];
+  return forkSvg('air', 'Воздушная вилка в разрезе, вид спереди', left, leaders, nipple);
+}
+
 // kind 'shock' is drawn in a later task; until then it returns an empty string
 function lockMarkup(kind) {
-  return kind === 'spring' ? springMarkup() : '';
+  return kind === 'spring' ? springMarkup() : kind === 'air' ? airMarkup() : '';
 }
 
 // ---- one frame: attribute changes only, the list of ids is the same for every state ----
@@ -221,7 +293,18 @@ function sharedPose(g, st) {
 }
 
 // the parts that belong to one kind; lockPose appends them to the shared ones in a fixed order
+const airPose = (g, st) => {
+  const a = airParticles(st.c), pistY = AIR.pist - st.c * g.travel; // the chamber boxes follow the real piston
+  return [
+    rise('la-apiston', g, st), rise('la-lead-piston', g, st), rise('la-piston', g, st),
+    { id: 'la-pos-bg', attrs: { height: nr(pistY - AIR.top) } },
+    { id: 'la-neg-bg', attrs: { y: nr(pistY + AIR.pistH), height: nr(AIR.bot - pistY - AIR.pistH) } },
+    ...a.pos.map((p, i) => ({ id: 'la-p' + i, attrs: { cx: nr(p[0]), cy: nr(p[1]) } })),
+    ...a.neg.map((p, i) => ({ id: 'la-n' + i, attrs: { cx: nr(p[0]), cy: nr(p[1]) } })),
+  ];
+};
 const PARTS = {
+  air: airPose,
   spring: (g, st) => [rise('la-cup', g, st), rise('la-piston', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c) } }],
 };
 

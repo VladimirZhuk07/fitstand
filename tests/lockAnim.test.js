@@ -157,7 +157,7 @@ const flowSegments = svg => [...groupInner(svg, 'la-flow').matchAll(/<line x1="(
 const mirrorOf = (kind, t) => Number(/translate\(0 ([\d.]+)\) scale\(1 -1\)/.exec(L.lockPose(kind, L.lockState(t)).find(p => p.id === 'la-flow').attrs.transform)[1]);
 
 test('flow arrows keep clear of the needle, mirrored or not', () => {
-  for (const kind of ['spring']) {
+  for (const kind of ['spring', 'air']) {
     const svg = L.lockMarkup(kind), segs = flowSegments(svg), m = mirrorOf(kind, 4);
     assert.ok(segs.length >= 4);
     const all = [...segs, ...segs.map(([x1, y1, x2, y2]) => [x1, m - y1, x2, m - y2])];
@@ -182,7 +182,7 @@ test('the lever label line stays above the lever arc', () => {
 });
 
 test('the hit arrow stays inside the picture even when far', () => {
-  for (const kind of ['spring']) {
+  for (const kind of ['spring', 'air']) {
     const svg = L.lockMarkup(kind);
     const poly = /<g id="la-hit"[^>]*><polygon points="([^"]+)"/.exec(svg)[1];
     const maxY = Math.max(...poly.trim().split(/\s+/).map(p => Number(p.split(',')[1])));
@@ -201,4 +201,98 @@ test('the seal leader points at a part that does not move', () => {
   assert.ok(!move.includes(dot[0].slice(0, 40)));
   // the stanchion bushing (static, drawn over the legs): y 520…536
   assert.ok(Number(dot[2]) >= 520 && Number(dot[2]) <= 536, `dot y ${dot[2]}`);
+});
+
+// ---- Task 3: the air fork ----
+const particles = (c, cls = 'p') => {
+  const pose = L.lockPose('air', { ...L.lockState(0), c });
+  return pose.filter(p => new RegExp('^la-' + cls + '[0-9]+$').test(p.id)).map(p => [p.attrs.cx, p.attrs.cy]);
+};
+const meanDist = pts => {
+  let s = 0, n = 0;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) { s += Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]); n++; }
+  return s / n;
+};
+
+test('air cutaway: two chambers of particles, a bypass, labels', () => {
+  const svg = L.lockMarkup('air'), have = ids(svg);
+  assert.ok(svg.includes('data-lock="air"') && svg.includes('viewBox="0 0 900 900"'));
+  for (const id of ['la-lever', 'la-ind', 'la-needle', 'la-cross', 'la-flow', 'la-hit', 'la-move', 'la-bypass', 'la-leg-l', 'la-leg-r']) assert.ok(have.includes(id), id);
+  for (let i = 0; i < 18; i++) assert.ok(have.includes('la-p' + i), 'la-p' + i);
+  for (let i = 0; i < 12; i++) assert.ok(have.includes('la-n' + i), 'la-n' + i);
+  assert.equal([...svg.matchAll(/class="la-pos"/g)].length, 18);
+  assert.equal([...svg.matchAll(/class="la-neg"/g)].length, 12);
+  const labels = [...svg.matchAll(/<text class="la-label"[^>]*>([^<]+)<\/text>/g)].map(m => m[1]);
+  for (const w of ['Ниппель', 'Позитивная камера', 'Поршень', 'Негативная камера', 'Байпас', 'Демпфер', 'Клапан', 'Игла', 'Рычаг блокировки', 'Корона', 'Сальник', 'Нижняя нога']) assert.ok(labels.includes(w), w);
+  assert.ok(svg.includes('#5EB8F0') && svg.includes('#F29A4A'));
+});
+
+test('air front view: two legs inside la-move, the lever above the damper leg', () => {
+  const svg = L.lockMarkup('air'), move = groupInner(svg, 'la-move');
+  assert.ok(move.includes('id="la-leg-l"') && move.includes('id="la-leg-r"'));
+  const cx = id => Number(new RegExp('id="' + id + '"[^>]*data-cx="([0-9.]+)"').exec(svg)[1]);
+  const lever = Number(/id="la-lever"[^>]*transform="translate\(([\d.]+)/.exec(svg)[1]);
+  assert.ok(cx('la-leg-l') < cx('la-leg-r') && Math.abs(lever - cx('la-leg-r')) < Math.abs(lever - cx('la-leg-l')));
+  // the nipple is above the left leg
+  assert.ok(Number(/<text class="la-label" x="[\d.]+" y="([\d.]+)"[^>]*>Ниппель</.exec(svg)[1]) < 130);
+});
+
+test('positive chamber gets denser under compression', () => {
+  assert.equal(particles(0).length, 18);
+  assert.ok(meanDist(particles(0.7)) < meanDist(particles(0)), `${meanDist(particles(0.7))} < ${meanDist(particles(0))}`);
+});
+
+test('negative particles: all in their chamber at rest, four on the bypass under compression', () => {
+  const at = c => particles(c, 'n');
+  const rest = at(0), full = at(0.7);
+  assert.equal(rest.length, 12);
+  // at rest every one is inside the leg's cavity (x 290…320 for the chamber), under the piston
+  for (const [x, y] of rest) assert.ok(x >= 290 && x <= 320 && y > 400, `(${x},${y})`);
+  // at full compression four of them are up in the positive chamber (above the piston), the other eight stay below it
+  const pist = 400 - 0.7 * 160;
+  assert.equal(full.filter(([, y]) => y < pist).length, 4);
+  assert.equal(full.filter(([, y]) => y > pist + 14).length, 8);
+  // on the way they stand in the bypass strip (x < 290)
+  assert.ok(at(0.3).some(([x]) => x < 290), 'someone is in the strip at c=0.3');
+});
+
+test('particles depend only on the compression, not on the time', () => {
+  const a = L.lockPose('air', { ...L.lockState(1.5) }), b = L.lockPose('air', { ...L.lockState(1.5), step: 3, flow: 0, hitD: 0.2, lever: 1 });
+  const key = p => JSON.stringify(p.attrs);
+  const pick = list => list.filter(p => /^la-[pn]\d+$/.test(p.id)).map(key);
+  assert.deepEqual(pick(a), pick(b));
+});
+
+test('particles stand still while the lockout is closed', () => {
+  const at = t => Object.fromEntries(L.lockPose('air', L.lockState(t)).filter(p => /^la-[pn]\d+$/.test(p.id)).map(p => [p.id, p.attrs]));
+  for (let t = 7; t < 9.4 - 1e-9; t += 0.1) {
+    const a = at(t), b = at(t + 0.1);
+    for (const id of Object.keys(a)) {
+      const d = Math.hypot(a[id].cx - b[id].cx, a[id].cy - b[id].cy);
+      assert.ok(d <= 0.6, `${id} moved ${d} at t=${t.toFixed(1)}`);
+    }
+  }
+});
+
+test('air: the loop closes', () => {
+  const at = t => Object.fromEntries(L.lockPose('air', L.lockState(t)).filter(p => /^la-[pn]\d+$/.test(p.id)).map(p => [p.id, p.attrs]));
+  const a = at(9.999), b = at(0);
+  for (const id of Object.keys(a)) assert.ok(Math.hypot(a[id].cx - b[id].cx, a[id].cy - b[id].cy) <= 1, id);
+});
+
+test('air: every id lockPose touches exists', () => {
+  const have = new Set(ids(L.lockMarkup('air')));
+  let first = null;
+  for (let t = 0; t <= 10; t += 0.25) {
+    const list = L.lockPose('air', L.lockState(t)), keys = list.map(p => p.id).join();
+    if (first === null) first = keys;
+    assert.equal(keys, first, `the id list is stable (t=${t})`);
+    for (const p of list) assert.ok(have.has(p.id), `${p.id} at t=${t}`);
+  }
+  assert.ok(first.includes('la-lever') && first.includes('la-needle') && first.includes('la-move'));
+});
+
+test('air: the legs rise with the compression and the piston with them', () => {
+  const y = (id, c) => Number(/translate\(0 (-?[\d.]+)\)/.exec(L.lockPose('air', { ...L.lockState(0), c }).find(p => p.id === id).attrs.transform)[1]);
+  for (const id of ['la-move', 'la-apiston', 'la-piston']) near(y(id, 0.7), -0.7 * 160, 0.01);
 });
