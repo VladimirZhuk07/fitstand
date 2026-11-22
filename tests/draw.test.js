@@ -247,7 +247,8 @@ test('e-bike draws its motor without opts.motor, and a display inside the cockpi
 test('teen has a spoke reflector on each wheel, inside the turning spokes on a live drawing', () => {
   const st = Dr.bikeMarkup(gt('teen'), 1, { live: false });
   assert.equal((st.match(/data-k="reflectors"/g) || []).length, 2);
-  assert.match(st, /f-reflector/);
+  // an elongated rounded rect lying along its spoke, not a dot
+  assert.equal((st.match(/<rect class="f-reflector"[^>]*rx="\d+"[^>]*transform="translate\([^)]*\) rotate\(/g) || []).length, 2);
   const live = Dr.bikeMarkup(gt('teen'), 1);
   for (const id of ['wR', 'wF']) {
     const at = live.indexOf(`<g id="${id}">`);
@@ -262,6 +263,13 @@ test('kids training bike: orange rims, bell on the bar, parent handle behind the
   const s = Dr.bikeMarkup(gt('kidTraining'), 1, { live: false });
   assert.match(s, /class="s-rim rim-accent nf"/);
   assert.match(partBody(s, 'cockpit'), /data-k="bell"/);
+  const bell = partBody(s, 'cockpit').match(/<g data-k="bell">(.*?)<\/g>/)[1];
+  // the dome sits on the bar between the grip and the stem, not in the air behind the grip
+  const { G, C } = cockpit(gt('kidTraining'));
+  const d = bell.match(/d="([^"]+)"/)[1];
+  const xs = [d.match(/^M(\S+)/)[1], d.match(/0 0 1 (\S+)/)[1]].map(Number);
+  assert.ok(xs.length >= 2);
+  for (const x of xs) assert.ok(x >= Math.min(G.x, C.x) && x <= Math.max(G.x, C.x), `bell x ${x} within [${G.x}, ${C.x}]`);
   assert.match(partBody(s, 'saddle'), /data-k="parentHandle"/);
   assert.doesNotMatch(s, /data-k="(display|reflectors)"/);
 });
@@ -271,5 +279,21 @@ test('plain styles have none of the new details', () => {
     const s = Dr.bikeMarkup(gt(style), 1, { live: false });
     for (const k of DETAIL) assert.ok(!hasK(s, k), `${style} has no ${k}`);
     assert.doesNotMatch(s, /rim-accent|f-reflector/, style);
+  }
+});
+
+// the base commit's markup of styles without the new flags, as a hash (taken from draw.js before this task)
+test('styles without the new flags draw exactly what they drew before', () => {
+  const crypto = require('node:crypto');
+  const h = m => crypto.createHash('sha1').update(m).digest('hex').slice(0, 16);
+  const BASE = {
+    road: ['3c5042cee50d8525', 'fdfc17545cc5aedb'], hybrid: ['765ae37cf07c1302', 'd07b1737c59d82f2'],
+    city: ['16df1c04b1ecf5ef', '50054e58c2bf75e1'], mtb: ['768cf70f5e6d53fb', '2b4ecd6154d62785'],
+    kidTrike: ['bd4e36d5f9da8670', '8962e395db8f0688'], balance: ['7372585f9742ae8b', '97f79cfa70877d27'],
+    cargo: ['4b2ba403a0864540', 'ff24d109f814619a'],
+  };
+  for (const [style, [stat, live]] of Object.entries(BASE)) {
+    assert.equal(h(Dr.bikeMarkup(gt(style), 1, { live: false })), stat, `${style} static`);
+    assert.equal(h(Dr.bikeMarkup(gt(style), 1, {})), live, `${style} live`);
   }
 });

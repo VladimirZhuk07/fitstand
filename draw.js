@@ -11,8 +11,8 @@ function wheel(c,g,id){
   for(let i=0;i<20;i++){const a=i*18*D, a2=a+(i%2?0.35:-0.35);
     const h=V(c.x+26*Math.cos(a2),c.y+26*Math.sin(a2)), e=V(c.x+rimR*Math.cos(a),c.y+rimR*Math.sin(a));sp+=L_(h,e,'s-metal',2.6);}
   // teen bikes: one orange reflector clipped on the spokes; it sits inside the spokes group, so on a live wheel it turns
-  if(g.reflectors){const a=62*D, rr=rimR*0.62;
-    sp+=`<g data-k="reflectors"><circle class="f-reflector" cx="${fx(c.x+rr*Math.cos(a))}" cy="${fx(-(c.y+rr*Math.sin(a)))}" r="16"/></g>`;}
+  if(g.reflectors){const a=62, rr=rimR*0.62;
+    sp+=`<g data-k="reflectors"><rect class="f-reflector" x="-30" y="-11" width="60" height="22" rx="9" transform="translate(${fx(c.x+rr*Math.cos(a*D))} ${fx(-(c.y+rr*Math.sin(a*D)))}) rotate(${fx(-a)})"/></g>`;}
   // rim: spokes, rim, hub; tyre: the rubber — two parts on the drawing
   return {
     // live wheels: spokes fade at speed under a translucent disc, a small valve mark shows the turning
@@ -195,11 +195,11 @@ function bikeMarkup(g,ux,opts={}){
   }
   if(sk>0.02) cp+=`<g opacity="${fx(sk)}">${L_(add(G,V(30*sk,-2*sk)),add(G,V(-75*sk,4*sk)),'s-rider',40)}</g>`;
   // e-bike display: a dark case with a lighter screen on the bar by the grip, turns with the bar
-  if(g.display){const d=add(G,V(-8,78));
-    cp+=`<g data-k="display">${L_(add(G,V(-30,0)),add(d,V(-22,-26)),'s-ink',12)}<rect class="f-ink" x="${fx(d.x-45)}" y="${fx(-d.y-28)}" width="90" height="56" rx="9"/><rect class="f-display" x="${fx(d.x-35)}" y="${fx(-d.y-20)}" width="70" height="36" rx="4"/></g>`;}
-  // bell: a small dome with a lever, on the bar near the grip
-  if(g.bell){const b=add(G,V(-100,12)), k=n=>`${fx(b.x+n[0])} ${fx(-b.y-n[1])}`;
-    cp+=`<g data-k="bell"><path class="f-bell" d="M${k([-32,0])} A32 32 0 0 1 ${k([32,0])} Z"/>${L_(add(b,V(-4,0)),add(b,V(-4,-14)),'s-ink',10)}</g>`;}
+  if(g.display){const d=add(G,V(35,55));
+    cp+=`<g data-k="display">${L_(add(G,V(25,0)),add(d,V(-10,-26)),'s-ink',12)}<rect class="f-ink" x="${fx(d.x-45)}" y="${fx(-d.y-28)}" width="90" height="56" rx="9"/><rect class="f-display" x="${fx(d.x-35)}" y="${fx(-d.y-20)}" width="70" height="36" rx="4"/></g>`;}
+  // bell: a small dome with a lever, on the bar between the grip and the stem
+  if(g.bell){const b=add(G,V(35,12)), k=n=>`${fx(b.x+n[0])} ${fx(-b.y-n[1])}`;
+    cp+=`<g data-k="bell"><path class="f-bell" d="M${k([-24,0])} A24 24 0 0 1 ${k([24,0])} Z"/>${L_(add(b,V(-4,0)),add(b,V(-4,-14)),'s-ink',10)}</g>`;}
   s+=live?`<g id="cockpitG">${part('cockpit',cp)}</g>`:part('cockpit',cp);
   // saddle + seatpost
   let sa=L_(add(S,mul(sd,-48)),T,'s-metal',24);
