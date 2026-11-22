@@ -320,10 +320,14 @@ const BUILD = {
         if (i % 2 === 0) {
           const wx = bx + cell * 0.06, ww = cell * 0.56, wh = 340;
           out += `<rect class="rb-wall" x="${f1(wx)}" y="${f1(h - wh)}" width="${f1(ww)}" height="${wh}"/><rect class="rb-wallcap" x="${f1(wx)}" y="${f1(h - wh)}" width="${f1(ww)}" height="14"/>`;
-          for (let k = 0; k < 9; k++) {
-            const gx = wx + 60 + ((k + rg() * 0.6) * (ww - 120)) / 9, gy = h - wh + 70 + rg() * 150, rx = 28 + rg() * 34, ry = 18 + rg() * 24, cls = kinds[k % 3];
-            out += `<ellipse class="${cls}" cx="${f1(gx)}" cy="${f1(gy)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
-            if (k % 3 === 0) out += `<rect class="${cls}" x="${f1(gx - 3)}" y="${f1(gy + ry - 4)}" width="6" height="${f1(20 + rg() * 20)}" rx="3"/>`;
+          // six patches of spray: two or three overlapping blobs in different colours, with drips off-centre
+          for (let k = 0; k < 6; k++) {
+            const gx = wx + 100 + ((k + 0.2 + rg() * 0.6) * (ww - 200)) / 6, gy = h - wh + 80 + rg() * 110, parts = 2 + (k % 2);
+            for (let j = 0; j < parts; j++) {
+              const cx = gx + (j ? (rg() - 0.5) * 70 : 0), cy = gy + (j ? (rg() - 0.5) * 30 : 0), rx = 24 + rg() * 26, ry = 16 + rg() * 16, cls = kinds[(k + j) % 3];
+              out += `<ellipse class="${cls}" cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}"/>`;
+              if (j < 2 && (k + j) % 2 === 0) out += `<rect class="${cls}" x="${f1(cx + rx * 0.45 - 3)}" y="${f1(cy + ry - 4)}" width="6" height="${f1(20 + rg() * 20)}" rx="3"/>`;
+            }
           }
           // two loose strokes: single arcs, nothing that reads as a letter
           for (const [ax, ay, aw] of [[wx + ww * 0.15, h - 90, 150], [wx + ww * 0.62, h - 120, 130]]) out += `<path class="rb-graffitiline" d="M${f1(ax)} ${f1(ay)} Q${f1(ax + aw / 2)} ${f1(ay - 60)} ${f1(ax + aw)} ${f1(ay)}"/>`;
@@ -453,8 +457,8 @@ const BUILD = {
     // a concrete ledge with a handrail on posts; the rail runs across the whole tile
     ledge: (tile, h) => {
       const n = Math.max(6, Math.round(tile / 330)), step = tile / n, top = Math.round(h * 0.5);
-      let out = `<rect class="rb-ledge" x="0" y="${top}" width="${f1(tile)}" height="${h - top}"/><rect class="rb-ledgetop" x="0" y="${top}" width="${f1(tile)}" height="10"/><rect class="rb-rail" x="0" y="12" width="${f1(tile)}" height="7" rx="3"/>`;
-      for (let i = 0; i < n; i++) out += `<rect class="rb-rail" x="${f1(i * step + step / 2 - 4)}" y="12" width="8" height="${top - 12}"/><rect class="rb-joint" x="${f1(i * step + 1)}" y="${top + 10}" width="3" height="${h - top - 10}"/>`;
+      let out = `<rect class="rb-ledge" x="0" y="${top}" width="${f1(tile)}" height="${h - top}"/><rect class="rb-ledgetop" x="0" y="${top}" width="${f1(tile)}" height="10"/><rect class="rb-rail" x="0" y="10" width="${f1(tile)}" height="18" rx="6"/>`;
+      for (let i = 0; i < n; i++) out += `<rect class="rb-rail" x="${f1(i * step + step / 2 - 7)}" y="10" width="14" height="${top - 10}"/><rect class="rb-joint" x="${f1(i * step + 1)}" y="${top + 10}" width="3" height="${h - top - 10}"/>`;
       return out;
     },
     // the pavement edge: a kerb, flower beds

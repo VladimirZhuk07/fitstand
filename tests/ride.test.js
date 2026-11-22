@@ -454,6 +454,14 @@ test('bmx scene: city behind, ramps and a graffiti wall without text, a ledge wi
   assert.equal(R.SCENES.bmx.effect, 'none');
   for (const c of ['rb-hill', 'rb-hill2', 'rb-ramp', 'rb-rampedge', 'rb-wall', 'rb-graffiti', 'rb-graffiti2', 'rb-graffiti3', 'rb-ledge', 'rb-ledgetop', 'rb-rail', 'rb-joint']) assert.ok(m.includes(`class="${c}"`), c);
   assert.ok(!m.includes('class="rb-barrier"') && !m.includes('class="rb-window"') && !m.includes('class="rb-slide"') && !m.includes('class="rb-lamp"'));
+  // the near layer is blurred by 14 mm: the rail and its posts must be thick enough to survive it
+  const near = patterns(m).find(p => p.id === 'near'), rails = [...near.inner.matchAll(/class="rb-rail" x="[-\d.]+" y="[-\d.]+" width="([\d.]+)" height="([\d.]+)"/g)].map(x => [+x[1], +x[2]]);
+  assert.ok(rails.some(([w, h]) => w > 1000 && h >= 16), 'a thick rail');
+  const posts = rails.filter(([w]) => w < 100);
+  assert.ok(posts.length >= 6 && posts.every(([w]) => w >= 14), 'sturdy posts');
+  // each patch of graffiti is two or three overlapping blobs of different colours
+  const wallBlobs = [...patterns(m).find(p => p.id === 'mid').inner.matchAll(/<ellipse class="(rb-graffiti\d?)"/g)].map(x => x[1]);
+  assert.ok(wallBlobs.length >= 12 && new Set(wallBlobs).size === 3, `blobs ${wallBlobs.length}`);
   // the graffiti is abstract: coloured blobs and strokes, never letters
   for (const r of [311, 203]) assert.doesNotMatch(bg('bmx', r), /<text|<tspan|font-/);
   assert.equal(R.effectPuffs(1, 'bmx').length, 0);
