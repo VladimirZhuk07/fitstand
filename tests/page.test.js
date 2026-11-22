@@ -114,3 +114,37 @@ test('the verdict comes from verdictOf; kids\' and standing styles mark rows tha
   assert.match(fn, /st\.standing/);
   assert.match(fn, /на BMX катаются стоя/);
 });
+
+test('BMX standing rows include the reach, and they do not vote', () => {
+  const fn = html.slice(html.indexOf('function renderSpecs('), html.indexOf('/* ---------- animation loop'));
+  const line = fn.split('\n').find(l => /if\(st\.standing\)/.test(l));
+  assert.ok(line, 'standing line');
+  for (const name of ['Сгиб колена внизу', 'Угол спины', 'Вынос руля', 'Дотягивание']) assert.ok(line.includes(`'${name}'`), name);
+  assert.match(line, /'na','none'/);
+});
+
+test('applyStyle leaves the motor flag alone when the style has its own motor', () => {
+  const api = html.slice(html.indexOf('applyStyle(style,motor,health)'), html.indexOf('showTab(name)'));
+  assert.match(api, /if\(!STYLES\[style\]\.motor\)state\.motor=!!motor/);
+  assert.doesNotMatch(api, /setStyle\(style\);state\.motor=!!motor/);
+});
+
+test('the kids\' stage tag names the wheel only once', () => {
+  const fn = html.slice(html.indexOf('function renderSpecs('), html.indexOf('/* ---------- animation loop'));
+  const tag = fn.split('\n').find(l => l.includes("$('#stageTag')"));
+  assert.match(tag, /st\.kidFit\?'':/);
+});
+
+test('kids\' styles do not show the adult leg-index norm and the figure gets a child head', () => {
+  assert.match(html, /id="roLegHint"/);
+  const fn = html.slice(html.indexOf('function renderSpecs('), html.indexOf('/* ---------- animation loop'));
+  assert.match(fn, /roLegHint[\s\S]*st\.kidFit/);
+  const person = html.slice(html.indexOf('function personMarkup('), html.indexOf('const x0=-w2-15'));
+  assert.match(person, /p\.headK/);
+  assert.match(html, /curP=\{[^}]*headK/);
+  assert.match(html, /curP\.headK=rp\.headK/);
+});
+
+test('no stale comment claims the skate-spot scene is theme variables only', () => {
+  assert.doesNotMatch(html, /everything from theme variables/);
+});

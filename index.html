@@ -231,7 +231,7 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-roof{fill:color-mix(in srgb,var(--reflector) 40%,var(--roadedge))} .rb-lawn{fill:color-mix(in srgb,color-mix(in srgb,var(--grass) 75%,var(--verge)),var(--tint,transparent) var(--tk,0%))}
 .rb-lanebed{fill:color-mix(in srgb,var(--reflector) 45%,var(--road))} .rb-laneline{fill:var(--post)}
 .rb-slide{fill:color-mix(in srgb,var(--reflector) 65%,var(--sun))} .rb-swing{fill:none;stroke:var(--trunk);stroke-width:10;stroke-linecap:round} .rb-swing-post{fill:var(--trunk)} .rb-swingchain{fill:var(--post)} .rb-swingseat{fill:var(--reflector)} .rb-sandbox{fill:color-mix(in srgb,var(--sun) 55%,var(--roadedge))}
-/* teen and BMX scenes: a skate spot (everything from theme variables; the graffiti is abstract colour) */
+/* teen and BMX scenes: a skate spot (the graffiti uses two fixed hues, everything else comes from theme variables) */
 .rb-ramp{fill:color-mix(in srgb,var(--roadedge) 75%,var(--trunk))} .rb-rampedge{fill:var(--post)} .rb-wall{fill:color-mix(in srgb,var(--roadedge) 85%,var(--hill2))} .rb-wallcap{fill:var(--post)}
 .rb-graffiti{fill:var(--reflector)} .rb-graffiti2{fill:color-mix(in srgb,#1FA5A0 75%,var(--grass))} .rb-graffiti3{fill:color-mix(in srgb,#C2409A 80%,var(--sky-bottom))} .rb-graffitiline{stroke:var(--post);stroke-width:14;fill:none;stroke-linecap:round}
 .rb-ledge{fill:color-mix(in srgb,var(--roadedge) 80%,var(--road))} .rb-ledgetop{fill:var(--post)} .rb-rail{fill:color-mix(in srgb,var(--reflector) 85%,black)} .rb-joint{fill:var(--speck)}
@@ -507,7 +507,7 @@ body.page-open{overflow:hidden}
           <div class="figrow">
             <svg id="person" viewBox="-66 -228 132 234" role="img" aria-label="Силуэт райдера с размерами"></svg>
             <dl class="readouts">
-              <div class="ro"><dt>Индекс ноги</dt><dd id="roLeg">—</dd><div class="hint">обычно 44–48 %</div></div>
+              <div class="ro"><dt>Индекс ноги</dt><dd id="roLeg">—</dd><div class="hint" id="roLegHint">обычно 44–48 %</div></div>
               <div class="ro"><dt>Торс, оценка</dt><dd id="roTorso">—</dd><div class="hint">от тазобедр. сустава до плеча</div></div>
               <div class="ro"><dt>Седло по LeMond</dt><dd id="roSaddle">—</dd><div class="hint">0,883 × длина шва</div></div>
             </dl>
@@ -725,7 +725,7 @@ document.querySelectorAll('.field[data-dim]').forEach(fl=>{
 /* ---------- person figure (front view, cm) ---------- */
 function personMarkup(p){
   const H=p.H,I=p.I,A=p.A,W=p.W, Y=v=>fx(-v);
-  const headH=0.13*H, Sh=0.818*H, hipH=I+0.06*H, kneeH=0.285*H, ankH=0.039*H;
+  const headH=(p.headK?2*p.headK*1.05:0.13)*H, Sh=0.818*H, hipH=I+0.06*H, kneeH=0.285*H, ankH=0.039*H;
   const nw=W*0.12, hx=W*0.21, w2=W/2;
   const pt=(x,y)=>`${fx(x)} ${Y(y)}`;
   const half=s=>[
@@ -775,7 +775,7 @@ function renderSpecs(F){
   const wl=wheelLabel(best.sz.wheel);
   $('#sizeN').textContent=best.sz.n;
   $('#sizeSub').innerHTML=st.oneSize?`размер · колёса ${wl}`:`рама ${ru(g.ST/10)} см · ${wl} · стек ${g.stack} / рич ${g.reach}`;
-  $('#stageTag').innerHTML=`<b>${st.oneSize?'Один размер':best.sz.n}</b> · ${st.name} · ${wl}`;
+  $('#stageTag').innerHTML=`<b>${st.oneSize?'Один размер':best.sz.n}</b> · ${st.name}${st.kidFit?'':' · '+wl}`;
   ladder.style.gridTemplateColumns=st.oneSize?'1fr':'';
   if(st.oneSize) ladder.innerHTML='<div class="rung on">один размер</div>';
   else ladder.innerHTML=sizes.map((s,i)=>`<div class="rung${i===best.i?' on':F.near.includes(i)?' near':''}" title="${i===best.i?'Подобранный размер':F.near.includes(i)?'Тоже подойдёт с другим выносом':''}">${s.n}<small>${ru(s.st/10)}</small></div>`).join('');
@@ -805,13 +805,14 @@ function renderSpecs(F){
   // a kid's bike has a fixed short stem and a growth hint: the rows stay, their colours too, but they do not vote
   if(st.kidFit) rows.forEach(r=>{if(r[0]==='Вынос руля'||r[0]==='Рост') r[4]='none';});
   // ridden standing: the seated-posture rows are not judged
-  if(st.standing) rows=rows.map(r=>['Сгиб колена внизу','Угол спины','Вынос руля'].includes(r[0])?[r[0],r[1],'на BMX катаются стоя — посадку сидя не оцениваем','na','none']:r);
+  if(st.standing) rows=rows.map(r=>['Сгиб колена внизу','Угол спины','Вынос руля','Дотягивание'].includes(r[0])?[r[0],r[1],'на BMX катаются стоя — посадку сидя не оцениваем','na','none']:r);
   metrics.innerHTML=rows.map(r=>`<div class="m" data-s="${r[3]}"><dt>${r[0]}</dt><dd>${r[1]}</dd><div class="hint">${r[2]}</div></div>`).join('');
   const worst=verdictOf(rows.map(r=>({status:r[3],votes:r[4]!=='none',soft:r[4]==='soft'})));
   const st_=$('#status');st_.dataset.s=worst;
   st_.textContent=worst==='good'?'Посадка в норме':worst==='warn'?'Есть компромисс':'Нужна доработка';
   const ss=$('#stageStatus'); ss.dataset.s=worst; ss.textContent=st_.textContent;
   const b=bodyOf({...state,...rider});
+  $('#roLegHint').textContent=st.kidFit?'у детей ноги короче':'обычно 44–48 %';
   $('#roLeg').innerHTML=`${fmt(rider.I/rider.H*100)}<small>%</small>`;
   $('#roTorso').innerHTML=`${fmt(b.torso/10)}<small>см</small>`;
   $('#roSaddle').innerHTML=`${fmt(rider.I*0.883)}<small>см</small>`;
@@ -824,7 +825,7 @@ const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','
 function changed(){
   syncControls();
   const F=fit({...state,...riderOf(state,FIT_ONLY,kidBody),health:kidOf(state.style)?null:healthNow()}); target=F.g; renderSpecs(F);
-  if(!cur){const rp=riderOf(state,FIT_ONLY,kidBody);cur={...target};curP={H:rp.H,I:rp.I,A:rp.A,W:rp.W};}
+  if(!cur){const rp=riderOf(state,FIT_ONLY,kidBody);cur={...target};curP={H:rp.H,I:rp.I,A:rp.A,W:rp.W,headK:rp.headK};}
   dirty=true; personDirty=true; save();
 }
 function computeUx(b){
@@ -887,6 +888,7 @@ function tick(now){
     if(copyFlags(cur,target,NUM))dirty=true;
     const rp=riderOf(state,FIT_ONLY,kidBody);
     for(const key of ['H','I','A','W']){const d=rp[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==rp[key]){curP[key]=rp[key];personDirty=true;}}
+    if(curP.headK!==rp.headK){curP.headK=rp.headK;personDirty=true;} // the head share jumps with the style
     const tb=boundsOf(cur,state.rider,ux); tb.h+=BOTTOM_ROOM;
     if(!vb)vb={...tb};
     let vbMove=false;
@@ -911,7 +913,7 @@ window.fitstand={
   getState:()=>JSON.parse(JSON.stringify(state)),
   applyStyle(style,motor,health){
     if(!FIT_STYLES.includes(style))return;
-    setStyle(style);state.motor=!!motor;
+    setStyle(style);if(!STYLES[style].motor)state.motor=!!motor; // the e-bike has its own motor: the saved choice for the other styles stays
     if(health!==undefined){state.health=health?{upright:health.upright||0,barUp:health.barUp||0,crankMax:health.crankMax??null,stepThrough:!!health.stepThrough,gear:[...(health.gear||[])]}:null;state.healthOn=true;}
     syncStyle();dirty=true;changed();
   },
