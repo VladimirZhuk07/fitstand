@@ -274,7 +274,7 @@ function boundsOf(g,rider,ux){
   const {R,F,ck,S,up,ground}=geomPts(g);
   const minX=R.x-g.wheelR-70, maxX=Math.max(F.x+g.wheelR+50,Math.max(up.hand.x,ck.G.x)+70+130*ux);
   const minY=ground-60-34*ux;
-  const top=(rider?up.head.y+g.headR*1.25+50:Math.max(S.y,ck.steerTop.y,ck.G.y)+110)+56*ux;
+  const top=(rider?up.head.y+g.headR*1.25+50:Math.max(Math.max(S.y,ck.steerTop.y,ck.G.y)+110,g.parentHandle?S.y+290:-Infinity))+56*ux;
   return {x:minX,y:-top,w:maxX-minX,h:top-minY};
 }
 

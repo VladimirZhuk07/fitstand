@@ -155,6 +155,14 @@ test('unicycle bounds are finite and narrow', () => {
   assert.ok(b.w < 1500, `width ${b.w}`);
 });
 
+test('without the rider the view still holds the parent handle grip', () => {
+  const g = gt('kidTraining');
+  assert.ok(g.parentHandle);
+  const { S } = Dr.geomPts(g);
+  const b = Dr.boundsOf(g, false, 1);
+  assert.ok(-b.y >= S.y + 290, `top ${-b.y} vs grip ${S.y + 250}`);
+});
+
 test('every catalog style draws without ids', () => {
   for (const s of Object.keys(M.STYLES)) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /\sid="/, s);
 });
