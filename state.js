@@ -38,12 +38,35 @@ function readHealth(h) {
   return { upright: h.upright, barUp: h.barUp, crankMax: h.crankMax, stepThrough: h.stepThrough, gear: [...h.gear] };
 }
 
+// a child's height per kids' style: saved number inside the style's range, else its default
+function readKidH(saved, styles) {
+  const src = saved && typeof saved === 'object' ? saved : {};
+  const out = {};
+  for (const k of Object.keys(styles)) {
+    const f = styles[k] && styles[k].kidFit;
+    if (!f) continue;
+    const v = src[k];
+    out[k] = typeof v === 'number' && isFinite(v) && v >= f.range[0] && v <= f.range[1] ? v : f.def;
+  }
+  return out;
+}
+
+// measures the drawing and the fit use: a kids' style takes its own height and a body from it, others the adult's
+function riderOf(state, styles, kidBody) {
+  const f = styles[state.style] && styles[state.style].kidFit;
+  if (!f) return { H: state.H, I: state.I, A: state.A, W: state.W };
+  const h = state.kidH && state.kidH[state.style];
+  const H = typeof h === 'number' && isFinite(h) ? h : f.def;
+  return { H, ...kidBody(H) };
+}
+
 // raw: строка из localStorage или null; возвращает новый объект на основе defaults
 function loadSaved(raw, defaults, styles, colors) {
-  const out = { ...defaults };
+  const out = { ...defaults, kidH: readKidH(null, styles) };
   let sv;
   try { sv = JSON.parse(raw); } catch (e) { return out; }
   if (!sv || typeof sv !== 'object') return out;
+  out.kidH = readKidH(sv.kidH, styles);
   for (const k of ['H', 'I', 'A', 'W', 'flex']) if (typeof sv[k] === 'number' && isFinite(sv[k])) out[k] = sv[k];
   if (typeof sv.style === 'string' && Object.prototype.hasOwnProperty.call(styles, sv.style)) out.style = sv.style;
   if (colors.includes(sv.color)) out.color = sv.color;
@@ -54,7 +77,7 @@ function loadSaved(raw, defaults, styles, colors) {
   return out;
 }
 
-const api = { loadSaved };
+const api = { loadSaved, riderOf };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

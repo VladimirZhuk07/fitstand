@@ -1,8 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { loadSaved } = require('../state.js');
+const { loadSaved, riderOf } = require('../state.js');
 
-const STYLES = { road: {}, gravel: {}, city: {}, hybrid: {}, mtb: {}, folding: {} };
+const STYLES = { road: {}, gravel: {}, city: {}, hybrid: {}, mtb: {}, folding: {},
+  kidTraining: { kidFit: { range: [85, 125], def: 110 } }, teen: { kidFit: { range: [125, 165], def: 145 } } };
+const KID_DEF = { kidTraining: 110, teen: 145 };
 const COLORS = ['#2B47D6', '#D44A2C'];
 const DEF = { H: 178, I: 83, A: 61, W: 42, flex: 3, style: 'road', color: '#2B47D6', rider: true, dims: true, motor: false, quiz: null, health: null, healthOn: true, playing: true };
 const load = obj => loadSaved(typeof obj === 'string' ? obj : JSON.stringify(obj), DEF, STYLES, COLORS);
@@ -28,9 +30,10 @@ test('bad quiz ignored', () => {
 });
 
 test('broken json and empty storage give defaults', () => {
-  assert.deepEqual(load('{'), DEF);
-  assert.deepEqual(loadSaved(null, DEF, STYLES, COLORS), DEF);
-  assert.deepEqual(load('null'), DEF);
+  const WANT = { ...DEF, kidH: KID_DEF };
+  assert.deepEqual(load('{'), WANT);
+  assert.deepEqual(loadSaved(null, DEF, STYLES, COLORS), WANT);
+  assert.deepEqual(load('null'), WANT);
 });
 
 test('unknown values are ignored', () => {
@@ -91,4 +94,35 @@ test('loadSaved keeps a saved style', () => {
   assert.equal(st('bmx'), 'bmx');
   assert.equal(st('kidTrike'), 'hybrid');
   assert.equal(loadSaved(null, DEF_H, FIT, COLORS).style, 'hybrid');
+});
+
+// ---------- a child's height per kids' style (feedback 6, Task 5) ----------
+test('kidH: saved heights load, bad ones fall back per style', () => {
+  assert.deepEqual(load({ kidH: { kidTraining: 100, teen: 200 } }).kidH, { kidTraining: 100, teen: 145 });
+  assert.deepEqual(load({ kidH: 'x' }).kidH, KID_DEF);
+  assert.deepEqual(load({}).kidH, KID_DEF);
+  assert.deepEqual(load({ kidH: { kidTraining: NaN } }).kidH, KID_DEF);
+  assert.deepEqual(load('{"kidH":{"kidTraining":null,"teen":"150"}}').kidH, KID_DEF);
+  assert.deepEqual(load({ kidH: { road: 150 } }).kidH, KID_DEF);
+  const saved = { kidTraining: 100 };
+  assert.notEqual(load({ kidH: saved }).kidH, saved);
+});
+
+test('riderOf: adults and kids keep separate measures', () => {
+  const kidBody = H => ({ I: H * 0.45, A: H * 0.33, W: H * 0.23, headK: 0.07 });
+  const st = { H: 178, I: 83, A: 61, W: 42, style: 'teen', kidH: { kidTraining: 100, teen: 150 } };
+  const k = riderOf(st, STYLES, kidBody);
+  assert.equal(k.H, 150);
+  assert.equal(k.I, 67.5);
+  assert.equal(k.headK, 0.07);
+  assert.deepEqual(riderOf({ ...st, style: 'road' }, STYLES, kidBody), { H: 178, I: 83, A: 61, W: 42 });
+});
+
+test('an old save with a kid style opens on the default height', () => {
+  const kidBody = H => ({ I: H * 0.45, A: H * 0.33, W: H * 0.23 });
+  const s = load({ style: 'teen' });
+  assert.equal(s.style, 'teen');
+  assert.equal(riderOf(s, STYLES, kidBody).H, 145);
+  assert.equal(riderOf({ style: 'teen' }, STYLES, kidBody).H, 145);
+  assert.equal(riderOf({ style: 'teen', kidH: {} }, STYLES, kidBody).H, 145);
 });
