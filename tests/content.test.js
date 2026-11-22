@@ -281,7 +281,7 @@ test('new fields per spec', () => {
   assert.match(T.trike.note, /электр/i);
   assert.equal(T.mtb.name, 'MTB хардтейл');
   assert.equal(T.fullsus.name, 'MTB двухподвес');
-  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'cx', road: 'road', track: 'track', women: 'women', mountain: 'mtb', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'city', trike: 'city', cargo: 'city' };
+  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'cx', road: 'road', track: 'track', women: 'women', mountain: 'mtb', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'ebike', trike: 'city', cargo: 'city', bmx: 'bmx', teen: 'teen', kidTraining: 'kidTraining' };
   for (const id of ALL_TYPES) assert.equal(T[id].fitAs, FIT_AS[id] ?? null, `${id}.fitAs`);
 });
 
@@ -300,7 +300,7 @@ test('MTB overview and women per spec', () => {
   assert.ok(T.women.variants.length >= 3);
   assert.ok(nonEmpty(T.women.note));
   assert.match(T.women.specs.join(' '), /передач/, 'women: light gears (spec 2.2)');
-  assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', 'city', true]);
+  assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', undefined, true]);
   for (const id of ALL_TYPES) if (T[id].drawAs !== undefined) assert.ok(STYLES[T[id].drawAs], `${id}.drawAs`);
   for (const id of ALL_TYPES) if (!T[id].drawAs) assert.ok(STYLES[id], `${id}: drawn by its id`);
 });
@@ -518,4 +518,20 @@ test('review fixes: suspension page facts and drawings', () => {
 test('no suspension makers in the content', () => {
   const s = JSON.stringify(CONTENT).toLowerCase();
   for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
+});
+
+test('the catalog opens every main-screen style', () => {
+  const { FIT_STYLES } = require('../model.js');
+  const types = CONTENT.types;
+  for (const [id, t] of Object.entries(types)) {
+    if (t.fitAs) assert.ok(FIT_STYLES.includes(t.fitAs), `${id}.fitAs ${t.fitAs} is a main-screen style`);
+  }
+  for (const id of FIT_STYLES) {
+    if (types[id]) assert.equal(types[id].fitAs, id, `${id} opens its own style`);
+  }
+  for (const id of ['ebike', 'kidTraining', 'teen', 'bmx']) assert.equal(types[id].fitAs, id);
+  assert.equal(types.ebike.drawAs, undefined, 'the e-bike card draws by its own style');
+  assert.equal(types.ebike.motor, true);
+  assert.equal(types.kidTraining.name, 'С подпорными колёсами');
+  assert.ok(!JSON.stringify(types).includes('поддерживающ'), 'one term for the supporting wheels');
 });
