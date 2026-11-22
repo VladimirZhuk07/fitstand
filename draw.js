@@ -20,7 +20,10 @@ function wheel(c,g,id){
   <circle class="s-rim${g.rimAccent?' rim-accent':''} nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
   <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`,
     // a still highlight on the upper left of a live rim: the light comes from there, the rim turns under it
-    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`+(id?`<path class="rim-glint" d="M${fx(c.x+rimR*Math.cos(110*D))} ${fx(-(c.y+rimR*Math.sin(110*D)))} A${fx(rimR)} ${fx(rimR)} 0 0 0 ${fx(c.x+rimR*Math.cos(150*D))} ${fx(-(c.y+rimR*Math.sin(150*D)))}"/>`:''),
+    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`
+      // gum wall: a brown ring on the inner half of the tyre, below the tread
+      +(g.gumwall?`<g data-k="gumwall"><circle class="s-gumwall nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre*0.7)}" stroke-width="${fx(g.tyre*0.5)}"/></g>`:'')
+      +(id?`<path class="rim-glint" d="M${fx(c.x+rimR*Math.cos(110*D))} ${fx(-(c.y+rimR*Math.sin(110*D)))} A${fx(rimR)} ${fx(rimR)} 0 0 0 ${fx(c.x+rimR*Math.cos(150*D))} ${fx(-(c.y+rimR*Math.sin(150*D)))}"/>`:''),
   };
 }
 function geomPts(g){
@@ -34,7 +37,7 @@ function geomPts(g){
   const up=upperOf(g,hip,ck.hand);
   return {sta,hta,sd,R,ck,Hb,F,S,hip,up,ground:g.drop-g.wheelR};
 }
-// brakes: disc rotor + caliper, or a rim caliper where the fork / seat stay crosses the rim
+// brakes: disc rotor + caliper, or rim calipers (both wheels, or the rear only) where the fork / seat stay crosses the rim
 function brakesMarkup(g,R,F,crown,stayTop){
   if(g.brake==='none') return '<g data-k="noBrakes"></g>';
   const rimR=g.wheelR-g.tyre-5;
@@ -48,7 +51,8 @@ function brakesMarkup(g,R,F,crown,stayTop){
     return `<g data-k="disc">${s}</g>`;
   }
   let s='';
-  for(const [c,top] of [[F,crown],[R,stayTop]]){
+  // rearRim: a BMX has a rear brake only
+  for(const [c,top] of g.brake==='rearRim'?[[R,stayTop]]:[[F,crown],[R,stayTop]]){
     const d=nrm(sub(top,c)), n=V(-d.y,d.x), p=add(c,mul(d,g.wheelR+20));
     s+=L_(add(p,mul(n,-28)),add(p,mul(n,28)),'s-ink',14);
   }
@@ -200,6 +204,16 @@ function bikeMarkup(g,ux,opts={}){
   // bell: a small dome with a lever, on the bar between the grip and the stem
   if(g.bell){const b=add(G,V(35,12)), k=n=>`${fx(b.x+n[0])} ${fx(-b.y-n[1])}`;
     cp+=`<g data-k="bell"><path class="f-bell" d="M${k([-24,0])} A24 24 0 0 1 ${k([24,0])} Z"/>${L_(add(b,V(-4,0)),add(b,V(-4,-14)),'s-ink',10)}</g>`;}
+  // BMX rotor: a flat disc seen from the side on the steerer just under the stem, two cables back along the top tube to the rear caliper
+  if(g.gyro){
+    const gc=sub(ck.spTop,mul(u,4)), pr=V(u.y,-u.x);
+    let disc='';
+    for(let i=0;i<24;i++){const a=i/24*2*Math.PI;disc+=(i?' ':'')+P(add(gc,add(mul(pr,62*Math.cos(a)),mul(u,9*Math.sin(a)))));}
+    const tn=nrm(sub(HtJ,ttEnd)), tu=V(-tn.y,tn.x), up_=tu.y>0?tu:mul(tu,-1);
+    const rp=add(R,mul(nrm(sub(stayTop,R)),g.wheelR+20)), a0=sub(gc,mul(pr,62));
+    const cable=o=>`<polyline class="s-metal nf" stroke-width="6" points="${P(add(a0,mul(up_,o*0.4)))} ${P(add(mul(add(ttEnd,HtJ),0.5),mul(up_,34+o)))} ${P(add(ttEnd,mul(up_,30+o)))} ${P(add(rp,mul(up_,o)))}"/>`;
+    cp+=`<g data-k="gyro"><path class="f-metal s-ink" stroke-width="5" d="M${disc} Z"/>${cable(0)}${cable(16)}</g>`;
+  }
   s+=live?`<g id="cockpitG">${part('cockpit',cp)}</g>`:part('cockpit',cp);
   // saddle + seatpost
   let sa=L_(add(S,mul(sd,-48)),T,'s-metal',24);

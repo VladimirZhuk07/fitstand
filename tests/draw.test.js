@@ -282,6 +282,8 @@ test('plain styles have none of the new details', () => {
   }
 });
 
+// hashes made with: load the pre-task-11 draw.js as a base copy, take sha1 of bikeMarkup(gt(style),1,{live:false}) and of bikeMarkup(gt(style),1,{}), first 16 hex chars;
+// regenerate the same way if a style's markup is meant to change
 // the base commit's markup of styles without the new flags, as a hash (taken from draw.js before this task)
 test('styles without the new flags draw exactly what they drew before', () => {
   const crypto = require('node:crypto');
@@ -296,4 +298,30 @@ test('styles without the new flags draw exactly what they drew before', () => {
     assert.equal(h(Dr.bikeMarkup(gt(style), 1, { live: false })), stat, `${style} static`);
     assert.equal(h(Dr.bikeMarkup(gt(style), 1, {})), live, `${style} live`);
   }
+});
+
+// ---------- BMX details (feedback 6, task 12) ----------
+const lineCentreX = l => { const a = l.match(/x1="([-\d.]+)"[^>]*x2="([-\d.]+)"/); return (+a[1] + +a[2]) / 2; };
+
+test('BMX has a rotor with cables inside the cockpit and gum-wall rings in the tyres', () => {
+  const s = Dr.bikeMarkup(gt('bmx'), 1, { live: false });
+  assert.match(partBody(s, 'cockpit'), /data-k="gyro"/);
+  const gy = partBody(s, 'cockpit').match(/<g data-k="gyro">(.*)<\/g>/)[1];
+  assert.match(gy, /<(ellipse|path|polygon)/, 'rotor disc');
+  assert.equal((gy.match(/<polyline/g) || []).length, 2, 'two cables');
+  const gw = partBody(s, 'tyres');
+  assert.match(gw, /data-k="gumwall"/);
+  assert.equal((gw.match(/class="s-gumwall nf"/g) || []).length, 2, 'a ring on each tyre');
+  assert.doesNotMatch(Dr.bikeMarkup(gt('city'), 1, { live: false }), /data-k="(gyro|gumwall)"/);
+});
+
+test('BMX has a single rim caliper at the rear wheel; city keeps two', () => {
+  const g = gt('bmx'), { R, F } = Dr.geomPts(g);
+  const rim = Dr.bikeMarkup(g, 1, { live: false }).match(/<g data-k="rim">(.*?)<\/g>/)[1];
+  const lines = rim.match(/<line [^>]*>/g) || [];
+  assert.equal(lines.length, 1);
+  const x = lineCentreX(lines[0]);
+  assert.ok(Math.abs(x - R.x) < Math.abs(x - F.x), `caliper x ${x} nearer R ${R.x} than F ${F.x}`);
+  const city = Dr.bikeMarkup(gt('city'), 1, { live: false }).match(/<g data-k="rim">(.*?)<\/g>/)[1];
+  assert.equal((city.match(/<line /g) || []).length, 2);
 });
