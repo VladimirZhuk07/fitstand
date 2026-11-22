@@ -205,6 +205,8 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 #bike[data-scene="cx"]{--tint:#8FA8B8;--tk:20%}
 #bike[data-scene="track"]{--tint:#B9CBE0;--tk:20%}
 #bike[data-scene="folding"]{--tint:#F0D9A8;--tk:18%}
+#bike[data-scene="ebike"]{--tint:#A9D3E0;--tk:18%}
+#bike[data-scene="kidTraining"]{--tint:#F4DC8E;--tk:18%}
 .rb-treeline{fill:color-mix(in srgb,var(--tree),var(--tint,transparent) var(--tk,0%));opacity:.7} .rb-barrier{fill:var(--roadedge)} .rb-sign{fill:var(--reflector)} .rb-marking{fill:var(--post)}
 .rb-house{fill:color-mix(in srgb,var(--roadedge),var(--tint,transparent) var(--tk,0%))} .rb-window{fill:var(--sky-bottom)} .rb-lamp,.rb-bench{fill:var(--trunk)} .rb-flower{fill:var(--reflector)} .rb-tile{fill:var(--roadedge)}
 .rb-trunk-dark{fill:color-mix(in srgb,var(--trunk) 70%,black)} .rb-boulder{fill:color-mix(in srgb,var(--roadedge) 65%,var(--trunk))}
@@ -213,6 +215,10 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 5px color-mix
 .rb-rut{fill:color-mix(in srgb,var(--road) 65%,black);opacity:.5} .rb-stake{fill:var(--post)} .rb-flag{fill:var(--reflector)} .rb-mud{fill:color-mix(in srgb,var(--trunk) 65%,var(--road))}
 .rb-stand{fill:color-mix(in srgb,var(--roadedge) 70%,var(--hill))} .rb-plank{fill:color-mix(in srgb,var(--trunk) 35%,var(--road))} .rb-boat{fill:color-mix(in srgb,var(--trunk) 60%,var(--reflector))} .rb-sail{fill:var(--post);opacity:.9}
 .rb-fence{fill:var(--post)} .rb-crack{stroke:var(--speck);stroke-width:3;fill:none;stroke-linecap:round} .rb-water{fill:color-mix(in srgb,var(--sky-bottom),var(--hill) 40%)} .fx-dust{fill:color-mix(in srgb,var(--trunk) 55%,var(--sun))} .fx-mud{fill:color-mix(in srgb,var(--trunk) 85%,black)} #bike:not(.riding) #fx{opacity:0}
+/* feedback 6: e-bike suburb and cycle lane, kids' yard and playground — theme variables only, so light and dark both work */
+.rb-roof{fill:color-mix(in srgb,var(--reflector) 40%,var(--roadedge))} .rb-lawn{fill:color-mix(in srgb,color-mix(in srgb,var(--grass) 75%,var(--verge)),var(--tint,transparent) var(--tk,0%))}
+.rb-lanebed{fill:color-mix(in srgb,var(--reflector) 45%,var(--road))} .rb-laneline{fill:var(--post)}
+.rb-slide{fill:color-mix(in srgb,var(--reflector) 65%,var(--sun))} .rb-swing{fill:none;stroke:var(--trunk);stroke-width:10;stroke-linecap:round} .rb-swing-post{fill:var(--trunk)} .rb-swingchain{fill:var(--post)} .rb-swingseat{fill:var(--reflector)} .rb-sandbox{fill:color-mix(in srgb,var(--sun) 55%,var(--roadedge))}
 .rb-nearlayer{opacity:.85}
 /* depth blur (user units = mm): the middle layer a little, the near one more; off on pause and on slow devices */
 .rb-midlayer{filter:blur(6px)} .rb-nearlayer{filter:blur(14px)}

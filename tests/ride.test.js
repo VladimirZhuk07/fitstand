@@ -132,12 +132,14 @@ test('pattern content stays inside its tile (no seams, no clipped crowns)', () =
 });
 
 // ---------- scenes (feedback 5) ----------
-const SCENE_IDS = ['default', 'road', 'city', 'mtb', 'hybrid', 'women', 'gravel', 'cx', 'track', 'folding'];
-const KMH = { road: [30, 35], city: [15, 18], mtb: [20, 28], hybrid: [18, 22], women: [12, 16], gravel: [22, 25], cx: [22, 26], track: [35, 40], folding: [12, 15], default: [20, 24] };
+const SCENE_IDS = ['default', 'road', 'city', 'mtb', 'hybrid', 'women', 'gravel', 'cx', 'track', 'folding', 'ebike', 'kidTraining'];
+// the seller's table A (feedback 6); a loop holds a whole number of wheel turns, so the speed is checked on the wheel the style rides
+const KMH = { road: [34, 36], track: [44, 46], mtb: [19.5, 20.5], women: [11.5, 12.5], gravel: [24, 26], city: [15.5, 16.5], folding: [14.5, 15.5], hybrid: [19.5, 20.5], cx: [23.5, 24.5], ebike: [25, 27], kidTraining: [6.5, 7.5], default: [20, 24] };
+const SPEED_WHEEL = { kidTraining: require('../model.js').WHEEL_R['16'] + 40 };
 const R2 = [...WHEELS, 203, 152.5];
 
 test('sceneOf: a scene per style, unknown styles fall back to default', () => {
-  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding' };
+  const want = { road: 'road', city: 'city', mtb: 'mtb', fullsus: 'mtb', hybrid: 'hybrid', women: 'women', gravel: 'gravel', cx: 'cx', track: 'track', folding: 'folding', ebike: 'ebike', kidTraining: 'kidTraining' };
   for (const [k, v] of Object.entries(want)) assert.equal(R.sceneOf(k), v, k);
   for (const k of [undefined, '__proto__', 'constructor', null, 'bmx', 'kid']) assert.equal(R.sceneOf(k), 'default', String(k));
 });
@@ -149,7 +151,7 @@ test('the bank tilt was tried on the track and rejected: no scene leans (the opt
 
 test('scene speeds are in the seller ranges', () => {
   for (const id of SCENE_IDS) {
-    const kmh = (R.speedOf(311, id) * 3.6) / 1000, [lo, hi] = KMH[id];
+    const kmh = (R.speedOf(SPEED_WHEEL[id] || 311, id) * 3.6) / 1000, [lo, hi] = KMH[id];
     assert.ok(kmh >= lo * 0.99 && kmh <= hi * 1.01, `${id}: ${kmh}`);
   }
   assert.equal(R.speedOf(311), R.speedOf(311, 'default'));
@@ -168,7 +170,8 @@ test('every scene keeps the wheel, the road and the layers in step', () => {
     for (const { id: lid, k } of R.LAYERS) {
       const { tile } = R.layerShift(lid, 0, r, id), n = (R.speedOf(r, id) * P * k) / tile;
       assert.ok(Math.abs(n - Math.round(n)) < 1e-9, `${id} ${lid} R=${r}`);
-      assert.ok(tile >= 1900 && tile <= 5000, `${id} ${lid} tile ${tile}`);
+      // table A made the far tile of the kids' scene ~1050 mm and of the road scene ~5230 mm; the builders scale to any tile
+      assert.ok(tile >= 1000 && tile <= 5500, `${id} ${lid} tile ${tile}`);
     }
   }
 });
@@ -400,6 +403,34 @@ test('folding scene: harbour water, boats, bollards, cobbles, paving', () => {
   for (const c of ['rb-water', 'rb-boat', 'rb-sail', 'rb-lamp', 'rb-boulder', 'rb-tile']) assert.ok(m.includes(`class="${c}"`), c);
   for (const c of NOT_ROAD_OR_CITY) assert.ok(!m.includes(`class="${c}"`), c);
   assert.match(indexHtml(), tintCss('folding'));
+});
+
+// ---------- feedback 6 scenes ----------
+test('ebike scene: suburb, lamps, a lawn, a bike lane with a dashed line', () => {
+  const m = bg('ebike');
+  assert.deepEqual(R.SCENES.ebike.layers, { far: 'suburb', mid: 'lamps', near: 'lawn', road: 'bikelane' });
+  assert.deepEqual(R.SCENES.ebike.bounce, [[1, 13, 0], [1, 29, 0.7]]);
+  assert.equal(R.SCENES.ebike.effect, 'none');
+  for (const c of ['rb-house', 'rb-window', 'rb-roof', 'rb-lamp', 'rb-bush', 'rb-grass', 'rb-lawn', 'rb-laneline', 'rb-lanebed']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-barrier"') && !m.includes('class="rb-speck"') && !m.includes('class="rb-slide"'));
+  assert.doesNotMatch(m, /<text/);
+  assert.match(indexHtml(), tintCss('ebike'));
+});
+
+test('kidTraining scene: yard houses, a playground with a slide and swings, a lawn', () => {
+  const m = bg('kidTraining');
+  assert.deepEqual(R.SCENES.kidTraining.layers, { far: 'yard', mid: 'playground', near: 'lawn', road: 'smooth' });
+  assert.deepEqual(R.SCENES.kidTraining.bounce, [[0.8, 13, 0], [0.6, 29, 0.7]]);
+  assert.equal(R.SCENES.kidTraining.effect, 'none');
+  for (const c of ['rb-house', 'rb-window', 'rb-roof', 'rb-slide', 'rb-swing', 'rb-swingseat', 'rb-sandbox', 'rb-lawn', 'rb-bush']) assert.ok(m.includes(`class="${c}"`), c);
+  assert.ok(!m.includes('class="rb-barrier"') && !m.includes('class="rb-speck"') && !m.includes('class="rb-laneline"'));
+  assert.doesNotMatch(m, /<text/);
+  assert.match(indexHtml(), tintCss('kidTraining'));
+});
+
+test('feedback 6 scenes: the new CSS classes exist for the light and the dark theme (theme variables only)', () => {
+  const html = indexHtml();
+  for (const c of ['rb-roof', 'rb-lawn', 'rb-laneline', 'rb-lanebed', 'rb-slide', 'rb-swing', 'rb-swing-post', 'rb-swingchain', 'rb-swingseat', 'rb-sandbox']) assert.match(html, new RegExp(String.raw`\.${c}[{,\s]`), c);
 });
 
 test('bank tilt: one wrapper turns the background and the bike together, only while riding', () => {
