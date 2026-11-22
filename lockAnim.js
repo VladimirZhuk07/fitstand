@@ -37,13 +37,21 @@ function lockState(t) {
 }
 
 // ---- drawing: the fork is seen from the front (two legs, the crown with the lever above the damper leg) ----
-const TRAVEL = 160;                // px the lower legs rise at full compression (c = 1)
-const LX = 300, RX = 600;          // x-centres of the spring leg (left) and the damper leg (right)
-const LEVER = { x: RX, y: 157, rest: -60 }; // lever pivot on the crown; the drawn lever points up-right when open
-const NEEDLE_DROP = 28;            // px the needle goes down into its seat when the valve is closed
+const LX = 300, RX = 600;          // x-centres of the left leg (spring or air) and the damper leg (right)
 const SPRING = { top: 212, bot: 498, turns: 9, half: 15 }; // coil spring (bot = rest position of its lower end)
-const HIT_SHIFT = 70;              // px the impact arrow is held back while it is "far"
-const FLOW_MIRROR = 554;           // 2 * y of the valve plate: mirrors the oil arrows when the flow reverses
+// the oil arrows live in the band FLOW_TOP…FLOW_BOT around the valve plate; the reversed flow mirrors the whole group
+// about the middle of that band, so the mirrored arrows land on the same spots with the opposite direction
+const FLOW_TOP = 232, FLOW_BOT = 322;
+// per-kind geometry of the parts every kind shares: the lever, the needle, the oil arrows, the impact arrow, the travel
+const FORK_GEOM = {
+  lever: { x: RX, y: 157, rest: -60 }, // pivot on the crown; the drawn lever points up-right when open
+  needleDrop: 28,                    // px the needle goes down into its seat when the valve is closed
+  flowMirror: FLOW_TOP + FLOW_BOT,   // mirror axis (2 * the band's middle) of the oil arrows
+  hitShift: 60,                      // px the impact arrow is held back while it is "far" (its tail stays inside the picture)
+  travel: 160,                       // px the lower legs rise at full compression (c = 1)
+};
+const GEOM = { spring: FORK_GEOM, air: FORK_GEOM };
+const TRAVEL = FORK_GEOM.travel;
 
 const nr = v => Math.round(v * 100) / 100;
 
@@ -72,12 +80,16 @@ const defs = `<defs>
   <marker id="la-g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#6b3f04"/></marker>
 </defs>`;
 
-// a horizontal leader line from a point on a part to its label (side 'l' = label on the left of the fork)
-function leader(x, y, edge, text, side) {
+// a leader line from a point on a part to its label (side 'l' = label on the left of the fork);
+// with ly set, the line first goes vertically to the label's height (to keep clear of moving parts)
+function leader(x, y, edge, text, side, ly = y) {
   const tx = side === 'l' ? edge - 6 : edge + 6;
-  return `<line class="la-leader" x1="${x}" y1="${y}" x2="${edge}" y2="${y}" stroke="#8b97a2" stroke-width="1.2"/>`
+  const line = ly === y
+    ? `<line class="la-leader" x1="${x}" y1="${y}" x2="${edge}" y2="${y}" stroke="#8b97a2" stroke-width="1.2"/>`
+    : `<path class="la-leader" d="M ${x} ${y} V ${ly} H ${edge}" fill="none" stroke="#8b97a2" stroke-width="1.2"/>`;
+  return line
     + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="3.2" fill="#24303a"/>`
-    + `<text class="la-label" x="${tx}" y="${y + 6}" text-anchor="${side === 'l' ? 'end' : 'start'}" font-family="${FONT}" font-size="18" fill="#1c2630">${text}</text>`;
+    + `<text class="la-label" x="${tx}" y="${ly + 6}" text-anchor="${side === 'l' ? 'end' : 'start'}" font-family="${FONT}" font-size="18" fill="#1c2630">${text}</text>`;
 }
 
 // the lower leg: open-top shell with a dark cavity, a seal ring on top and the axle hole at the bottom
@@ -100,79 +112,122 @@ function stanchion(cx) {
     + `<rect x="${cx - 28}" y="520" width="56" height="16" rx="3" fill="url(#la-g-steel)"/>`;
 }
 
-function springMarkup() {
+// both lower legs, the arch between them and the axle: everything that rises with the compression
+function lowerLegs() {
   const arch = `<path d="M 336 482 L 336 440 Q 450 384 564 440 L 564 482 Q 450 426 336 482 Z" fill="url(#la-g-alumV)"/>
     <path d="M 340 446 Q 450 394 560 446" fill="none" stroke="#fff" stroke-width="2" opacity="0.25"/>`;
   const axle = `<rect x="${LX}" y="719" width="${RX - LX}" height="12" fill="url(#la-g-steel)"/>
     <rect x="398" y="703" width="104" height="44" rx="8" fill="url(#la-g-alumV)"/>
     <rect x="408" y="708" width="84" height="5" rx="2" fill="#fff" opacity="0.25"/>`;
-  // the valve: a plate with a funnel-shaped seat; the cone-tipped needle comes down from the lever into it
-  const plate = `<path d="M ${RX - 20} 262 h 11 l 6 20 h -17 z M ${RX + 20} 262 h -11 l -6 20 h 17 z" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>`;
-  const needle = `<g id="la-needle" transform="translate(0 0)"><rect x="${RX - 3}" y="150" width="6" height="84" fill="url(#la-g-steel)"/><rect x="${RX - 6}" y="224" width="12" height="9" rx="2" fill="url(#la-g-brass)"/><polygon points="${RX - 9},234 ${RX + 9},234 ${RX},264" fill="url(#la-g-brass)"/></g>`;
+  return `<g id="la-move" transform="translate(0 0)">${arch}${legShell(LX, 'la-leg-l')}${legShell(RX, 'la-leg-r')}${axle}</g>`;
+}
+
+// the oil damper leg: amber oil, a funnel-seat valve plate, the cone-tipped needle coming down from the lever,
+// the damper piston on its rod, the oil arrows and the red cross that shows when the valve is shut
+function damperLeg(g, cx) {
+  const plate = `<path d="M ${cx - 20} 262 h 11 l 6 20 h -17 z M ${cx + 20} 262 h -11 l -6 20 h 17 z" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>`;
+  const needle = `<g id="la-needle" transform="translate(0 0)"><rect x="${cx - 3}" y="150" width="6" height="84" fill="url(#la-g-steel)"/><rect x="${cx - 6}" y="224" width="12" height="9" rx="2" fill="url(#la-g-brass)"/><polygon points="${cx - 9},234 ${cx + 9},234 ${cx},264" fill="url(#la-g-brass)"/></g>`;
+  const piston = `<g id="la-piston" transform="translate(0 0)"><rect x="${cx - 3}" y="446" width="6" height="285" fill="url(#la-g-steel)"/><rect x="${cx - 19}" y="430" width="38" height="16" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${cx - 19}" y="435" width="38" height="3" fill="#14181c" opacity="0.5"/></g>`;
   const arrow = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6b3f04" stroke-width="2.4" marker-end="url(#la-g-arr)"/>`;
+  // below the plate the oil comes up to the seat (the lower pair), above it the oil leaves (the upper pair, the lower
+  // pair mirrored); all four stay outside the needle cone, so the needle is visible while the oil flows
+  const out = 20, inn = 14, m = g.flowMirror;
   const flow = `<g id="la-flow" opacity="0" transform="translate(0 0)">`
-    + arrow(RX - 12, 322, RX - 3, 292) + arrow(RX + 12, 322, RX + 3, 292)
-    + arrow(RX - 7, 256, RX - 15, 232) + arrow(RX + 7, 256, RX + 15, 232) + `</g>`;
-  const cup = `<g id="la-cup" transform="translate(0 0)"><rect x="${LX - 3}" y="510" width="6" height="221" fill="url(#la-g-steel)"/><path d="M ${LX - 17} 498 h 34 l -4 12 h -26 z" fill="url(#la-g-steel)"/></g>`;
-  const piston = `<g id="la-piston" transform="translate(0 0)"><rect x="${RX - 3}" y="446" width="6" height="285" fill="url(#la-g-steel)"/><rect x="${RX - 19}" y="430" width="38" height="16" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${RX - 19}" y="435" width="38" height="3" fill="#14181c" opacity="0.5"/></g>`;
-  const lever = `<circle cx="${LEVER.x}" cy="${LEVER.y}" r="22" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>
-    <g id="la-lever" transform="translate(${LEVER.x} ${LEVER.y}) rotate(0)">
-      <g transform="rotate(${LEVER.rest})"><rect x="4" y="-8" width="68" height="16" rx="8" fill="url(#la-g-brass)" stroke="#7c5a1e" stroke-width="1"/><rect x="12" y="-5" width="52" height="3" rx="1.5" fill="#fff" opacity="0.35"/></g>
-      <circle id="la-ind" class="la-ind la-open" r="14" fill="#3FAE5C" stroke="#fff" stroke-width="2"/>
-    </g>`;
-  const leaders = [
-    leader(228, 158, 190, 'Корона', 'l'),
-    leader(LX - 24, 250, 190, 'Верхняя нога', 'l'),
-    leader(LX, 320, 190, 'Пружина', 'l'),
-    leader(LX - 33, 408, 190, 'Сальник', 'l'),
-    leader(LX - 44, 600, 190, 'Нижняя нога', 'l'),
-    leader(RX + 15, 158, 712, 'Рычаг блокировки', 'r'),
-    leader(RX, 228, 712, 'Игла', 'r'),
-    leader(RX + 15, 272, 712, 'Клапан', 'r'),
-    leader(RX + 14, 480, 712, 'Демпфер', 'r'),
-    leader(RX, 590, 712, 'Шток', 'r'),
-  ].join('');
-  return `<svg class="la-svg" data-lock="spring" viewBox="0 0 900 900" role="img" aria-label="Пружинная вилка в разрезе, вид спереди">${defs}
-  <g id="la-move" transform="translate(0 0)">${arch}${legShell(LX, 'la-leg-l')}${legShell(RX, 'la-leg-r')}${axle}</g>
-  <rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
-  <rect x="${RX - 20}" y="205" width="40" height="315" fill="url(#la-g-oil)"/>
-  ${plate}${needle}
-  <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>
-  <polyline id="la-spring" points="${springPoints(0)}" fill="none" stroke="url(#la-g-spring)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
-  ${cup}${piston}${flow}
-  ${stanchion(LX)}${stanchion(RX)}
+    + arrow(cx - out, FLOW_BOT, cx - inn, FLOW_BOT - 28) + arrow(cx + out, FLOW_BOT, cx + inn, FLOW_BOT - 28)
+    + arrow(cx - inn, m - (FLOW_BOT - 28), cx - out, m - FLOW_BOT) + arrow(cx + inn, m - (FLOW_BOT - 28), cx + out, m - FLOW_BOT) + `</g>`;
+  const cross = `<g id="la-cross" opacity="0"><path d="M ${cx - 14} 258 L ${cx + 14} 286 M ${cx + 14} 258 L ${cx - 14} 286" stroke="#D9473F" stroke-width="6" stroke-linecap="round"/></g>`;
+  return `<rect x="${cx - 20}" y="205" width="40" height="315" fill="url(#la-g-oil)"/>${plate}${needle}${piston}${flow}${cross}`;
+}
+
+// the crown with the steerer, both stanchions and the lock lever with its colour indicator above the damper leg
+function forkTop(g) {
+  const lv = g.lever;
+  return `${stanchion(LX)}${stanchion(RX)}
   <rect x="428" y="20" width="44" height="118" rx="4" fill="url(#la-g-alum)"/>
   <rect x="190" y="130" width="520" height="55" rx="14" fill="url(#la-g-alumV)"/>
   <rect x="204" y="135" width="492" height="5" rx="2" fill="#fff" opacity="0.28"/>
   <rect x="${LX - 34}" y="180" width="68" height="24" rx="4" fill="url(#la-g-alum)"/><rect x="${RX - 34}" y="180" width="68" height="24" rx="4" fill="url(#la-g-alum)"/>
-  ${lever}
-  <g id="la-cross" opacity="0"><path d="M ${RX - 14} 258 L ${RX + 14} 286 M ${RX + 14} 258 L ${RX - 14} 286" stroke="#D9473F" stroke-width="6" stroke-linecap="round"/></g>
-  <g class="la-leaders">${leaders}</g>
-  <g id="la-hit" opacity="0" transform="translate(0 ${HIT_SHIFT})"><polygon points="450,752 430,784 443,784 443,834 457,834 457,784 470,784" fill="#D9473F" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></g>
+  <circle cx="${lv.x}" cy="${lv.y}" r="22" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>
+  <g id="la-lever" transform="translate(${lv.x} ${lv.y}) rotate(0)">
+    <g transform="rotate(${lv.rest})"><rect x="4" y="-8" width="68" height="16" rx="8" fill="url(#la-g-brass)" stroke="#7c5a1e" stroke-width="1"/><rect x="12" y="-5" width="52" height="3" rx="1.5" fill="#fff" opacity="0.35"/></g>
+    <circle id="la-ind" class="la-ind la-open" r="14" fill="#3FAE5C" stroke="#fff" stroke-width="2"/>
+  </g>`;
+}
+
+// the red arrow that hits the axle from below; "far" means held back by g.hitShift
+function hitArrow(g) {
+  return `<g id="la-hit" opacity="0" transform="translate(0 ${g.hitShift})"><polygon points="450,752 430,784 443,784 443,834 457,834 457,784 470,784" fill="#D9473F" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></g>`;
+}
+
+// the leaders every fork has: crown, upper leg, seal, lower leg, and the right-hand ones of the lever and the damper leg
+function forkLeaders(g) {
+  const lv = g.lever;
+  return [
+    leader(228, 158, 190, 'Корона', 'l'),
+    leader(LX - 24, 262, 190, 'Верхняя нога', 'l'),
+    // the seal point is the stanchion bushing: the stanchion never moves, so the dot stays on metal through the whole travel
+    leader(LX - 25, 528, 190, 'Сальник', 'l'),
+    leader(LX - 44, 600, 190, 'Нижняя нога', 'l'),
+    // from the top of the pivot straight up, above the arc the lever sweeps, then to the label
+    leader(lv.x - 12, lv.y - 18, 712, 'Рычаг блокировки', 'r', 70),
+    leader(RX, 214, 712, 'Игла', 'r'),
+    leader(RX + 15, 272, 712, 'Клапан', 'r'),
+    leader(RX + 14, 480, 712, 'Демпфер', 'r'),
+    leader(RX, 590, 712, 'Шток', 'r'),
+  ];
+}
+
+// the frame every fork shares: left = markup of the left leg, leaders = the labels of that leg, before = drawn under the crown
+function forkSvg(kind, aria, left, leaders, before = '') {
+  const g = GEOM[kind];
+  return `<svg class="la-svg" data-lock="${kind}" viewBox="0 0 900 900" role="img" aria-label="${aria}">${defs}
+  ${lowerLegs()}
+  ${left}
+  ${damperLeg(g, RX)}
+  ${before}${forkTop(g)}
+  <g class="la-leaders">${[...forkLeaders(g), ...leaders].join('')}</g>
+  ${hitArrow(g)}
 </svg>`;
 }
 
-// kinds 'air' and 'shock' are drawn in later tasks; until then they return an empty string
+function springMarkup() {
+  const left = `<rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
+  <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>
+  <polyline id="la-spring" points="${springPoints(0)}" fill="none" stroke="url(#la-g-spring)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+  <g id="la-cup" transform="translate(0 0)"><rect x="${LX - 3}" y="510" width="6" height="221" fill="url(#la-g-steel)"/><path d="M ${LX - 17} 498 h 34 l -4 12 h -26 z" fill="url(#la-g-steel)"/></g>`;
+  return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, 190, 'Пружина', 'l')]);
+}
+
+// kind 'shock' is drawn in a later task; until then it returns an empty string
 function lockMarkup(kind) {
   return kind === 'spring' ? springMarkup() : '';
 }
 
-// one frame: attribute changes only, the list of ids is the same for every state
-function lockPose(kind, st) {
-  if (kind !== 'spring') return [];
-  const up = `translate(0 ${nr(-st.c * TRAVEL)})`;
+// ---- one frame: attribute changes only, the list of ids is the same for every state ----
+const rise = (id, g, st) => ({ id, attrs: { transform: `translate(0 ${nr(-st.c * g.travel)})` } });
+
+// what every kind has: the lower legs, the lever, the indicator, the needle, the oil arrows, the cross, the impact arrow
+function sharedPose(g, st) {
+  const lv = g.lever;
   return [
-    { id: 'la-move', attrs: { transform: up } },
-    { id: 'la-cup', attrs: { transform: up } },
-    { id: 'la-piston', attrs: { transform: up } },
-    { id: 'la-spring', attrs: { points: springPoints(st.c) } },
-    { id: 'la-lever', attrs: { transform: `translate(${LEVER.x} ${LEVER.y}) rotate(${nr(st.lever * 90)})` } },
+    rise('la-move', g, st),
+    { id: 'la-lever', attrs: { transform: `translate(${lv.x} ${lv.y}) rotate(${nr(st.lever * 90)})` } },
     { id: 'la-ind', attrs: { class: st.lever < 0.5 ? 'la-ind la-open' : 'la-ind la-closed' } },
-    { id: 'la-needle', attrs: { transform: `translate(0 ${nr(st.valve * NEEDLE_DROP)})` } },
-    { id: 'la-flow', attrs: { opacity: Math.abs(st.flow), transform: st.flow < 0 ? `translate(0 ${FLOW_MIRROR}) scale(1 -1)` : 'translate(0 0)' } },
+    { id: 'la-needle', attrs: { transform: `translate(0 ${nr(st.valve * g.needleDrop)})` } },
+    { id: 'la-flow', attrs: { opacity: Math.abs(st.flow), transform: st.flow < 0 ? `translate(0 ${g.flowMirror}) scale(1 -1)` : 'translate(0 0)' } },
     { id: 'la-cross', attrs: { opacity: st.valve > 0.5 && st.hitA > 0 ? 1 : 0 } },
-    { id: 'la-hit', attrs: { transform: `translate(0 ${nr(st.hitD * HIT_SHIFT)})`, opacity: nr(st.hitA) } },
+    { id: 'la-hit', attrs: { transform: `translate(0 ${nr(st.hitD * g.hitShift)})`, opacity: nr(st.hitA) } },
   ];
+}
+
+// the parts that belong to one kind; lockPose appends them to the shared ones in a fixed order
+const PARTS = {
+  spring: (g, st) => [rise('la-cup', g, st), rise('la-piston', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c) } }],
+};
+
+function lockPose(kind, st) {
+  const g = GEOM[kind];
+  return g ? [...sharedPose(g, st), ...PARTS[kind](g, st)] : [];
 }
 
 // the same as applyRider: set the attributes on the elements that exist

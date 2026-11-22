@@ -151,3 +151,54 @@ test('applyLock sets the attributes on existing elements only', () => {
 test('no Math.random in lockAnim.js', () => {
   assert.ok(!fs.readFileSync(path.join(__dirname, '..', 'lockAnim.js'), 'utf8').includes('Math.random'));
 });
+
+// ---- Task 3, step 0: shared parts and the review fixes ----
+const flowSegments = svg => [...groupInner(svg, 'la-flow').matchAll(/<line x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/g)].map(m => m.slice(1).map(Number));
+const mirrorOf = (kind, t) => Number(/translate\(0 ([\d.]+)\) scale\(1 -1\)/.exec(L.lockPose(kind, L.lockState(t)).find(p => p.id === 'la-flow').attrs.transform)[1]);
+
+test('flow arrows keep clear of the needle, mirrored or not', () => {
+  for (const kind of ['spring']) {
+    const svg = L.lockMarkup(kind), segs = flowSegments(svg), m = mirrorOf(kind, 4);
+    assert.ok(segs.length >= 4);
+    const all = [...segs, ...segs.map(([x1, y1, x2, y2]) => [x1, m - y1, x2, m - y2])];
+    for (const [x1, y1, x2, y2] of all) for (const [x, y] of [[x1, y1], [x2, y2]]) {
+      if (y >= 224 && y <= 296) assert.ok(Math.abs(x - 600) >= 13, `arrow end (${x},${y}) is on the needle`);
+    }
+    // the mirror axis is the sum of the group's extreme y: the mirrored group lands on the same spots, reversed
+    const ys = segs.flatMap(s => [s[1], s[3]]);
+    assert.equal(m, Math.min(...ys) + Math.max(...ys));
+    const key = ([a, b, c, d]) => [a, b, c, d].join();
+    const mirrored = new Set(segs.map(([x1, y1, x2, y2]) => key([x2, m - y2, x1, m - y1])));
+    for (const s of segs) assert.ok(mirrored.has(key(s)), `${s} has no mirror partner`);
+  }
+});
+
+test('the lever label line stays above the lever arc', () => {
+  const svg = L.lockMarkup('spring');
+  const m = /<text class="la-label"[^>]*y="([\d.]+)"[^>]*>Рычаг блокировки</.exec(svg);
+  assert.ok(Number(m[1]) < 157 - 72 - 8, `label baseline ${m[1]}`);
+  const line = /<path class="la-leader"[^>]*d="([^"]+)"[^>]*\/><circle class="la-leader-dot"[^>]*\/><text class="la-label"[^>]*>Рычаг блокировки</.exec(svg);
+  assert.ok(line, 'the lever leader is a polyline that goes up first');
+});
+
+test('the hit arrow stays inside the picture even when far', () => {
+  for (const kind of ['spring']) {
+    const svg = L.lockMarkup(kind);
+    const poly = /<g id="la-hit"[^>]*><polygon points="([^"]+)"/.exec(svg)[1];
+    const maxY = Math.max(...poly.trim().split(/\s+/).map(p => Number(p.split(',')[1])));
+    const far = L.lockPose(kind, { ...L.lockState(0), hitD: 1 }).find(p => p.id === 'la-hit');
+    const dy = Number(/translate\(0 ([\d.]+)\)/.exec(far.attrs.transform)[1]);
+    assert.ok(maxY + dy + 1 <= 900, `tail at ${maxY + dy}`);
+    assert.ok(/translate\(0 [\d.]+\)/.test(/<g id="la-hit"[^>]*transform="([^"]+)"/.exec(svg)[1]));
+  }
+});
+
+test('the seal leader points at a part that does not move', () => {
+  const svg = L.lockMarkup('spring');
+  const move = groupInner(svg, 'la-move');
+  const dot = /<circle class="la-leader-dot" cx="([\d.]+)" cy="([\d.]+)"[^>]*\/><text class="la-label"[^>]*>Сальник</.exec(svg);
+  assert.ok(dot, 'seal dot');
+  assert.ok(!move.includes(dot[0].slice(0, 40)));
+  // the stanchion bushing (static, drawn over the legs): y 520…536
+  assert.ok(Number(dot[2]) >= 520 && Number(dot[2]) <= 536, `dot y ${dot[2]}`);
+});
