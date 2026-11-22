@@ -221,3 +221,14 @@ test('live drawing: the shadow has an id; each wheel has a glint that does not t
   }
   assert.equal((Dr.bikeMarkup(g('hybrid'), 1, { live: false }).match(/id="shadow"/g) || []).length, 0);
 });
+
+test('copyFlags copies every non-numeric key that changed and reports it', () => {
+  const cur = { a: 1, rearShock: false, brake: 'rim' };
+  const target = { a: 2, rearShock: true, brake: 'disc', gyro: true };
+  assert.equal(Dr.copyFlags(cur, target, ['a']), true);
+  assert.equal(cur.rearShock, true);
+  assert.equal(cur.brake, 'disc');
+  assert.equal(cur.gyro, true);
+  assert.equal(cur.a, 1);
+  assert.equal(Dr.copyFlags(cur, target, ['a']), false);
+});

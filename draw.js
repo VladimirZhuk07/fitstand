@@ -252,7 +252,17 @@ function boundsOf(g,rider,ux){
   return {x:minX,y:-top,w:maxX-minX,h:top-minY};
 }
 
-const api = { fx, P, L_, arcPts, wheel, geomPts, bikeMarkup, boundsOf };
+// Copies every non-numeric geometry key that changed from target into cur; true if anything changed.
+function copyFlags(cur,target,numKeys){
+  let changed=false;
+  for(const key of Object.keys(target)){
+    if(numKeys.includes(key)) continue;
+    if(cur[key]!==target[key]){cur[key]=target[key];changed=true;}
+  }
+  return changed;
+}
+
+const api = { fx, P, L_, arcPts, wheel, geomPts, bikeMarkup, boundsOf, copyFlags };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

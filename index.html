@@ -759,7 +759,6 @@ function renderSpecs(F){
 /* ---------- animation loop ---------- */
 let target=null, cur=null, curP=null, vb=null, ux=1, rideT=0, dirty=true, personDirty=true, refs={};
 const BOTTOM_ROOM=110; // mm below the ground for the grass by the road
-const FLAGS=['brake','susp','hinge','suspPost','stepThrough'];
 const NUM=['STA','HTA','drop','cs','tyre','rake','wheelR','reach','stack','ST','HT','saddleH','crank','stemAng','barReach','barDrop','sweep','fender','guard','ring','sp','stemL','sc','torso','thigh','shin','arm','headR','foot'];
 function changed(){
   syncControls();
@@ -824,7 +823,7 @@ function tick(now){
     const k=1-Math.exp(-dt*11);
     let moving=false;
     for(const key of NUM){const d=target[key]-cur[key];if(Math.abs(d)>0.02){cur[key]+=d*k;moving=true;}else cur[key]=target[key];}
-    for(const key of FLAGS){if(cur[key]!==target[key]){cur[key]=target[key];dirty=true;}}
+    if(copyFlags(cur,target,NUM))dirty=true;
     for(const key of ['H','I','A','W']){const d=state[key]-curP[key];if(Math.abs(d)>0.005){curP[key]+=d*k;personDirty=true;}else if(curP[key]!==state[key]){curP[key]=state[key];personDirty=true;}}
     const tb=boundsOf(cur,state.rider,ux); tb.h+=BOTTOM_ROOM;
     if(!vb)vb={...tb};
