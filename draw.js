@@ -10,14 +10,20 @@ function wheel(c,g,id){
   let sp='';
   for(let i=0;i<20;i++){const a=i*18*D, a2=a+(i%2?0.35:-0.35);
     const h=V(c.x+26*Math.cos(a2),c.y+26*Math.sin(a2)), e=V(c.x+rimR*Math.cos(a),c.y+rimR*Math.sin(a));sp+=L_(h,e,'s-metal',2.6);}
+  // teen bikes: one orange reflector clipped on the spokes; it sits inside the spokes group, so on a live wheel it turns
+  if(g.reflectors){const a=62, rr=rimR*0.62;
+    sp+=`<g data-k="reflectors"><rect class="f-reflector" x="-30" y="-11" width="60" height="22" rx="9" transform="translate(${fx(c.x+rr*Math.cos(a*D))} ${fx(-(c.y+rr*Math.sin(a*D)))}) rotate(${fx(-a)})"/></g>`;}
   // rim: spokes, rim, hub; tyre: the rubber — two parts on the drawing
   return {
     // live wheels: spokes fade at speed under a translucent disc, a small valve mark shows the turning
     rim:(id?`<g id="${id}"><g class="spokes">${sp}</g><circle class="blur-disc" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR-6)}"/><circle class="valve" cx="${fx(c.x)}" cy="${fx(-c.y+rimR-14)}" r="7"/></g>`:`<g>${sp}</g>`)+`
-  <circle class="s-rim nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
+  <circle class="s-rim${g.rimAccent?' rim-accent':''} nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(rimR)}" stroke-width="13"/>
   <circle class="f-metal" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="30"/><circle class="f-panel" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="9"/>`,
     // a still highlight on the upper left of a live rim: the light comes from there, the rim turns under it
-    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`+(id?`<path class="rim-glint" d="M${fx(c.x+rimR*Math.cos(110*D))} ${fx(-(c.y+rimR*Math.sin(110*D)))} A${fx(rimR)} ${fx(rimR)} 0 0 0 ${fx(c.x+rimR*Math.cos(150*D))} ${fx(-(c.y+rimR*Math.sin(150*D)))}"/>`:''),
+    tyre:`<circle class="s-tyre nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre/2)}" stroke-width="${fx(g.tyre)}"/>`
+      // gum wall: a brown ring on the inner half of the tyre, below the tread
+      +(g.gumwall?`<g data-k="gumwall"><circle class="s-gumwall nf" cx="${fx(c.x)}" cy="${fx(-c.y)}" r="${fx(r-g.tyre*0.7)}" stroke-width="${fx(g.tyre*0.5)}"/></g>`:'')
+      +(id?`<path class="rim-glint" d="M${fx(c.x+rimR*Math.cos(110*D))} ${fx(-(c.y+rimR*Math.sin(110*D)))} A${fx(rimR)} ${fx(rimR)} 0 0 0 ${fx(c.x+rimR*Math.cos(150*D))} ${fx(-(c.y+rimR*Math.sin(150*D)))}"/>`:''),
   };
 }
 function geomPts(g){
@@ -31,7 +37,7 @@ function geomPts(g){
   const up=upperOf(g,hip,ck.hand);
   return {sta,hta,sd,R,ck,Hb,F,S,hip,up,ground:g.drop-g.wheelR};
 }
-// brakes: disc rotor + caliper, or a rim caliper where the fork / seat stay crosses the rim
+// brakes: disc rotor + caliper, or rim calipers (both wheels, or the rear only) where the fork / seat stay crosses the rim
 function brakesMarkup(g,R,F,crown,stayTop){
   if(g.brake==='none') return '<g data-k="noBrakes"></g>';
   const rimR=g.wheelR-g.tyre-5;
@@ -45,7 +51,8 @@ function brakesMarkup(g,R,F,crown,stayTop){
     return `<g data-k="disc">${s}</g>`;
   }
   let s='';
-  for(const [c,top] of [[F,crown],[R,stayTop]]){
+  // rearRim: a BMX has a rear brake only
+  for(const [c,top] of g.brake==='rearRim'?[[R,stayTop]]:[[F,crown],[R,stayTop]]){
     const d=nrm(sub(top,c)), n=V(-d.y,d.x), p=add(c,mul(d,g.wheelR+20));
     s+=L_(add(p,mul(n,-28)),add(p,mul(n,28)),'s-ink',14);
   }
@@ -92,7 +99,7 @@ function gearDetails(R,sd,ck,HbJ,rc,rg,part){
   return part('drivetrain',cab,'cables')+part('drivetrain',fd,'fd')+part('drivetrain',rd,'rd')+part('drivetrain',sh,'shifters');
 }
 function bikeMarkup(g,ux,opts={}){
-  const live=opts.live!==false, motor=!!opts.motor, hl=opts.highlight||null, details=!live&&!!opts.details;
+  const live=opts.live!==false, motor=!!(opts.motor||g.motor), hl=opts.highlight||null, details=!live&&!!opts.details;
   if(g.unicycle&&!live) return unicycleMarkup(g,hl);
   const {sd,R,ck,Hb,F,S,hip,up,ground,hta}=geomPts(g);
   const BB=V(0,0), u=ck.u;
@@ -191,11 +198,30 @@ function bikeMarkup(g,ux,opts={}){
     cp+=`<g opacity="${fx(dk)}"><path class="f-ink" d="M${P(add(G,V(-14,-4)))} Q${P(add(G,V(-6,38*dk)))} ${P(add(G,V(28*dk,34*dk)))} Q${P(add(G,V(56*dk,30*dk)))} ${P(add(G,V(48*dk,-26*dk)))} L${P(add(G,V(26*dk,-30*dk)))} Z"/>${L_(add(G,V(40*dk,-24*dk)),add(G,V(30*dk,-108*dk)),'s-ink',12)}</g>`;
   }
   if(sk>0.02) cp+=`<g opacity="${fx(sk)}">${L_(add(G,V(30*sk,-2*sk)),add(G,V(-75*sk,4*sk)),'s-rider',40)}</g>`;
+  // e-bike display: a dark case with a lighter screen on the bar by the grip, turns with the bar
+  if(g.display){const d=add(G,V(35,55));
+    cp+=`<g data-k="display">${L_(add(G,V(25,0)),add(d,V(-10,-26)),'s-ink',12)}<rect class="f-ink" x="${fx(d.x-45)}" y="${fx(-d.y-28)}" width="90" height="56" rx="9"/><rect class="f-display" x="${fx(d.x-35)}" y="${fx(-d.y-20)}" width="70" height="36" rx="4"/></g>`;}
+  // bell: a small dome with a lever, on the bar between the grip and the stem
+  if(g.bell){const b=add(G,V(35,12)), k=n=>`${fx(b.x+n[0])} ${fx(-b.y-n[1])}`;
+    cp+=`<g data-k="bell"><path class="f-bell" d="M${k([-24,0])} A24 24 0 0 1 ${k([24,0])} Z"/>${L_(add(b,V(-4,0)),add(b,V(-4,-14)),'s-ink',10)}</g>`;}
+  // BMX rotor: a flat disc seen from the side on the steerer just under the stem, two cables back along the top tube to the rear caliper
+  if(g.gyro){
+    const gc=sub(ck.spTop,mul(u,4)), pr=V(u.y,-u.x);
+    let disc='';
+    for(let i=0;i<24;i++){const a=i/24*2*Math.PI;disc+=(i?' ':'')+P(add(gc,add(mul(pr,62*Math.cos(a)),mul(u,9*Math.sin(a)))));}
+    const tn=nrm(sub(HtJ,ttEnd)), tu=V(-tn.y,tn.x), up_=tu.y>0?tu:mul(tu,-1);
+    const rp=add(R,mul(nrm(sub(stayTop,R)),g.wheelR+20)), a0=sub(gc,mul(pr,62));
+    const cable=o=>`<polyline class="s-metal nf" stroke-width="6" points="${P(add(a0,mul(up_,o*0.4)))} ${P(add(mul(add(ttEnd,HtJ),0.5),mul(up_,34+o)))} ${P(add(ttEnd,mul(up_,30+o)))} ${P(add(rp,mul(up_,o)))}"/>`;
+    cp+=`<g data-k="gyro"><path class="f-metal s-ink" stroke-width="5" d="M${disc} Z"/>${cable(0)}${cable(16)}</g>`;
+  }
   s+=live?`<g id="cockpitG">${part('cockpit',cp)}</g>`:part('cockpit',cp);
   // saddle + seatpost
   let sa=L_(add(S,mul(sd,-48)),T,'s-metal',24);
   if(g.suspPost) sa+=`<g data-k="suspPost">${L_(T,add(T,mul(sd,40)),'s-ink',34)}</g>`;
   sa+=`<path class="f-ink" d="M${P(add(S,V(-118,4)))} C${P(add(S,V(-40,2)))} ${P(add(S,V(60,-2)))} ${P(add(S,V(148,-10)))} Q${P(add(S,V(156,-26)))} ${P(add(S,V(122,-28)))} L${P(add(S,V(-60,-26)))} Q${P(add(S,V(-128,-24)))} ${P(add(S,V(-128,-6)))} Z"/>`;
+  // kids' parent handle: a rod from under the saddle, back and up, with a grip on top
+  if(g.parentHandle){const h0=add(S,mul(sd,-70)), h1=add(h0,V(-190,0)), h2=add(S,V(-215,250));
+    sa+=`<g data-k="parentHandle"><polyline class="s-metal nf" stroke-width="18" points="${P(h0)} ${P(h1)} ${P(h2)}"/>${L_(add(h2,V(-48,0)),add(h2,V(48,0)),'s-ink',30)}</g>`;}
   s+=part('saddle',sa);
   // drivetrain: chain, cassette, chainring + guard, bottom bracket, near crank — each its own detail group
   const rc=g.ring*12.7/(2*Math.PI), rg=34;
@@ -248,11 +274,21 @@ function boundsOf(g,rider,ux){
   const {R,F,ck,S,up,ground}=geomPts(g);
   const minX=R.x-g.wheelR-70, maxX=Math.max(F.x+g.wheelR+50,Math.max(up.hand.x,ck.G.x)+70+130*ux);
   const minY=ground-60-34*ux;
-  const top=(rider?up.head.y+g.headR*1.25+50:Math.max(S.y,ck.steerTop.y,ck.G.y)+110)+56*ux;
+  const top=(rider?up.head.y+g.headR*1.25+50:Math.max(Math.max(S.y,ck.steerTop.y,ck.G.y)+110,g.parentHandle?S.y+290:-Infinity))+56*ux;
   return {x:minX,y:-top,w:maxX-minX,h:top-minY};
 }
 
-const api = { fx, P, L_, arcPts, wheel, geomPts, bikeMarkup, boundsOf };
+// Copies every key not in numKeys that changed from target into cur; true if anything changed.
+function copyFlags(cur,target,numKeys){
+  let changed=false;
+  for(const key of Object.keys(target)){
+    if(numKeys.includes(key)) continue;
+    if(cur[key]!==target[key]){cur[key]=target[key];changed=true;}
+  }
+  return changed;
+}
+
+const api = { fx, P, L_, arcPts, wheel, geomPts, bikeMarkup, boundsOf, copyFlags };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

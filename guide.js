@@ -201,7 +201,7 @@ function init() {
       `<p class="pg-note">${esc(C.health.disclaimer)}</p>` +
       `<div class="pg-actions"><button class="btn" data-action="restart">Пройти заново</button><a class="btn" href="#types">Все виды</a></div>`;
   }
-  // the drawing of a type: drawAs names another style (MTB, e-bike), otherwise the type draws by its id
+  // the drawing of a type: drawAs names another style (MTB, women), otherwise the type draws by its id
   const typeBike = id => { const t = C.types[id]; return [t.drawAs || id, !!t.motor]; };
   const fitOf = id => { const t = C.types[id]; return t.fitAs ? [t.fitAs, !!t.motor] : null; };
   // a photo of the type; while it is there the card hides the drawing, without it (data-opt removes it) the drawing shows

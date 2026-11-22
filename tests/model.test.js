@@ -121,7 +121,7 @@ test('summary bar height includes the riser bar rise', () => {
 const CATALOG = ['cx', 'track', 'trike', 'cargo', 'bmx', 'special', 'kidTrike', 'balance', 'kidTraining', 'kid', 'teen'];
 
 test('FIT_STYLES', () => {
-  assert.deepEqual(M.FIT_STYLES, ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding']);
+  assert.deepEqual(M.FIT_STYLES.slice(0, 10), ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding']);
   for (const s of M.FIT_STYLES) assert.ok(M.STYLES[s], s);
 });
 
@@ -172,4 +172,185 @@ test('catalog styles give finite geometry', () => {
   assert.equal(M.sizesFor('cx').length, 6);
   assert.equal(M.sizesFor('balance').length, 1);
   assert.equal(M.sizesFor('balance')[0].wheel, '12');
+});
+
+const KID_ROWS = [[95,0.421,0.316,0.253,0.080],[110,0.427,0.318,0.245,0.076],[125,0.440,0.328,0.240,0.072],[145,0.455,0.338,0.234,0.067],[178,0.466,0.343,0.236,0.062]];
+const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} vs ${b}`);
+
+test('kidBody hits the anchor rows', () => {
+  for (const [H, i, a, w, hk] of KID_ROWS) {
+    const k = M.kidBody(H);
+    near(k.I / H, i); near(k.A / H, a); near(k.W / H, w); near(k.headK, hk);
+  }
+  near(M.kidBody(110).I, 0.427 * 110);
+});
+
+test('kidBody is linear between anchors and clamped outside', () => {
+  const k = M.kidBody(117.5);
+  near(k.I / 117.5, (0.427 + 0.440) / 2);
+  near(k.A / 117.5, (0.318 + 0.328) / 2);
+  near(k.W / 117.5, (0.245 + 0.240) / 2);
+  near(k.headK, (0.076 + 0.072) / 2);
+  const lo = M.kidBody(80);
+  near(lo.I / 80, 0.421); near(lo.headK, 0.080);
+  const hi = M.kidBody(200);
+  near(hi.I / 200, 0.466); near(hi.W / 200, 0.236); near(hi.headK, 0.062);
+});
+
+test('bodyOf: adults unchanged, a child gets a larger head', () => {
+  const b = M.bodyOf({ H: 178, I: 83, A: 61, W: 42 });
+  near(b.headR, 0.062 * 1780);
+  near(b.torso, 0.818 * 1780 - (830 + 0.06 * 1780));
+  near(b.thigh, (830 + 0.06 * 1780 - 0.039 * 1780) / 2);
+  near(b.arm, 680); near(b.foot, 0.15 * 1780);
+  assert.deepEqual(Object.keys(b).sort(), ['arm', 'foot', 'headR', 'shin', 'thigh', 'torso']);
+  const c = M.bodyOf({ H: 110, ...M.kidBody(110) });
+  near(c.headR, 0.076 * 1100);
+});
+
+test('wheel radii for 18 and 26 inch', () => {
+  assert.equal(M.WHEEL_R['18'], 177.5);
+  assert.equal(M.WHEEL_R['26'], 279.5);
+});
+
+// ---------- kids' bikes sized by the child's height (feedback 6, Task 3) ----------
+test('kidSizeFor picks by the middle of the height range', () => {
+  const k = h => M.kidSizeFor('kidTraining', h), t = h => M.kidSizeFor('teen', h);
+  assert.deepEqual([85, 100, 105, 112, 120, 125].map(k), [0, 1, 1, 2, 3, 3]);
+  assert.equal(k(97.5), 0); // exactly between 92.5 and 102.5: the smaller size
+  assert.deepEqual([125, 146, 147, 165].map(t), [0, 0, 1, 1]);
+  assert.equal(M.sizesFor('kidTraining').length, 4);
+  assert.equal(M.sizesFor('teen').length, 2);
+  assert.deepEqual(M.STYLES.kidTraining.kidFit, { range: [85, 125], def: 110 });
+  assert.deepEqual(M.STYLES.teen.kidFit, { range: [125, 165], def: 145 });
+});
+
+test('kid fit: size, wheel and crank follow the height', () => {
+  const run = (style, H) => { const F = M.fit({ H, style, flex: 3 }); return [F.best.sz.wheel, F.g.crank]; };
+  assert.deepEqual([90, 100, 112, 122].map(H => run('kidTraining', H)), [['12', 85], ['14', 89], ['16', 95], ['18', 102]]);
+  assert.deepEqual(run('teen', 135), ['24', 152]);
+  assert.deepEqual(run('teen', 160), ['26', 160]);
+  const F = M.fit({ H: 112, style: 'kidTraining', flex: 3 });
+  assert.equal(F.best.i, 2);
+  assert.deepEqual(F.near, []);
+});
+
+test('kid fit at the edges: no NaN, saddle above the crank, knee sane', () => {
+  for (const [style, H] of [['kidTraining', 85], ['teen', 165]]) {
+    const F = M.fit({ H, style, flex: 3 });
+    for (const [k, v] of Object.entries(F.g)) if (typeof v === 'number') assert.ok(Number.isFinite(v), `${style} g.${k}`);
+    assert.ok(F.g.saddleH > F.g.crank, `${style} saddle`);
+    assert.ok(Number.isFinite(F.knee) && F.knee >= 0 && F.knee <= 90, `${style} knee ${F.knee}`);
+  }
+});
+
+test('kid fit ignores the health limits', () => {
+  const a = M.fit({ H: 110, style: 'kidTraining', flex: 3 });
+  const b = M.fit({ H: 110, style: 'kidTraining', flex: 3, health: { crankMax: 60, upright: 20, gear: ['riseBar'] } });
+  assert.deepEqual(a.g, b.g);
+});
+
+test('catalog dummies keep their wheels', () => {
+  for (const [style, wheel] of [['kidTraining', '16'], ['teen', '24'], ['bmx', '20']]) {
+    assert.equal(M.fit({ ...M.STYLES[style].rider, style, flex: 3 }).best.sz.wheel, wheel, style);
+  }
+});
+
+test('rear tyre clears the bottom bracket on every size of every style', () => {
+  for (const style of [...M.FIT_STYLES, 'kidTraining', 'teen']) {
+    const st = M.STYLES[style];
+    M.sizesFor(style).forEach((sz, i) => {
+      const H = st.kidFit ? (st.kidSizes[i].h[0] + st.kidSizes[i].h[1]) / 2 : 178;
+      const F = M.fit({ H, I: 83, A: 61, W: 42, style, flex: 3 });
+      // for adults fit picks the size itself; evaluate this size directly so none is skipped
+      const body = st.kidFit ? { H, flex: 3, ...M.kidBody(H) } : { H, I: 83, A: 61, W: 42, flex: 3 };
+      const e = M.evalSize({ ...body, style }, st, M.bodyOf(body), sz, i, st.alpha, Math.min(175, st.crankMax));
+      assert.ok(e.g.cs > e.g.wheelR + 25, `${style} ${sz.n}: cs ${e.g.cs} wheelR ${e.g.wheelR}`);
+      assert.ok(F.g.cs > F.g.wheelR + 25, `${style} fit: cs ${F.g.cs} wheelR ${F.g.wheelR}`);
+    });
+  }
+});
+
+// ---------- e-bike, detail flags, 14 styles (feedback 6, Task 4) ----------
+test('ebike: hybrid sizes, a fork, a motor and a display', () => {
+  assert.deepEqual(M.sizesFor('ebike'), M.sizesFor('hybrid'));
+  const g = M.fit({ ...P178, style: 'ebike' }).g;
+  assert.equal(g.susp, true);
+  assert.equal(g.motor, true);
+  assert.equal(g.display, true);
+});
+
+test('detail flags reach the geometry', () => {
+  const bmx = M.fit({ ...M.STYLES.bmx.rider, style: 'bmx', flex: 3 }).g;
+  assert.equal(bmx.gyro, true);
+  assert.equal(bmx.gumwall, true);
+  assert.equal(bmx.brake, 'rearRim');
+  const kt = M.fit({ H: 110, style: 'kidTraining', flex: 3 }).g;
+  assert.deepEqual([kt.rimAccent, kt.bell, kt.parentHandle], [true, true, true]);
+  const teen = M.fit({ H: 145, style: 'teen', flex: 3 }).g;
+  assert.equal(teen.reflectors, true);
+  assert.equal(teen.fender, 1);
+  const road = M.fit({ ...P178, style: 'road' }).g;
+  for (const k of ['motor', 'display', 'gyro', 'gumwall', 'rimAccent', 'bell', 'parentHandle', 'reflectors']) assert.equal(road[k], false, k);
+});
+
+test('14 styles on the main screen, in this order', () => {
+  assert.deepEqual(M.FIT_STYLES, ['city', 'hybrid', 'women', 'gravel', 'cx', 'road', 'track', 'mtb', 'fullsus', 'folding', 'ebike', 'bmx', 'teen', 'kidTraining']);
+});
+
+test('folding height range and the largest kid crank', () => {
+  assert.deepEqual(M.STYLES.folding.heightRange, [150, 195]);
+  assert.equal(M.STYLES.kidTraining.crankMax, 102);
+  assert.equal(M.STYLES.teen.crankMax, 160);
+});
+
+test('heightRowOf: kids\' sizes show their height range and warn before the next size is picked', () => {
+  const row = (style, H) => M.heightRowOf(style, H, M.kidSizeFor(style, H));
+  assert.equal(M.kidSizeFor('kidTraining', 114), 2);
+  const r = row('kidTraining', 114);
+  assert.equal(r.status, 'warn');
+  assert.match(r.hint, /на рост 105–120 см/);
+  assert.match(r.hint, /скоро вырастет — следующий 18″/);
+  assert.equal(r.value, '114 см');
+  const g = row('kidTraining', 110);
+  assert.equal(g.status, 'good');
+  assert.match(g.hint, /на рост 105–120 см/);
+  assert.doesNotMatch(g.hint, /следующий/);
+  assert.equal(M.kidSizeFor('teen', 144), 0);
+  const t0 = row('teen', 144);
+  assert.equal(t0.status, 'warn');
+  assert.match(t0.hint, /следующий 26″/);
+  // the last size has nothing to grow into
+  assert.equal(M.kidSizeFor('teen', 163), 1);
+  const t = row('teen', 163);
+  assert.equal(t.status, 'good');
+  assert.doesNotMatch(t.hint, /следующий/);
+});
+
+test('heightRowOf: folding keeps its 150–195 range, other styles have no height row', () => {
+  const f = M.heightRowOf('folding', 140, 0);
+  assert.equal(f.status, 'warn');
+  assert.match(f.hint, /складные обычно на 150–195 см/);
+  assert.equal(M.heightRowOf('folding', 170, 0).status, 'good');
+  assert.equal(M.heightRowOf('bmx', 170, 0), null);
+  assert.equal(M.heightRowOf('road', 178, 2), null);
+});
+
+test('verdictOf: bad beats warn beats good; rows with votes:false and soft rows are respected', () => {
+  const r = (status, extra) => ({ status, votes: true, ...extra });
+  assert.equal(typeof M.verdictOf, 'function');
+  assert.equal(M.verdictOf([r('good'), r('good')]), 'good');
+  assert.equal(M.verdictOf([r('good'), r('warn')]), 'warn');
+  assert.equal(M.verdictOf([r('warn'), r('bad'), r('good')]), 'bad');
+  assert.equal(M.verdictOf([]), 'good');
+  // a row that does not vote never changes the verdict
+  assert.equal(M.verdictOf([r('good'), r('bad', { votes: false }), r('warn', { votes: false })]), 'good');
+  // a soft row can lower the verdict to warn at most
+  assert.equal(M.verdictOf([r('good'), r('bad', { soft: true })]), 'warn');
+  assert.equal(M.verdictOf([r('bad'), r('bad', { soft: true })]), 'bad');
+});
+
+test('only BMX is ridden standing', () => {
+  assert.equal(M.STYLES.bmx.standing, true);
+  for (const k of Object.keys(M.STYLES)) if (k !== 'bmx') assert.ok(!M.STYLES[k].standing, k);
 });

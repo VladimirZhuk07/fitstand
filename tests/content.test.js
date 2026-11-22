@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { CONTENT } = require('../content.js');
+const M = require('../model.js');
 const { BASE_TYPES, scoreQuiz } = require('../quiz.js');
 
 // Матрица из спецификации 4.1: [city, hybrid, gravel, mtb, road, folding]
@@ -274,14 +275,14 @@ test('new fields per spec', () => {
     assert.ok(nonEmpty(T[id].age), `${id}.age`);
     assert.ok(Array.isArray(T[id].wheels) && T[id].wheels.length >= 1, `${id}.wheels`);
   }
-  assert.deepEqual(GROUPS.kids.map(id => T[id].wheels), [['12'], ['12'], ['12', '14', '16'], ['16', '20'], ['24']]);
+  assert.deepEqual(GROUPS.kids.map(id => T[id].wheels), [['12'], ['12'], ['12', '14', '16', '18'], ['16', '20'], ['24', '26']]);
   for (const id of ['balance', 'kidTraining', 'kid']) assert.ok(T[id].teach.length >= 3 && T[id].teach.length <= 4, `${id}.teach`);
   assert.ok(T.kidTraining.fear.length >= 3 && T.kidTraining.fear.length <= 4);
   for (const id of ['teen', 'kid', 'special']) assert.ok(T[id].variants.length >= 2, `${id}.variants`);
   assert.match(T.trike.note, /электр/i);
   assert.equal(T.mtb.name, 'MTB хардтейл');
   assert.equal(T.fullsus.name, 'MTB двухподвес');
-  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'cx', road: 'road', track: 'track', women: 'women', mountain: 'mtb', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'city', trike: 'city', cargo: 'city' };
+  const FIT_AS = { city: 'city', hybrid: 'hybrid', gravel: 'gravel', cx: 'cx', road: 'road', track: 'track', women: 'women', mountain: 'mtb', mtb: 'mtb', fullsus: 'fullsus', folding: 'folding', ebike: 'ebike', trike: 'city', cargo: 'city', bmx: 'bmx', teen: 'teen', kidTraining: 'kidTraining' };
   for (const id of ALL_TYPES) assert.equal(T[id].fitAs, FIT_AS[id] ?? null, `${id}.fitAs`);
 });
 
@@ -300,7 +301,7 @@ test('MTB overview and women per spec', () => {
   assert.ok(T.women.variants.length >= 3);
   assert.ok(nonEmpty(T.women.note));
   assert.match(T.women.specs.join(' '), /передач/, 'women: light gears (spec 2.2)');
-  assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', 'city', true]);
+  assert.deepEqual([T.mountain.drawAs, T.women.drawAs, T.ebike.drawAs, T.ebike.motor], ['mtb', 'women', undefined, true]);
   for (const id of ALL_TYPES) if (T[id].drawAs !== undefined) assert.ok(STYLES[T[id].drawAs], `${id}.drawAs`);
   for (const id of ALL_TYPES) if (!T[id].drawAs) assert.ok(STYLES[id], `${id}: drawn by its id`);
 });
@@ -308,7 +309,21 @@ test('MTB overview and women per spec', () => {
 test('kids wheel table', () => {
   assert.deepEqual(CONTENT.kidsWheels, [
     { from: 85, to: 100, wheel: '12' }, { from: 95, to: 110, wheel: '14' }, { from: 105, to: 120, wheel: '16' },
-    { from: 115, to: 135, wheel: '20' }, { from: 130, to: 150, wheel: '24' }]);
+    { from: 115, to: 125, wheel: '18' }, { from: 120, to: 140, wheel: '20' }, { from: 125, to: 150, wheel: '24' },
+    { from: 145, to: 165, wheel: '26' }]);
+});
+
+test('the catalog kids sizes agree with the main screen ladders', () => {
+  for (const [id, style] of [['kidTraining', 'kidTraining'], ['teen', 'teen']]) {
+    const sizes = M.sizesFor(style);
+    assert.deepEqual(CONTENT.types[id].wheels, sizes.map(z => z.wheel), id);
+    for (const z of sizes) {
+      const row = CONTENT.kidsWheels.find(w => w.wheel === z.wheel);
+      assert.ok(row, `${id}: row for ${z.wheel}`);
+      assert.deepEqual([row.from, row.to], z.h, `${id} ${z.wheel}`);
+    }
+  }
+  assert.match(CONTENT.types.teen.forWhom, /125–165 см/);
 });
 
 // ---------- accessories (sub-project B, Task 1) ----------
@@ -518,4 +533,23 @@ test('review fixes: suspension page facts and drawings', () => {
 test('no suspension makers in the content', () => {
   const s = JSON.stringify(CONTENT).toLowerCase();
   for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
+});
+
+test('the catalog opens every main-screen style', () => {
+  const { FIT_STYLES } = require('../model.js');
+  const types = CONTENT.types;
+  for (const [id, t] of Object.entries(types)) {
+    if (t.fitAs) assert.ok(FIT_STYLES.includes(t.fitAs), `${id}.fitAs ${t.fitAs} is a main-screen style`);
+  }
+  for (const id of FIT_STYLES) {
+    if (types[id]) assert.equal(types[id].fitAs, id, `${id} opens its own style`);
+  }
+  for (const id of ['ebike', 'kidTraining', 'teen', 'bmx']) assert.equal(types[id].fitAs, id);
+  assert.equal(types.ebike.drawAs, undefined, 'the e-bike card draws by its own style');
+  assert.equal(types.ebike.motor, true);
+  assert.equal(types.kidTraining.name, 'С подпорными колёсами');
+  const all = JSON.stringify(CONTENT).toLowerCase();
+  assert.ok(!all.includes('поддерживающ'), 'one term for the supporting wheels in all content');
+  assert.ok(!all.includes('стабилизатор'), 'no third term for the supporting wheels');
+  assert.equal(CONTENT.accessories.trainingWheels.name, 'Подпорные колёса');
 });

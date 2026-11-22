@@ -155,6 +155,14 @@ test('unicycle bounds are finite and narrow', () => {
   assert.ok(b.w < 1500, `width ${b.w}`);
 });
 
+test('without the rider the view still holds the parent handle grip', () => {
+  const g = gt('kidTraining');
+  assert.ok(g.parentHandle);
+  const { S } = Dr.geomPts(g);
+  const b = Dr.boundsOf(g, false, 1);
+  assert.ok(-b.y >= S.y + 290, `top ${-b.y} vs grip ${S.y + 250}`);
+});
+
 test('every catalog style draws without ids', () => {
   for (const s of Object.keys(M.STYLES)) assert.doesNotMatch(Dr.bikeMarkup(gt(s), 1, { live: false }), /\sid="/, s);
 });
@@ -220,4 +228,108 @@ test('live drawing: the shadow has an id; each wheel has a glint that does not t
     assert.ok(i >= 0 && !m.slice(i, j + 120).includes('rim-glint'), `${w}: the glint stays outside the turning group`);
   }
   assert.equal((Dr.bikeMarkup(g('hybrid'), 1, { live: false }).match(/id="shadow"/g) || []).length, 0);
+});
+
+test('copyFlags copies every non-numeric key that changed and reports it', () => {
+  const cur = { a: 1, rearShock: false, brake: 'rim' };
+  const target = { a: 2, rearShock: true, brake: 'disc', gyro: true };
+  assert.equal(Dr.copyFlags(cur, target, ['a']), true);
+  assert.equal(cur.rearShock, true);
+  assert.equal(cur.brake, 'disc');
+  assert.equal(cur.gyro, true);
+  assert.equal(cur.a, 1);
+  assert.equal(Dr.copyFlags(cur, target, ['a']), false);
+});
+
+// ---------- details of e-bike, teen and kids' bikes (feedback 6, task 11) ----------
+const DETAIL = ['display', 'reflectors', 'bell', 'parentHandle'];
+const hasK = (s, k) => new RegExp(`data-k="${k}"`).test(s);
+
+test('e-bike draws its motor without opts.motor, and a display inside the cockpit', () => {
+  const s = Dr.bikeMarkup(gt('ebike'), 1, { live: false });
+  assert.match(s, /data-k="motor"/);
+  assert.match(partBody(s, 'cockpit'), /data-k="display"/);
+  assert.doesNotMatch(Dr.bikeMarkup(gt('hybrid'), 1, { live: false }), /data-k="(motor|display)"/);
+});
+
+test('teen has a spoke reflector on each wheel, inside the turning spokes on a live drawing', () => {
+  const st = Dr.bikeMarkup(gt('teen'), 1, { live: false });
+  assert.equal((st.match(/data-k="reflectors"/g) || []).length, 2);
+  // an elongated rounded rect lying along its spoke, not a dot
+  assert.equal((st.match(/<rect class="f-reflector"[^>]*rx="\d+"[^>]*transform="translate\([^)]*\) rotate\(/g) || []).length, 2);
+  const live = Dr.bikeMarkup(gt('teen'), 1);
+  for (const id of ['wR', 'wF']) {
+    const at = live.indexOf(`<g id="${id}">`);
+    assert.ok(at >= 0, id);
+    const spokes = live.slice(at, live.indexOf('<circle class="blur-disc"', at));
+    assert.match(spokes, /<g class="spokes">/);
+    assert.match(spokes, /data-k="reflectors"/, `${id} reflector rotates with the spokes`);
+  }
+});
+
+test('kids training bike: orange rims, bell on the bar, parent handle behind the saddle', () => {
+  const s = Dr.bikeMarkup(gt('kidTraining'), 1, { live: false });
+  assert.match(s, /class="s-rim rim-accent nf"/);
+  assert.match(partBody(s, 'cockpit'), /data-k="bell"/);
+  const bell = partBody(s, 'cockpit').match(/<g data-k="bell">(.*?)<\/g>/)[1];
+  // the dome sits on the bar between the grip and the stem, not in the air behind the grip
+  const { G, C } = cockpit(gt('kidTraining'));
+  const d = bell.match(/d="([^"]+)"/)[1];
+  const xs = [d.match(/^M(\S+)/)[1], d.match(/0 0 1 (\S+)/)[1]].map(Number);
+  assert.ok(xs.length >= 2);
+  for (const x of xs) assert.ok(x >= Math.min(G.x, C.x) && x <= Math.max(G.x, C.x), `bell x ${x} within [${G.x}, ${C.x}]`);
+  assert.match(partBody(s, 'saddle'), /data-k="parentHandle"/);
+  assert.doesNotMatch(s, /data-k="(display|reflectors)"/);
+});
+
+test('plain styles have none of the new details', () => {
+  for (const style of ['road', 'hybrid', 'city', 'mtb', 'kidTrike']) {
+    const s = Dr.bikeMarkup(gt(style), 1, { live: false });
+    for (const k of DETAIL) assert.ok(!hasK(s, k), `${style} has no ${k}`);
+    assert.doesNotMatch(s, /rim-accent|f-reflector/, style);
+  }
+});
+
+// hashes made with: load the pre-task-11 draw.js as a base copy, take sha1 of bikeMarkup(gt(style),1,{live:false}) and of bikeMarkup(gt(style),1,{}), first 16 hex chars;
+// regenerate the same way if a style's markup is meant to change
+// the base commit's markup of styles without the new flags, as a hash (taken from draw.js before this task)
+test('styles without the new flags draw exactly what they drew before', () => {
+  const crypto = require('node:crypto');
+  const h = m => crypto.createHash('sha1').update(m).digest('hex').slice(0, 16);
+  const BASE = {
+    road: ['3c5042cee50d8525', 'fdfc17545cc5aedb'], hybrid: ['765ae37cf07c1302', 'd07b1737c59d82f2'],
+    city: ['16df1c04b1ecf5ef', '50054e58c2bf75e1'], mtb: ['768cf70f5e6d53fb', '2b4ecd6154d62785'],
+    kidTrike: ['bd4e36d5f9da8670', '8962e395db8f0688'], balance: ['7372585f9742ae8b', '97f79cfa70877d27'],
+    cargo: ['4b2ba403a0864540', 'ff24d109f814619a'],
+  };
+  for (const [style, [stat, live]] of Object.entries(BASE)) {
+    assert.equal(h(Dr.bikeMarkup(gt(style), 1, { live: false })), stat, `${style} static`);
+    assert.equal(h(Dr.bikeMarkup(gt(style), 1, {})), live, `${style} live`);
+  }
+});
+
+// ---------- BMX details (feedback 6, task 12) ----------
+const lineCentreX = l => { const a = l.match(/x1="([-\d.]+)"[^>]*x2="([-\d.]+)"/); return (+a[1] + +a[2]) / 2; };
+
+test('BMX has a rotor with cables inside the cockpit and gum-wall rings in the tyres', () => {
+  const s = Dr.bikeMarkup(gt('bmx'), 1, { live: false });
+  assert.match(partBody(s, 'cockpit'), /data-k="gyro"/);
+  const gy = partBody(s, 'cockpit').match(/<g data-k="gyro">(.*)<\/g>/)[1];
+  assert.match(gy, /<(ellipse|path|polygon)/, 'rotor disc');
+  assert.equal((gy.match(/<polyline/g) || []).length, 2, 'two cables');
+  const gw = partBody(s, 'tyres');
+  assert.match(gw, /data-k="gumwall"/);
+  assert.equal((gw.match(/class="s-gumwall nf"/g) || []).length, 2, 'a ring on each tyre');
+  assert.doesNotMatch(Dr.bikeMarkup(gt('city'), 1, { live: false }), /data-k="(gyro|gumwall)"/);
+});
+
+test('BMX has a single rim caliper at the rear wheel; city keeps two', () => {
+  const g = gt('bmx'), { R, F } = Dr.geomPts(g);
+  const rim = Dr.bikeMarkup(g, 1, { live: false }).match(/<g data-k="rim">(.*?)<\/g>/)[1];
+  const lines = rim.match(/<line [^>]*>/g) || [];
+  assert.equal(lines.length, 1);
+  const x = lineCentreX(lines[0]);
+  assert.ok(Math.abs(x - R.x) < Math.abs(x - F.x), `caliper x ${x} nearer R ${R.x} than F ${F.x}`);
+  const city = Dr.bikeMarkup(gt('city'), 1, { live: false }).match(/<g data-k="rim">(.*?)<\/g>/)[1];
+  assert.equal((city.match(/<line /g) || []).length, 2);
 });
