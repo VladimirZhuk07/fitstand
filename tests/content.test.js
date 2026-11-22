@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { CONTENT } = require('../content.js');
+const M = require('../model.js');
 const { BASE_TYPES, scoreQuiz } = require('../quiz.js');
 
 // Матрица из спецификации 4.1: [city, hybrid, gravel, mtb, road, folding]
@@ -274,7 +275,7 @@ test('new fields per spec', () => {
     assert.ok(nonEmpty(T[id].age), `${id}.age`);
     assert.ok(Array.isArray(T[id].wheels) && T[id].wheels.length >= 1, `${id}.wheels`);
   }
-  assert.deepEqual(GROUPS.kids.map(id => T[id].wheels), [['12'], ['12'], ['12', '14', '16'], ['16', '20'], ['24']]);
+  assert.deepEqual(GROUPS.kids.map(id => T[id].wheels), [['12'], ['12'], ['12', '14', '16', '18'], ['16', '20'], ['24', '26']]);
   for (const id of ['balance', 'kidTraining', 'kid']) assert.ok(T[id].teach.length >= 3 && T[id].teach.length <= 4, `${id}.teach`);
   assert.ok(T.kidTraining.fear.length >= 3 && T.kidTraining.fear.length <= 4);
   for (const id of ['teen', 'kid', 'special']) assert.ok(T[id].variants.length >= 2, `${id}.variants`);
@@ -308,7 +309,21 @@ test('MTB overview and women per spec', () => {
 test('kids wheel table', () => {
   assert.deepEqual(CONTENT.kidsWheels, [
     { from: 85, to: 100, wheel: '12' }, { from: 95, to: 110, wheel: '14' }, { from: 105, to: 120, wheel: '16' },
-    { from: 115, to: 135, wheel: '20' }, { from: 130, to: 150, wheel: '24' }]);
+    { from: 115, to: 125, wheel: '18' }, { from: 120, to: 140, wheel: '20' }, { from: 125, to: 150, wheel: '24' },
+    { from: 145, to: 165, wheel: '26' }]);
+});
+
+test('the catalog kids sizes agree with the main screen ladders', () => {
+  for (const [id, style] of [['kidTraining', 'kidTraining'], ['teen', 'teen']]) {
+    const sizes = M.sizesFor(style);
+    assert.deepEqual(CONTENT.types[id].wheels, sizes.map(z => z.wheel), id);
+    for (const z of sizes) {
+      const row = CONTENT.kidsWheels.find(w => w.wheel === z.wheel);
+      assert.ok(row, `${id}: row for ${z.wheel}`);
+      assert.deepEqual([row.from, row.to], z.h, `${id} ${z.wheel}`);
+    }
+  }
+  assert.match(CONTENT.types.teen.forWhom, /125–165 см/);
 });
 
 // ---------- accessories (sub-project B, Task 1) ----------
