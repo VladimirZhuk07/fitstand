@@ -5,10 +5,38 @@ const has = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
 // quiz.js: in the browser its functions are globals, in Node it is required
 const Qz = typeof module === 'object' && module.exports ? require('./quiz.js') : root;
 
+// lockAnim.js: in the browser its functions are globals, in Node it is required
+const La = typeof module === 'object' && module.exports ? require('./lockAnim.js') : root;
+
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const list = (items, cls) => `<ul class="${cls}">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+const prosCons = (pros, cons) => `<div class="pc"><div><h3>Плюсы</h3>${list(pros, 'pros')}</div><div><h3>Минусы</h3>${list(cons, 'cons')}</div></div>`;
+const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
+
 // pictures of a part's details: img/details/<detail>.webp, and <detail>-<k>.webp for its kinds
 const detailImg = (id, k) => `img/details/${id}${k === undefined ? '' : '-' + k}.webp`;
 // the principle drawing of a detail (the suspension pages): img/details/<detail>-schema.svg
 const schemaImg = id => `img/details/${id}-schema.svg`;
+
+// the sections of a detail page below the lead. h: { pic, more } (page helpers that need the DOM-side state).
+// A detail with `lock` (the suspension pages) gets the lockout animation on top and full blocks; the others stay as they were.
+function detailSections(d, id, h) {
+  const what = d.text ? sec('Что это', `<div class="det">${h.pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '';
+  const how = d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '';
+  const kinds = d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${h.pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${k.terrain ? `<p><b>Для каких трасс:</b> ${esc(k.terrain)}</p>` : ''}${prosCons(k.pros, k.cons)}</article>`).join('')) : '';
+  const care = d.care ? sec('Уход', list(d.care, 'why')) : '';
+  const usage = d.usage ? sec('Как использовать', '<div class="usage">' + d.usage.map(u => `<h3>${esc(u.title)}</h3>${list(u.list, 'why')}`).join('') + '</div>') : '';
+  const more = (d.more || []).map(h.more).join('');
+  if (d.lock) {
+    const schemaLink = `<p class="pg-note"><a class="schema-link" href="${schemaImg(id)}" target="_blank" rel="noopener">Схема целиком</a></p>`;
+    return what + how + sec('Принцип работы', La.lockBlock(d.lock) + schemaLink) + kinds +
+      (d.lockout ? sec('Как пользоваться блокировкой', list(d.lockout, 'why')) : '') + care +
+      (d.breaks ? sec('Поломки и как устранить', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}${b.fix ? `<br><b>Как устранить:</b> ${esc(b.fix)}` : ''}</li>`).join('')}</ul>`) : '') + usage + more;
+  }
+  const schema = d.schema ? sec('Принцип работы', `<a class="schema-link" href="${schemaImg(id)}" target="_blank" rel="noopener">${h.pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`, true)}</a><p class="pg-note">Нажмите на схему, чтобы открыть её крупно.</p>`) : '';
+  const breaks = d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '';
+  return what + how + schema + kinds + breaks + care + usage + more;
+}
 
 function parseRoute(hash, content) {
   const parts = String(hash || '').replace(/^#/, '').split('/');
@@ -58,7 +86,6 @@ function answerAllowed(lastAnswerAt, now) {
 function init() {
   const C = root.CONTENT, page = document.getElementById('page'), wrap = document.querySelector('.wrap');
   const fsApi = () => root.fitstand;
-  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   let lastAnswerAt = 0;
   const depth = () => (history.state && Number.isInteger(history.state.fs) ? history.state.fs : 0);
@@ -75,9 +102,6 @@ function init() {
     <div>${small ? `<div class="pg-small">${esc(small)}</div>` : ''}<h1 tabindex="-1">${esc(title)}</h1></div></header>`;
   const bike = (style, motor, hl, cls = 'pg-bike', details = false) =>
     `<svg class="bike ${cls}" data-style="${style}"${motor ? ' data-motor="1"' : ''}${hl ? ` data-hl="${hl}"` : ''}${details ? ' data-details="1"' : ''} role="img" aria-label="Схема велосипеда"></svg>`;
-  const list = (items, cls) => `<ul class="${cls}">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-  const prosCons = (pros, cons) => `<div class="pc"><div><h3>Плюсы</h3>${list(pros, 'pros')}</div><div><h3>Минусы</h3>${list(cons, 'cons')}</div></div>`;
-  const sec = (title, body) => `<section><h2>${esc(title)}</h2>${body}</section>`;
   // before: an optional line for the first step («Перед первой поездкой: …»)
   const program = (t, before) => `<section><h2>С чего начать</h2><ol class="prog">${t.program.map((s, i) => `<li><b>${esc(s.title)}</b><span>${esc(s.text)}</span>${i === 0 && before ? `<span class="prog-acc">${esc(before)}</span>` : ''}</li>`).join('')}</ol></section>`;
   const accLink = id => `<a href="#acc/${id}">${esc(C.accessories[id].name)}</a>`;
@@ -255,17 +279,12 @@ function init() {
   function detailView(pid, id) {
     const p = C.parts[pid], d = p.details.find(x => x.id === id), st = fsApi().getState();
     return head(d.name, p.name) + bike(d.style || st.style, st.motor, d.hl || `${pid}:${id}`, 'pg-bike', true) + `<p class="lead">${esc(d.short)}</p>` +
-      (d.text ? sec('Что это', `<div class="det">${pic(detailImg(id), 'var-photo', d.name)}<p>${esc(d.text)}</p></div>`) : '') +
-      (d.how ? sec('Как работает', `<p>${esc(d.how)}</p>`) : '') +
-      (d.schema ? sec('Принцип работы', `<a class="schema-link" href="${schemaImg(id)}" target="_blank" rel="noopener">${pic(schemaImg(id), 'var-photo schema', `${d.name} — принцип работы`, true)}</a><p class="pg-note">Нажмите на схему, чтобы открыть её крупно.</p>`) : '') +
-      (d.kinds ? sec('Виды', d.kinds.map((k, i) => `<article class="var">${pic(detailImg(id, i), 'var-photo', k.name)}<h3>${esc(k.name)}</h3><p>${esc(k.text)}</p>${k.terrain ? `<p><b>Для каких трасс:</b> ${esc(k.terrain)}</p>` : ''}${prosCons(k.pros, k.cons)}</article>`).join('')) : '') +
-      (d.breaks ? sec('Частые поломки и как их избежать', `<ul class="why">${d.breaks.map(b => `<li><b>${esc(b.name)}</b> — ${esc(b.text)}</li>`).join('')}</ul>`) : '') +
-      (d.care ? sec('Уход', list(d.care, 'why')) : '') +
-      (d.usage ? sec('Как использовать', '<div class="usage">' + d.usage.map(u => `<h3>${esc(u.title)}</h3>${list(u.list, 'why')}`).join('') + '</div>') : '') +
-      (d.more || []).map(more).join('');
+      detailSections(d, id, { pic, more });
   }
 
+  let lockCtl = null; // the running lockout loop of the open detail page: only one at a time
   function render() {
+    if (lockCtl) { lockCtl.stop(); lockCtl = null; }
     const r = parseRoute(location.hash, C);
     const open = r.view !== 'fit';
     page.hidden = !open;
@@ -296,6 +315,10 @@ function init() {
         health: v ? { ...v.fit, gear: v.gear } : null });
     });
     if (r.view === 'part' && C.parts[r.id].anim) root.startForkAnim(page.querySelector('.fork-anim'), C.parts[r.id].anim);
+    if (r.view === 'detail') {
+      const d = C.parts[r.part].details.find(x => x.id === r.id), el = page.querySelector('.lock-anim');
+      if (d.lock && el) lockCtl = La.startLockAnim(el, d.lock);
+    }
     page.scrollTop = 0;
     const h = page.querySelector('h1'); if (h) h.focus({ preventScroll: true });
   }
@@ -356,7 +379,7 @@ function init() {
   render();
 }
 
-const api = { parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS, detailImg, schemaImg };
+const api = { detailSections, parseRoute, backTarget, quizTarget, answerAllowed, ANSWER_GUARD_MS, detailImg, schemaImg };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else { Object.assign(root, api); if (typeof document !== 'undefined') init(); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

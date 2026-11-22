@@ -378,7 +378,7 @@ body.page-open{overflow:hidden}
 .menu-item span{font-size:13.5px;color:var(--muted)}
 .menu-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pg-hint{margin:-6px 0 10px;color:var(--muted);font-size:13px}
-.pg-note{margin:14px 0 0;color:var(--muted);font-size:12.5px;line-height:1.45}
+.pg .pg-note{margin:14px 0 0;color:var(--muted);font-size:12.5px;line-height:1.45}
 .pg-alert{margin:0 0 14px;padding:11px 14px;border-radius:12px;border:1px solid var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);font-weight:500}
 .btn[disabled]{opacity:.45;cursor:default}
 .variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:0 0 6px}
@@ -446,6 +446,19 @@ body.page-open{overflow:hidden}
 .fork-ctl{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .fork-cap{margin-top:10px;min-height:3em}
 @media (max-width:480px){.fork-scenes{grid-template-columns:1fr}.fork-scene{max-width:250px}}
+/* lockout animation: the cutaway keeps its own light panel in both themes (like the schema images), so the metal, oil and air colours stay right;
+   the caption, the step chips and the border follow the theme variables */
+.lock-anim{margin-top:18px}
+.la-stage{background:#F4F6F8;border:1px solid var(--line);border-radius:14px;padding:6px 4px}
+.la-svg{display:block;width:100%;height:auto;max-width:540px;margin:0 auto;overflow:hidden}
+.lock-anim[data-lock-kind="shock"] .la-svg{max-width:760px}
+.la-svg .la-label{fill:#1C2630}
+.la-ind.la-open{fill:#3FAE5C}
+.la-ind.la-closed{fill:#D9473F}
+.pg .la-caption{margin-top:10px;min-height:3em}
+.la-ctl{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:12px;align-items:center}
+.la-steps{display:flex;flex-wrap:wrap;gap:8px}
+.la-steps .chip[aria-checked="true"]{border-color:var(--accent);color:var(--accent)}
 .steps{margin:0;padding-left:22px;display:grid;gap:4px}
 .pg .grp{margin:36px 0 14px;font-size:14px;color:var(--ink);padding-top:14px;border-top:1px solid var(--line)}
 .pg .pg-switch+.grp,.pg .pg-head+.grp{margin-top:6px;padding-top:0;border-top:0}
@@ -937,6 +950,7 @@ changed();
 requestAnimationFrame(tick);
 </script>
 <script src="./forkAnim.js"></script>
+<script src="./lockAnim.js"></script>
 <script src="./guide.js"></script>
 </body>
 </html>

@@ -136,3 +136,53 @@ test('the schema opens full size on tap (the labels are tiny on a phone)', () =>
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
   assert.match(src, /<a class="schema-link" href="\$\{schemaImg\(id\)\}"/);
 });
+
+// ---------- lockout on the suspension pages (feedback 6) ----------
+{
+  const { detailSections } = require('../guide.js');
+  const h = { pic: () => '', more: () => '' };
+  const page = (pid, id) => detailSections(CONTENT.parts[pid].details.find(d => d.id === id), id, h);
+  const at = (html, s) => { const i = html.indexOf(`<h2>${s}</h2>`); assert.ok(i >= 0, `no section «${s}»`); return i; };
+
+  test('a suspension detail: sections in order, the lockout block on top', () => {
+    for (const id of ['springFork', 'airFork', 'rearShock']) {
+      const html = page('fork', id);
+      const order = ['Принцип работы', 'Виды', 'Как пользоваться блокировкой', 'Уход', 'Поломки и как устранить', 'Как использовать'].map(s => at(html, s));
+      assert.deepEqual(order, [...order].sort((a, b) => a - b), `${id}: order`);
+      assert.match(html, /class="lock-anim"/, id);
+      assert.ok(html.indexOf('lock-anim') > order[0] && html.indexOf('lock-anim') < order[1], `${id}: the block sits in «Принцип работы»`);
+      const link = html.indexOf('Схема целиком');
+      assert.ok(link > html.indexOf('lock-anim') && link < order[1], `${id}: the link is below the animation`);
+      assert.ok(html.includes(`href="img/details/${id}-schema.svg"`), id);
+      assert.doesNotMatch(html, /Частые поломки/, id);
+    }
+    assert.match(page('fork', 'rearShock'), /data-lock-kind="shock"/);
+  });
+
+  test('a detail without lock renders as before', () => {
+    const html = page('drivetrain', 'chain');
+    assert.doesNotMatch(html, /lock-anim/);
+    assert.doesNotMatch(html, /Схема целиком|Как пользоваться блокировкой|Поломки и как устранить/);
+    for (const s of ['Что это', 'Виды', 'Уход']) at(html, s);
+    const fd = page('drivetrain', 'fd');
+    at(fd, 'Частые поломки и как их избежать');
+    assert.doesNotMatch(fd, /Как устранить/);
+  });
+
+  test('breakdowns show how to fix', () => {
+    for (const id of ['springFork', 'airFork', 'rearShock']) {
+      const d = CONTENT.parts.fork.details.find(x => x.id === id), html = page('fork', id);
+      for (const b of d.breaks) {
+        assert.ok(html.includes(`<b>${b.name}</b>`) && html.includes(b.text), `${id}: ${b.name}`);
+        assert.ok(html.includes(`Как устранить:</b> ${b.fix}`) || html.includes(`Как устранить: ${b.fix}`), `${id}: fix of ${b.name}`);
+      }
+    }
+  });
+
+  test('guide.js starts the lock loop after rendering and stops the previous one', () => {
+    const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'guide.js'), 'utf8');
+    assert.match(src, /querySelector\('\.lock-anim'\)/);
+    assert.match(src, /startLockAnim\(el, d\.lock\)/);
+    assert.match(src, /lockCtl\.stop\(\)/);
+  });
+}

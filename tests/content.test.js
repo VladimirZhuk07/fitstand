@@ -462,7 +462,7 @@ test('pedals: combined variant and how to choose (spec 3)', () => {
 
 // ---------- suspension pages (feedback 5) ----------
 const forkDetail = id => CONTENT.parts.fork.details.find(d => d.id === id);
-const USAGE5 = ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Возможные поломки', 'Ремонт'];
+const USAGE2 = ['Рекомендации по использованию', 'Настройки'];
 const okKind = (k, label) => {
   assert.ok(nonEmpty(k.name) && nonEmpty(k.text) && nonEmpty(k.terrain), label);
   assert.ok(k.pros.length >= 1 && k.pros.length <= 3 && k.cons.length >= 1 && k.cons.length <= 3, `${label} pros/cons`);
@@ -475,9 +475,9 @@ test('fork details: spring fork page', () => {
   assert.equal(d.schema, true);
   assert.deepEqual(d.kinds.map(k => k.name), ['Пружинно-эластомерная', 'Пружинно-масляная', 'Простая пружинная']);
   d.kinds.forEach(k => okKind(k, k.name));
-  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  assert.deepEqual(d.usage.map(u => u.title), USAGE2);
   d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
-  const lock = d.usage[1].list.join(' ').toLowerCase();
+  const lock = d.lockout.join(' ').toLowerCase();
   assert.ok(lock.includes('эластомер'));
   assert.ok(!lock.includes('отключ'), 'the lockout clamps the elastomer, the spring stays');
 });
@@ -492,9 +492,9 @@ test('fork details: air fork page; settings moved from the overview', () => {
   d.kinds.forEach(k => okKind(k, k.name));
   assert.ok(d.breaks.length >= 3);
   d.breaks.forEach(b => assert.ok(nonEmpty(b.name) && nonEmpty(b.text), b.name));
-  assert.deepEqual(d.usage.map(u => u.title), ['Рекомендации по использованию', 'Зачем нужна блокировка', 'Настройки', 'Ремонт своими руками']);
-  assert.ok(d.usage[2].list.length >= 5);
-  const lock = d.usage[1].list.join(' ').toLowerCase();
+  assert.deepEqual(d.usage.map(u => u.title), USAGE2);
+  assert.ok(d.usage[1].list.length >= 5);
+  const lock = d.lockout.join(' ').toLowerCase();
   assert.ok(lock.includes('демпфер') && lock.includes('воздух'));
 });
 
@@ -506,8 +506,137 @@ test('fork details: rear shock page', () => {
   assert.equal(d.schema, true);
   assert.deepEqual(d.kinds.map(k => k.name), ['Пружинный', 'Воздушный', 'Эластомерный']);
   d.kinds.forEach(k => { okKind(k, k.name); assert.ok(/велосипед/i.test(k.text + k.terrain), `${k.name}: for which bikes`); });
-  assert.deepEqual(d.usage.map(u => u.title), USAGE5);
+  assert.deepEqual(d.usage.map(u => u.title), USAGE2);
   d.usage.forEach(u => assert.ok(u.list.length >= 2, u.title));
+});
+
+// ---------- lockout, care and breakdowns of the three suspension details (feedback 6) ----------
+test('usage keeps only recommendations and settings', () => {
+  for (const id of ['springFork', 'airFork', 'rearShock']) {
+    assert.deepEqual(forkDetail(id).usage.map(u => u.title), ['Рекомендации по использованию', 'Настройки'], id);
+  }
+});
+
+test('three suspension details: lock, lockout, care, breaks with fixes', () => {
+  for (const [id, lock] of [['springFork', 'spring'], ['airFork', 'air'], ['rearShock', 'shock']]) {
+    const d = forkDetail(id);
+    assert.equal(d.lock, lock, `${id}.lock`);
+    assert.ok(Array.isArray(d.lockout) && d.lockout.length >= 4, `${id}.lockout`);
+    d.lockout.forEach(l => assert.ok(nonEmpty(l), `${id}.lockout line`));
+    assert.ok(d.care.length >= 4 && d.care.length <= 6, `${id}.care`);
+    d.care.forEach(l => assert.ok(nonEmpty(l), `${id}.care line`));
+    assert.ok(d.breaks.length >= 3, `${id}.breaks`);
+    d.breaks.forEach(b => assert.ok(nonEmpty(b.name) && nonEmpty(b.text) && nonEmpty(b.fix), `${id}.breaks ${b.name}`));
+  }
+});
+
+test('the new lockout says where the lever is and when to switch it on and off; the shock talks about the shock', () => {
+  for (const id of ['springFork', 'airFork', 'rearShock']) {
+    const l = forkDetail(id).lockout.join(' ').toLowerCase();
+    assert.ok(l.includes('рычаг'), `${id}: where the lever is`);
+    assert.ok(l.includes('подъ') && l.includes('асфальт'), `${id}: when on`);
+    assert.ok(l.includes('спуск') && l.includes('выключ'), `${id}: when off`);
+    assert.ok(l.includes('прыга'), `${id}: no jumps while locked`);
+  }
+  const shock = forkDetail('rearShock');
+  assert.ok(!/вилк/i.test(JSON.stringify([shock.lockout, shock.care, shock.breaks, shock.usage])), 'shock texts do not talk about the fork');
+});
+
+// Snapshot of the old lockout / breakdown / repair points taken before they were moved.
+// Lockout points: `k` are 2-4 lower-case stems found in the joined new `lockout`.
+// Breakdown and repair points: `item` names the new breaks[] item that must carry the point;
+// `k` are stems found in that item's name, text and fix only.
+const OLD_POINTS = {
+  springFork: [
+    { old: 'На подъёме и по ровному асфальту вилка «кивает» при каждом нажатии на педали и забирает часть силы', in: 'lockout', k: ['кива', 'педал', 'забирает'] },
+    { old: 'У пружинно-эластомерной вилки блокировка зажимает эластомер штоком: он не может сжиматься, и вилка остаётся жёсткой', in: 'lockout', k: ['эластомер штоком', 'жёсткой'] },
+    { old: 'Пружина при этом никуда не пропадает, просто ход заперт', in: 'lockout', k: ['пружина при этом', 'заперт'] },
+    { old: 'У пружинно-масляной вилки блокировка перекрывает масляный клапан демпфера: масло не перетекает, и вилка остаётся жёсткой', in: 'lockout', k: ['масляный клапан', 'демпфер'] },
+    { old: 'На бездорожье блокировку выключают сразу, иначе удары идут в руки и в раму', in: 'lockout', k: ['бездорож', 'выключают', 'удары идут'] },
+    { old: 'Вилка стучит или «пробивает» до упора: пружина или эластомер просели, нужна замена', item: 'Вилка стучит и «пробивает» до упора', k: ['стучит', 'пробива', 'просели'] },
+    { old: 'Течёт масло из ноги: износились сальники', item: 'Течёт масло из ноги', k: ['течёт масло', 'износились сальники'] },
+    { old: 'Вилка перекошена или залипает: на ногах царапины и грязь, внутри нет смазки', item: 'Вилка перекошена или залипает', k: ['перекошена', 'залипа', 'царапины', 'нет смазки'] },
+    { old: 'Блокировка не держит: износилась игла или тросик, ход остаётся мягким', item: 'Блокировка не держит', k: ['не держит', 'износилась игла', 'тросик'] },
+    { old: 'Своими руками можно протереть и смазать нижние ноги', item: 'Вилка перекошена или залипает', k: ['протрите', 'смажьте верхние ноги'] },
+    { old: 'Подтянуть регулировочную ручку и поменять эластомер', item: 'Вилка стучит и «пробивает» до упора', k: ['эластомер на новый', 'регулировочную ручку'] },
+    { old: 'Пружину в простых вилках можно заменить самому, открутив верхнюю крышку', item: 'Вилка стучит и «пробивает» до упора', k: ['заменить самому', 'верхнюю крышку'] },
+    { old: 'Сальники лучше доверить мастерской: нужен съёмник и точная сборка', item: 'Течёт масло из ноги', k: ['мастерской', 'съёмник'] },
+    { old: 'Если вилка согнулась после удара, не пытайтесь выпрямлять: это опасно, нужна новая', item: 'Вилка согнулась после удара', k: ['согнулась', 'не выпрямляйте', 'опасно', 'новая'] },
+    { old: 'Раз в сезон разбирайте и смазывайте, если ездите по грязи и в дождь', item: 'Вилка перекошена или залипает', k: ['раз в сезон', 'разбирайте', 'в дождь'] },
+  ],
+  airFork: [
+    { old: 'Блокировка перекрывает масляный клапан демпфера: масло не может перетекать, и вилка остаётся жёсткой', in: 'lockout', k: ['масляный клапан', 'демпфер'] },
+    { old: 'Воздух в камерах при этом остаётся на месте, блокируется только демпфер', in: 'lockout', k: ['воздух в камерах', 'только демпфер'] },
+    { old: 'На подъёме и по асфальту сила уходит в движение, а не в ход вилки', in: 'lockout', k: ['асфальт', 'не в ход'] },
+    { old: 'На бездорожье блокировку выключают, иначе удары идут в руки', in: 'lockout', k: ['бездорож', 'выключают', 'удары идут'] },
+    { old: 'Вилка стравливает воздух: сухие или порезанные уплотнения не держат давление', item: 'Вилка стравливает воздух', k: ['стравлива', 'уплотнения не держат'] },
+    { old: 'Проверяйте давление перед выездом и вовремя смазывайте уплотнения', item: 'Вилка стравливает воздух', k: ['перед выездом', 'смазывайте уплотнения'] },
+    { old: 'Вилка «пробивает» до упора: давление слишком низкое или не подходит весу. Накачайте до рекомендованного и проверьте провис', item: 'Вилка «пробивает» до упора', k: ['пробива', 'слишком низкое', 'накачайте', 'провис'] },
+    { old: 'Вилка залипает и работает рывками: в ногах нет смазки или попала грязь. Протрите ноги, смажьте пыльники и сальники, не возите вилку неделями в грязи', item: 'Вилка залипает и работает рывками', k: ['залипа', 'протрите ноги', 'смажьте пыльники', 'неделями в грязи'] },
+    { old: 'Течёт масло: износились сальники или сбилась сборка. Дальше ездить опасно: масло уходит, вилка перестаёт гасить удары', item: 'Течёт масло', k: ['течёт масло', 'сбилась сборка', 'опасно'] },
+    { old: 'Проверить и подкачать давление: насос с манометром и небольшая тренировка', item: 'Вилка стравливает воздух', k: ['подкачайте', 'с манометром'] },
+    { old: 'Протереть и смазать пыльники и верх сальников специальной смазкой для вилок', item: 'Вилка стравливает воздух', k: ['смажьте пыльники', 'смазкой для вилок'] },
+    { old: 'Заменить пыльники и верхние уплотнения: при наличии инструмента и инструкции это под силу домашнему мастеру', item: 'Вилка залипает и работает рывками', k: ['замените', 'инструкции', 'домашнему мастеру'] },
+    { old: 'Замену масла в нижних ногах и ремонт картриджа лучше доверить мастерской: нужны точные объёмы и чистота', item: 'Течёт масло', k: ['доверьте мастерской', 'картриджа', 'объёмы'] },
+    { old: 'Если вилка стравливает воздух после смазки и замены пыльников, дальше нужна диагностика у мастера', item: 'Вилка стравливает воздух', k: ['после смазки', 'диагностика'] },
+  ],
+  rearShock: [
+    { old: 'На подъёме и по асфальту задняя подвеска «качается» при каждом нажатии на педали и тянет силу из педалирования', in: 'lockout', k: ['качается', 'педалирования'] },
+    { old: 'Блокировка перекрывает масляный клапан демпфера (у эластомерного — зажимает эластомер), и подвеска остаётся жёсткой', in: 'lockout', k: ['масляный клапан', 'зажимает эластомер'] },
+    { old: 'Пружина или воздух остаются на месте, блокируется только ход', in: 'lockout', k: ['пружина или воздух', 'только ход'] },
+    { old: 'На спуске и по камням блокировку выключают: заблокированный амортизатор не гасит удары', in: 'lockout', k: ['спуске', 'камням', 'выключают', 'не гасит'] },
+    { old: 'Течёт масло по штоку: износился сальник, подвеска перестаёт гасить удары', item: 'Течёт масло по штоку', k: ['течёт масло', 'износился сальник'] },
+    { old: 'Воздушный амортизатор не держит давление: изношены уплотнения', item: 'Воздушный амортизатор не держит давление', k: ['воздушный амортизатор', 'изношены уплотнения'] },
+    { old: 'Амортизатор «пробивает» до упора: пружина слабая или давление мало', item: 'Амортизатор «пробивает» до упора', k: ['пробива', 'пружина слабая', 'давление мало'] },
+    { old: 'Стучит или люфтит в креплениях: износились втулки, на которых амортизатор крепится к раме', item: 'Стучит или люфтит в креплениях', k: ['стучит', 'люфтит', 'износились втулки', 'к раме'] },
+    { old: 'Своими руками можно протереть и смазать шток и проверить давление', item: 'Воздушный амортизатор не держит давление', k: ['подкачайте', 'смажьте шток'] },
+    { old: 'Подтянуть крепления', item: 'Стучит или люфтит в креплениях', k: ['подтяните болты крепления'] },
+    { old: 'Замену сальников и масла лучше делать в мастерской: нужны точные объёмы и чистота', item: 'Течёт масло по штоку', k: ['замену сальников и масла', 'в мастерской', 'точные объёмы'] },
+    { old: 'Втулки крепления меняют специальным инструментом, поэтому лучше обратиться к мастеру', item: 'Стучит или люфтит в креплениях', k: ['втулки меняют', 'специальным инструментом', 'в мастерской'] },
+    { old: 'Если амортизатор потёк, не ездите долго: он может выйти из строя', item: 'Течёт масло по штоку', k: ['не ездите долго', 'выйти из строя'] },
+    { old: 'Если амортизатор перестал держать давление, не ездите долго: он может выйти из строя', item: 'Воздушный амортизатор не держит давление', k: ['не ездите долго', 'выйти из строя'] },
+  ],
+};
+
+test('every old lockout, breakdown and repair point found a place', () => {
+  for (const [id, points] of Object.entries(OLD_POINTS)) {
+    const d = forkDetail(id);
+    const lockout = d.lockout.join(' ').toLowerCase();
+    for (const p of points) {
+      assert.ok(p.k.length >= 1 && p.k.length <= 4, `${id}: keywords for «${p.old}»`);
+      let hay = lockout;
+      if (p.item) {
+        const items = d.breaks.filter(b => b.name === p.item);
+        assert.equal(items.length, 1, `${id}: breaks item «${p.item}» for «${p.old}»`);
+        hay = `${items[0].name} ${items[0].text} ${items[0].fix}`.toLowerCase();
+      }
+      for (const k of p.k) assert.ok(hay.includes(k), `${id}: «${k}» from «${p.old}»`);
+    }
+  }
+});
+
+test('suspension pages: repair steps sit with the matching breakdown, advice is correct', () => {
+  const spring = forkDetail('springFork'), air = forkDetail('airFork'), shock = forkDetail('rearShock');
+  const item = (d, name) => d.breaks.find(b => b.name === name);
+  // tightening the mounts belongs to the knocking, not to the air loss
+  assert.ok(item(shock, 'Стучит или люфтит в креплениях').fix.includes('подтяните'));
+  assert.ok(!item(shock, 'Воздушный амортизатор не держит давление').fix.includes('крепления'));
+  // oil streaks vs scratches on the legs
+  assert.ok(!spring.care.join(' ').includes('царапины и потёки масла'));
+  assert.ok(spring.care.join(' ').includes('Глубокие царапины'));
+  // wipe and grease the upper legs (stanchions), not the lower ones
+  assert.ok(!/нижни\S* ног/i.test(JSON.stringify([spring.care, spring.breaks])));
+  assert.ok(spring.care.join(' ').includes('поджатие'), 'preload point');
+  // one leak item per cause: no standalone "do not ride long" item
+  assert.ok(!shock.breaks.some(b => /потёк/i.test(b.name)));
+  // every breakdown says how to avoid it: text has more than the symptom
+  for (const d of [spring, air, shock]) d.breaks.forEach(b => assert.ok((b.text.match(/[.!?]/g) || []).length >= 2 || b.text.length > 90, `${d.id} ${b.name}: how to avoid`));
+  // sentences stay short
+  for (const d of [spring, air, shock]) {
+    for (const l of [...d.lockout, ...d.care, ...d.breaks.flatMap(b => [b.text, b.fix])]) {
+      for (const sentence of l.split(/(?<=[.!?])\s+/)) assert.ok(sentence.split(/\s+/).length <= 20, `${d.id}: long sentence «${sentence}»`);
+    }
+  }
 });
 
 test('twist shifter: how to use it', () => {
@@ -523,11 +652,24 @@ test('review fixes: suspension page facts and drawings', () => {
   assert.ok(air.text.includes('80–160 мм'), 'one travel range on the page');
   const airUsage = JSON.stringify(air.usage);
   assert.ok(!airUsage.includes('обслуживайте нижние ноги'), 'lower-leg service is not a home job');
-  assert.ok(spring.usage[1].list.join(' ').includes('масл'), 'the oil spring fork lockout is explained');
-  assert.ok(spring.usage[4].list.join(' ').includes('верхнюю крышку'), 'a simple spring is swapped at home');
+  assert.ok(spring.lockout.join(' ').includes('масл'), 'the oil spring fork lockout is explained');
+  assert.ok(spring.breaks.map(b => b.fix).join(' ').includes('верхнюю крышку'), 'a simple spring is swapped at home');
   assert.ok(!shock.kinds[2].terrain.includes('туристических'));
   const shifters = CONTENT.parts.drivetrain.details.find(d => d.id === 'shifters');
   assert.ok(shifters.usage[0].list.join(' ').toLowerCase().includes('запомните'));
+});
+
+test('suspension texts agree with each other (review of the lockout content)', () => {
+  const text = id => JSON.stringify(forkDetail(id));
+  assert.ok(!text('springFork').includes('нижние ноги'), 'the dirt is wiped from the upper legs');
+  assert.ok(text('springFork').includes('верхние ноги'));
+  assert.ok(!forkDetail('airFork').usage.some(u => u.list.some(l => l.includes('Раз в сезон протирайте'))), 'usage does not contradict the monthly care');
+  const oil = forkDetail('airFork').breaks.find(b => b.name === 'Течёт масло');
+  assert.ok(/не мойте|протирайте/i.test(oil.text), 'how to avoid the leak');
+  const knock = forkDetail('rearShock').breaks.find(b => b.name === 'Стучит или люфтит в креплениях');
+  assert.ok(knock.text.includes('болты') && knock.text.includes('втулки'), 'the cause: loose bolts or worn bushings');
+  const loss = forkDetail('rearShock').breaks.find(b => b.name === 'Воздушный амортизатор не держит давление');
+  assert.ok(loss.text.includes('с уходящим давлением') && !loss.text.includes('без давления'));
 });
 
 test('no suspension makers in the content', () => {
@@ -552,4 +694,25 @@ test('the catalog opens every main-screen style', () => {
   assert.ok(!all.includes('поддерживающ'), 'one term for the supporting wheels in all content');
   assert.ok(!all.includes('стабилизатор'), 'no third term for the supporting wheels');
   assert.equal(CONTENT.accessories.trainingWheels.name, 'Подпорные колёса');
+});
+
+// ---------- final review: usage must not say again what care and lockout already say ----------
+test('usage does not repeat a sentence of care or lockout on the same detail', () => {
+  // clauses of a point: split at the sentence marks and the colon; a word is cut to 5 letters so that inflections match
+  const clauses = s => s.split(/[.!?;:]\s*/).map(c => c.toLowerCase().replace(/[«»"“”,()–—-]/g, ' ').split(/\s+/).filter(w => w.length > 2).map(w => w.slice(0, 5))).filter(w => w.length >= 4);
+  const near = (a, b) => {
+    const A = new Set(a), B = new Set(b);
+    let both = 0;
+    for (const w of A) if (B.has(w)) both++;
+    return both / (A.size + B.size - both) >= 0.5;
+  };
+  const dups = [];
+  for (const id of ['springFork', 'airFork', 'rearShock']) {
+    const d = forkDetail(id);
+    const known = [...d.lockout, ...d.care].flatMap(clauses);
+    for (const u of d.usage) for (const line of u.list) for (const c of clauses(line)) {
+      for (const k of known) if (near(c, k)) dups.push(`${id} / ${u.title}: «${line}» repeats «${k.join(' ')}»`);
+    }
+  }
+  assert.deepEqual(dups, []);
 });
