@@ -41,7 +41,7 @@ const LX = 300, RX = 600;          // x-centres of the left leg (spring or air) 
 const SPRING = { top: 212, bot: 498, turns: 9, half: 15 }; // coil spring (bot = rest position of its lower end)
 // the oil arrows live in the band FLOW_TOP…FLOW_BOT around the valve plate; the reversed flow mirrors the whole group
 // about the middle of that band, so the mirrored arrows land on the same spots with the opposite direction
-const FLOW_TOP = 232, FLOW_BOT = 322;
+const FLOW_TOP = 232, FLOW_BOT = 314; // the lower arrows end above the damper piston head at full compression (y 318)
 // per-kind geometry of the parts every kind shares: the lever, the needle, the oil arrows, the impact arrow, the travel
 const FORK_GEOM = {
   lever: { x: RX, y: 157, rest: -60 }, // pivot on the crown; the drawn lever points up-right when open
@@ -58,9 +58,9 @@ const nr = v => Math.round(v * 100) / 100;
 // a translate() of d px along the geometry's compression axis (sign -1: against it); + 0 turns -0 into 0
 const shift = (g, d, sign = 1) => `translate(${nr(g.dir[0] * d * sign) + 0} ${nr(g.dir[1] * d * sign) + 0})`;
 
-// zig-zag of the coil spring: turns get closer when the lower end rises by c * TRAVEL
-function springPoints(c) {
-  const bot = SPRING.bot - c * TRAVEL, last = SPRING.turns * 2, pts = [];
+// zig-zag of the coil spring: turns get closer when the lower end rises by c * travel
+function springPoints(c, travel) {
+  const bot = SPRING.bot - c * travel, last = SPRING.turns * 2, pts = [];
   for (let i = 0; i <= last; i++) {
     const y = SPRING.top + ((bot - SPRING.top) * i) / last;
     const x = i === 0 || i === last ? LX : LX + (i % 2 ? SPRING.half : -SPRING.half);
@@ -196,7 +196,7 @@ function forkSvg(kind, aria, left, leaders, before = '', after = '') {
 function springMarkup() {
   const left = `<rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
   <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>
-  <polyline id="la-spring" points="${springPoints(0)}" fill="none" stroke="url(#la-g-spring)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline id="la-spring" points="${springPoints(0, GEOM.spring.travel)}" fill="none" stroke="url(#la-g-spring)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
   <g id="la-cup" transform="translate(0 0)"><rect x="${LX - 3}" y="510" width="6" height="221" fill="url(#la-g-steel)"/><path d="M ${LX - 17} 498 h 34 l -4 12 h -26 z" fill="url(#la-g-steel)"/></g>`;
   return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, 190, 'Пружина', 'l')]);
 }
@@ -256,17 +256,19 @@ function airMarkup() {
   const left = `<rect x="${LX - 20}" y="205" width="40" height="315" fill="url(#la-g-cavity)"/>
   <rect id="la-pos-bg" x="${AIR.x0}" y="${AIR.top}" width="${AIR.x1 - AIR.x0}" height="${AIR.pist - AIR.top}" fill="${BG_POS}"/>
   <rect id="la-neg-bg" x="${AIR.x0}" y="${AIR.pist + AIR.pistH}" width="${AIR.x1 - AIR.x0}" height="${AIR.bot - AIR.pist - AIR.pistH}" fill="${BG_NEG}"/>
-  ${a.pos.map((p, i) => dot('la-p' + i, 'la-pos', COL_POS, p)).join('')}${a.neg.map((p, i) => dot('la-n' + i, 'la-neg', COL_NEG, p)).join('')}
+  ${a.pos.map((p, i) => (BYPASS_P.includes(i) ? '' : dot('la-p' + i, 'la-pos', COL_POS, p))).join('')}${a.neg.map((p, i) => dot('la-n' + i, 'la-neg', COL_NEG, p)).join('')}
   <g id="la-apiston" transform="translate(0 0)"><rect x="${AIR.rodX - 3}" y="${AIR.pist + AIR.pistH}" width="6" height="${731 - AIR.pist - AIR.pistH}" fill="url(#la-g-steel)"/><rect x="${AIR.x0}" y="${AIR.pist}" width="${AIR.x1 - AIR.x0}" height="${AIR.pistH}" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${AIR.x0}" y="${AIR.pist + 5}" width="${AIR.x1 - AIR.x0}" height="3" fill="#14181c" opacity="0.5"/></g>
   <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>`;
   // the bypass: a tube along the outside of the stanchion with a short port through the wall at each end (drawn over the wall)
   const port = y => `<rect x="${TUBE.x + TUBE.w - 1}" y="${y}" width="${AIR.x0 - TUBE.x - TUBE.w + 1}" height="${TUBE.portH}" fill="${COL_TUBE}" stroke="#5c6770" stroke-width="1"/>`;
-  const tube = `<g id="la-bypass"><rect x="${TUBE.x}" y="${TUBE.top - 1}" width="${TUBE.w}" height="${TUBE.bot - TUBE.top + 2}" rx="3" fill="${COL_TUBE}" stroke="#5c6770" stroke-width="1"/>${port(TUBE.top)}${port(TUBE.bot - TUBE.portH)}</g>`;
+  // the travellers are drawn after the tube and the wall, so the trip through the bypass stays visible
+  const travellers = BYPASS_P.map(i => dot('la-p' + i, 'la-pos', COL_POS, a.pos[i])).join('');
+  const tube = `<g id="la-bypass"><rect x="${TUBE.x}" y="${TUBE.top - 1}" width="${TUBE.w}" height="${TUBE.bot - TUBE.top + 2}" rx="3" fill="${COL_TUBE}" stroke="#5c6770" stroke-width="1"/>${port(TUBE.top)}${port(TUBE.bot - TUBE.portH)}</g>${travellers}`;
   // the air valve (nipple) sticks out of the crown above the left leg
   const nipple = `<rect x="${LX - 8}" y="104" width="16" height="30" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${LX - 5}" y="95" width="10" height="11" rx="2" fill="url(#la-g-brass)"/>`;
   const leaders = [
     leader(LX, 112, 190, 'Ниппель', 'l'),
-    leader(LX, 216, 190, 'Позитивная камера', 'l'),
+    leader(LX, 209, 190, 'Позитивная камера', 'l'),
     // the piston rises with the legs: its leader moves with it (the line stays level, the label follows)
     `<g id="la-lead-piston" transform="translate(0 0)">${leader(LX, AIR.pist + 7, 190, 'Поршень', 'l')}</g>`,
     leader(TUBE.x + TUBE.w / 2, 440, 190, 'Байпас', 'l'),
@@ -314,7 +316,7 @@ const airPose = (g, st) => {
 };
 const PARTS = {
   air: airPose,
-  spring: (g, st) => [rise('la-cup', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c) } }],
+  spring: (g, st) => [rise('la-cup', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c, g.travel) } }],
 };
 
 function lockPose(kind, st) {

@@ -343,3 +343,21 @@ test('the damper piston is posed once per kind, with the shared parts', () => {
     assert.ok(list.indexOf('la-piston') < list.indexOf('la-hit'), 'la-piston belongs to the shared part');
   }
 });
+
+test('the bypass travellers are drawn over the tube and the wall, not under them', () => {
+  const svg = L.lockMarkup('air');
+  const tube = svg.indexOf('id="la-bypass"');
+  assert.ok(tube > 0);
+  for (const i of [0, 2, 3, 5]) assert.ok(svg.indexOf(`id="la-p${i}"`) > svg.indexOf('<g id="la-bypass"'), `la-p${i} is drawn after the tube`);
+  // and the wall (the stanchion is drawn in forkTop, before the "after" slot)
+  assert.ok(svg.indexOf('id="la-p0"') > svg.indexOf('id="la-lever"'));
+  // at c=0.3 a traveller stands inside the tube's x range
+  const pts = L.lockPose('air', { ...L.lockState(0), c: 0.3 }).filter(p => /^la-p(0|2|3|5)$/.test(p.id)).map(p => p.attrs.cx);
+  assert.ok(pts.some(x => x >= 262 && x <= 270), `traveller x: ${pts}`);
+});
+
+test('the lower oil arrows end above the damper piston head at full compression', () => {
+  const segs = flowSegments(L.lockMarkup('air'));
+  const lowest = Math.max(...segs.flatMap(s => [s[1], s[3]]));
+  assert.ok(lowest + 2 <= 430 - 0.7 * 160, `lowest arrow y ${lowest}`);
+});
