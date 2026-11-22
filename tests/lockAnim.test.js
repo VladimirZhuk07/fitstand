@@ -637,18 +637,28 @@ function fakeLockWin(reduce) {
   const q = [];
   return { q, requestAnimationFrame: cb => q.push(cb), matchMedia: () => ({ matches: reduce }) };
 }
-function fakeLockRoot() {
+function fakeLockRoot({ elements = false } = {}) {
   const mk = (attrs = {}) => ({ attrs: { ...attrs }, textContent: '', setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; } });
-  const steps = [1, 2, 3, 4].map(i => { const b = mk({ 'aria-checked': 'false' }); b.dataset = { lockStep: String(i) }; b.hasAttribute = k => k === 'data-lock-step'; b.closest = () => b; return b; });
+  const steps = [1, 2, 3, 4].map(i => { const b = mk({ 'aria-checked': i === 1 ? 'true' : 'false', tabindex: i === 1 ? '0' : '-1' }); b.dataset = { lockStep: String(i) }; b.hasAttribute = k => k === 'data-lock-step'; b.closest = () => b; b.focused = 0; b.focus = () => { b.focused++; }; return b; });
   const play = mk(); play.dataset = {}; play.hasAttribute = k => k === 'data-lock-play'; play.closest = () => play;
-  const cap = mk(), svg = mk();
-  svg.querySelector = () => null; // applyLock finds no elements: only the loop is under test here
+  // the texts count their writes: the live caption and the play button must not be rewritten with the same text
+  const counted = (el, init) => { let v = init; el.writes = 0; Object.defineProperty(el, 'textContent', { get: () => v, set: x => { el.writes++; v = x; } }); return el; };
+  counted(play, 'Пауза');
+  const cap = counted(mk({ 'aria-live': 'polite' }), L.captionOf('air', 1)), svg = mk(); // the markup shows the play text and the step 1 caption
+  const els = {}; svg.queries = 0; svg.sets = 0;
+  svg.querySelector = sel => {
+    svg.queries++;
+    if (!elements) return null;
+    const id = sel.slice(1);
+    return els[id] || (els[id] = { setAttribute(k, v) { svg.sets++; this['a_' + k] = String(v); } });
+  };
   const listeners = [];
   return {
     isConnected: true, steps, play, cap, svg, listeners,
     addEventListener(type, fn) { listeners.push([type, fn]); },
     removeEventListener(type, fn) { const i = listeners.findIndex(l => l[0] === type && l[1] === fn); if (i >= 0) listeners.splice(i, 1); },
     click(btn) { for (const [type, fn] of [...listeners]) if (type === 'click') fn({ target: btn }); },
+    key(btn, key) { const ev = { key, target: btn, prevented: false, preventDefault() { this.prevented = true; } }; for (const [type, fn] of [...listeners]) if (type === 'keydown') fn(ev); return ev; },
     querySelector(sel) { return sel === '.la-caption' ? cap : sel === '[data-lock-play]' ? play : sel === 'svg.la-svg' ? svg : null; },
     querySelectorAll(sel) { return sel === '[data-lock-step]' ? steps : []; },
   };
@@ -731,7 +741,7 @@ test('stop() ends the loop and the click handler; a second start on the same ele
   assert.equal(root.listeners.length, 0, 'the click handler is gone');
   const w2 = fakeLockWin(false), r2 = fakeLockRoot();
   const b1 = L.startLockAnim(r2, 'air', w2), b2 = L.startLockAnim(r2, 'air', w2);
-  assert.equal(r2.listeners.length, 1, 'one click handler');
+  assert.deepEqual(r2.listeners.map(l => l[0]).sort(), ['click', 'keydown'], 'one click and one keydown handler');
   w2.q.shift()(1000); w2.q.shift()(1016);
   assert.equal(w2.q.length, 1, 'only the second loop is alive');
   r2.click(r2.play);
@@ -745,4 +755,123 @@ test('the page loads lockAnim.js before guide.js and styles the block', () => {
   assert.ok(a > 0 && g > a, 'lockAnim.js before guide.js');
   for (const cls of ['.lock-anim', '.la-svg', '.la-caption', '.la-ind.la-open', '.la-ind.la-closed', '.la-label']) assert.ok(html.includes(cls), cls);
   assert.ok(html.includes('#3FAE5C') && html.includes('#D9473F'));
+});
+
+// ---- Task 5 fix round 1: keyboard steps, quiet captions, cached elements ----
+test('the step radios roam: one tab stop that follows the current step', () => {
+  const h = L.lockBlock('air');
+  assert.equal([...h.matchAll(/tabindex="0"/g)].length, 1);
+  assert.match(h, /aria-checked="true" tabindex="0" data-lock-step="1"/);
+  assert.equal([...h.matchAll(/tabindex="-1"/g)].length, 3);
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'air', win);
+  const tabs = () => root.steps.map(b => b.getAttribute('tabindex')).join(',');
+  assert.equal(tabs(), '0,-1,-1,-1');
+  root.click(root.steps[2]);
+  assert.equal(tabs(), '-1,-1,0,-1');
+  root.click(root.steps[3]);
+  assert.equal(tabs(), '-1,-1,-1,0');
+  assert.equal(a.state().step, 4);
+  const w2 = fakeLockWin(true), r2 = fakeLockRoot();
+  L.startLockAnim(r2, 'air', w2);
+  assert.equal(r2.steps.map(b => b.getAttribute('tabindex')).join(','), '-1,-1,-1,0', 'reduced motion: the impact step is the tab stop');
+});
+
+test('arrow keys move the step, wrap at the ends and pause', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'spring', win);
+  root.click(root.steps[3]);
+  assert.equal(a.state().step, 4);
+  const ev = root.key(root.steps[3], 'ArrowRight');
+  assert.equal(ev.prevented, true);
+  assert.equal(a.state().step, 1, 'ArrowRight from step 4 wraps to step 1');
+  assert.equal(a.state().playing, false);
+  assert.equal(a.state().t, 0);
+  assert.equal(root.steps[0].getAttribute('aria-checked'), 'true');
+  assert.equal(root.steps[0].focused, 1, 'focus follows the selection');
+  root.key(root.steps[0], 'ArrowLeft');
+  assert.equal(a.state().step, 4, 'ArrowLeft from step 1 wraps to step 4');
+  assert.equal(a.state().t, 7.8);
+  root.key(root.steps[3], 'ArrowUp');
+  assert.equal(a.state().step, 3);
+  root.key(root.steps[2], 'ArrowDown');
+  assert.equal(a.state().step, 4);
+  root.key(root.steps[3], 'Home');
+  assert.equal(a.state().step, 1);
+  root.key(root.steps[0], 'End');
+  assert.equal(a.state().step, 4);
+  // playing: an arrow key pauses, like a click
+  root.click(root.play);
+  assert.equal(a.state().playing, true);
+  root.key(root.steps[3], 'ArrowRight');
+  assert.equal(a.state().playing, false);
+  // other keys and other targets are left alone
+  const t = a.state().t, ev2 = root.key(root.steps[0], 'a');
+  assert.equal(ev2.prevented, false);
+  assert.equal(a.state().t, t);
+  const ev3 = root.key(null, 'ArrowRight');
+  assert.equal(ev3.prevented, false);
+  a.stop();
+  assert.equal(root.listeners.length, 0, 'click and keydown handlers are removed');
+});
+
+test('the play text and the caption are written only when they change', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  L.startLockAnim(root, 'air', win);
+  assert.equal(root.cap.writes, 0, 'the markup already shows step 1: nothing is rewritten on open');
+  assert.equal(root.play.writes, 0, 'the play text is already «Пауза»');
+  let now = 1000;
+  for (let i = 0; i < 20; i++) win.q.shift()(now += 16);
+  assert.equal(root.play.writes, 0, 'not rewritten every frame');
+  assert.equal(root.cap.writes, 0, 'the step has not changed');
+  root.click(root.play);
+  assert.equal(root.play.writes, 1);
+});
+
+test('the caption is a quiet live region while the loop plays', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  L.startLockAnim(root, 'air', win);
+  const live = () => root.cap.getAttribute('aria-live');
+  assert.equal(live(), 'off', 'the autoplay is not narrated');
+  let now = 1000;
+  for (let i = 0; i < 5; i++) win.q.shift()(now += 16);
+  assert.equal(live(), 'off');
+  root.click(root.play);                 // the user pauses
+  assert.equal(live(), 'polite');
+  root.click(root.steps[1]);             // a step button
+  assert.equal(live(), 'polite');
+  root.click(root.play);                 // resumes
+  assert.equal(live(), 'off');
+  root.click(root.steps[2]);             // a step button while playing: pauses, speaks
+  assert.equal(live(), 'polite');
+  // reduced motion: paused on the impact, but nothing is announced on open; a user action turns the region on
+  const w2 = fakeLockWin(true), r2 = fakeLockRoot();
+  L.startLockAnim(r2, 'air', w2);
+  assert.equal(r2.cap.getAttribute('aria-live'), 'off');
+  assert.equal(r2.cap.textContent, L.captionOf('air', 4));
+  r2.click(r2.steps[0]);
+  assert.equal(r2.cap.getAttribute('aria-live'), 'polite');
+  assert.equal(r2.cap.textContent, L.captionOf('air', 1));
+});
+
+test('the pose elements are looked up once and attributes are set only when they change', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot({ elements: true });
+  L.startLockAnim(root, 'air', win);
+  const queries = root.svg.queries, sets = root.svg.sets;
+  assert.equal(queries, new Set(L.lockPose('air', L.lockState(0)).map(p => p.id)).size, 'one lookup per id');
+  let now = 1000;
+  for (let i = 0; i < 10; i++) win.q.shift()(now += 16);
+  assert.equal(root.svg.queries, queries, 'no new lookups while playing');
+  assert.ok(root.svg.sets > sets, 'moving parts are updated');
+  // a paused pose set again sets nothing
+  root.click(root.steps[1]);
+  const s2 = root.svg.sets;
+  root.click(root.steps[1]);
+  root.click(root.play);
+  root.click(root.play);
+  assert.equal(root.svg.sets, s2, 'an unchanged pose sets no attribute');
+  // the plain applyLock still works
+  const el = { v: null, setAttribute(k, v) { this.v = [k, v]; } };
+  L.applyLock({ querySelector: () => el }, [{ id: 'x', attrs: { a: 1 } }]);
+  assert.deepEqual(el.v, ['a', 1]);
 });

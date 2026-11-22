@@ -487,14 +487,32 @@ const PLAY_TEXT = 'Пуск', PAUSE_TEXT = 'Пауза';
 function lockBlock(kind) {
   const drawing = lockMarkup(kind);
   if (!drawing) return '';
-  const step = (i, on) => `<button class="chip" type="button" role="radio" aria-checked="${on}" data-lock-step="${i + 1}">${STEP_NAMES[i]}</button>`;
+  const step = (i, on) => `<button class="chip" type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-lock-step="${i + 1}">${STEP_NAMES[i]}</button>`;
   return `<section class="lock-anim" data-lock-kind="${kind}"><div class="la-stage">${drawing}</div>`
     + `<p class="la-caption" aria-live="polite">${captionOf(kind, 1)}</p>`
     + `<div class="la-ctl"><div class="la-steps" role="radiogroup" aria-label="Шаги">${STEP_NAMES.map((_, i) => step(i, i === 0)).join('')}</div>`
     + `<button class="chip" type="button" data-lock-play>${PAUSE_TEXT}</button></div></section>`;
 }
 
-// one running loop per element: a second start stops the first one (its loop and its click handler)
+// like applyLock, but the elements are looked up once and an attribute is set only when its value changed
+function lockApplier(svg) {
+  const els = new Map(), seen = new Map();
+  return list => {
+    for (const p of list) {
+      if (!els.has(p.id)) els.set(p.id, svg.querySelector('#' + p.id)); // a missing element is remembered too
+      const el = els.get(p.id);
+      if (!el) continue;
+      let last = seen.get(el);
+      if (!last) seen.set(el, (last = {}));
+      for (const [k, v] of Object.entries(p.attrs)) {
+        const sv = String(v);
+        if (last[k] !== sv) { last[k] = sv; el.setAttribute(k, v); }
+      }
+    }
+  };
+}
+
+// one running loop per element: a second start stops the first one (its loop and its handlers)
 const RUNNING = typeof WeakMap === 'function' ? new WeakMap() : null;
 
 function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? window : null) {
@@ -503,27 +521,45 @@ function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? windo
   const st = { playing: !reduce, t: reduce ? HIT_NEAR : 0 }; // reduced motion: paused on the impact
   const svg = rootEl.querySelector('svg.la-svg'), cap = rootEl.querySelector('.la-caption'), play = rootEl.querySelector('[data-lock-play]');
   const steps = [...rootEl.querySelectorAll('[data-lock-step]')];
-  let last = null, stopped = false, shown = 0;
+  const apply = svg ? lockApplier(svg) : null;
+  let last = null, stopped = false, shown = 0, touched = false; // touched: the user has pressed something
+  function setLive() { // the autoplay does not narrate itself; a pause or a step button the user pressed does
+    const v = st.playing || !touched ? 'off' : 'polite';
+    if (cap && cap.getAttribute('aria-live') !== v) cap.setAttribute('aria-live', v);
+  }
   function sync() {
     const step = lockState(st.t).step;
-    if (step !== shown) { // touch the page only when the step changes (the caption is a live region)
+    if (step !== shown) { // touch the page only when the step changes
       shown = step;
-      steps.forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.lockStep) === step)));
-      if (cap) cap.textContent = captionOf(kind, step);
+      steps.forEach(b => { const on = Number(b.dataset.lockStep) === step; b.setAttribute('aria-checked', String(on)); b.setAttribute('tabindex', on ? '0' : '-1'); });
+      const text = captionOf(kind, step);
+      if (cap && cap.textContent !== text) cap.textContent = text; // the markup already shows step 1
     }
-    if (play) play.textContent = st.playing ? PAUSE_TEXT : PLAY_TEXT;
+    const label = st.playing ? PAUSE_TEXT : PLAY_TEXT;
+    if (play && play.textContent !== label) play.textContent = label;
   }
   function draw() {
-    if (svg) applyLock(svg, lockPose(kind, lockState(st.t)));
+    if (apply) apply(lockPose(kind, lockState(st.t)));
     sync();
   }
+  function select(n) { touched = true; st.t = STEP_START[n - 1]; st.playing = false; setLive(); draw(); }
   function onClick(e) {
     const b = e.target && e.target.closest && e.target.closest('button');
     if (!b) return;
-    if (b.hasAttribute('data-lock-step')) { st.t = STEP_START[Number(b.dataset.lockStep) - 1]; st.playing = false; }
-    else if (b.hasAttribute('data-lock-play')) { st.playing = !st.playing; last = null; }
-    else return;
-    draw();
+    if (b.hasAttribute('data-lock-step')) select(Number(b.dataset.lockStep));
+    else if (b.hasAttribute('data-lock-play')) { touched = true; st.playing = !st.playing; last = null; setLive(); draw(); }
+  }
+  // the step buttons are radios: arrows move the selection (and the focus), wrapping at the ends
+  function onKey(e) {
+    const b = e.target && e.target.closest && e.target.closest('[data-lock-step]');
+    if (!b || e.altKey || e.ctrlKey || e.metaKey) return;
+    const cur = Number(b.dataset.lockStep);
+    const next = { ArrowRight: cur % 4 + 1, ArrowDown: cur % 4 + 1, ArrowLeft: (cur + 2) % 4 + 1, ArrowUp: (cur + 2) % 4 + 1, Home: 1, End: 4 }[e.key];
+    if (!next) return;
+    e.preventDefault();
+    select(next);
+    const nb = steps.find(x => Number(x.dataset.lockStep) === next);
+    if (nb && nb.focus) nb.focus();
   }
   function frame(now) {
     if (stopped || !rootEl.isConnected) return;
@@ -537,13 +573,14 @@ function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? windo
   const ctl = {
     stop() {
       stopped = true;
-      if (rootEl.removeEventListener) rootEl.removeEventListener('click', onClick);
+      if (rootEl.removeEventListener) { rootEl.removeEventListener('click', onClick); rootEl.removeEventListener('keydown', onKey); }
       if (RUNNING && RUNNING.get(rootEl) === ctl) RUNNING.delete(rootEl);
     },
     state: () => ({ ...st, step: lockState(st.t).step }),
   };
-  if (rootEl.addEventListener) rootEl.addEventListener('click', onClick);
+  if (rootEl.addEventListener) { rootEl.addEventListener('click', onClick); rootEl.addEventListener('keydown', onKey); }
   if (RUNNING) RUNNING.set(rootEl, ctl);
+  setLive();
   draw();
   if (win) win.requestAnimationFrame(frame);
   return ctl;
