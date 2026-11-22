@@ -12,7 +12,7 @@ test('cache version is v19', () => assert.match(sw, /const VERSION = 'fitstand-v
 
 test('every script of the page is cached for offline', () => {
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
-  assert.ok(scripts.length === 9, `scripts: ${scripts}`);
+  assert.ok(scripts.length === 10, `scripts: ${scripts}`);
   assert.ok(core.includes('./forkAnim.js'), 'forkAnim.js in CORE');
   for (const s of scripts) assert.ok(core.includes(s), `${s} missing in CORE`);
 });

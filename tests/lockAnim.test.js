@@ -56,6 +56,8 @@ test('sw caches lockAnim.js', () => {
 });
 
 // ---- Task 2: the spring fork drawing and its frames ----
+// the viewBox of the first drawing in the markup as [x0, y0, x1, y1]
+const viewBoxOf = html => { const v = /viewBox="(-?[\d.]+) (-?[\d.]+) ([\d.]+) ([\d.]+)"/.exec(html).slice(1).map(Number); return [v[0], v[1], v[0] + v[2], v[1] + v[3]]; };
 const ids = html => [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 // inner markup of the <g> that carries the given id (balanced <g> … </g>)
 function groupInner(html, id) {
@@ -73,7 +75,7 @@ function groupInner(html, id) {
 
 test('spring cutaway: labelled parts and moving ids', () => {
   const svg = L.lockMarkup('spring');
-  assert.ok(svg.includes('class="la-svg"') && svg.includes('data-lock="spring"') && svg.includes('viewBox="0 0 900 900"'));
+  assert.ok(svg.includes('class="la-svg"') && svg.includes('data-lock="spring"') && svg.includes('viewBox="-6 10 912 890"'));
   const have = ids(svg);
   for (const id of ['la-lever', 'la-ind', 'la-needle', 'la-cross', 'la-flow', 'la-hit', 'la-move', 'la-spring']) assert.ok(have.includes(id), id);
   const labels = [...svg.matchAll(/<text class="la-label"[^>]*>([^<]+)<\/text>/g)].map(m => m[1]);
@@ -198,7 +200,7 @@ test('the hit arrow stays inside the picture even when far', () => {
     const maxY = Math.max(...poly.trim().split(/\s+/).map(p => Number(p.split(',')[1])));
     const far = L.lockPose(kind, { ...L.lockState(0), hitD: 1 }).find(p => p.id === 'la-hit');
     const dy = Number(/translate\(0 ([\d.]+)\)/.exec(far.attrs.transform)[1]);
-    assert.ok(maxY + dy + 1 <= 900, `tail at ${maxY + dy}`);
+    assert.ok(maxY + dy + 1.5 <= viewBoxOf(svg)[3], `tail at ${maxY + dy}`);
     assert.ok(/translate\(0 [\d.]+\)/.test(/<g id="la-hit"[^>]*transform="([^"]+)"/.exec(svg)[1]));
   }
 });
@@ -227,7 +229,7 @@ const meanDist = pts => {
 
 test('air cutaway: two chambers of particles, a bypass, labels', () => {
   const svg = L.lockMarkup('air'), have = ids(svg);
-  assert.ok(svg.includes('data-lock="air"') && svg.includes('viewBox="0 0 900 900"'));
+  assert.ok(svg.includes('data-lock="air"') && svg.includes('viewBox="-6 10 912 890"'));
   for (const id of ['la-lever', 'la-ind', 'la-needle', 'la-cross', 'la-flow', 'la-hit', 'la-move', 'la-bypass', 'la-leg-l', 'la-leg-r']) assert.ok(have.includes(id), id);
   for (let i = 0; i < 18; i++) assert.ok(have.includes('la-p' + i), 'la-p' + i);
   for (let i = 0; i < 12; i++) assert.ok(have.includes('la-n' + i), 'la-n' + i);
@@ -364,12 +366,12 @@ test('the lower oil arrows end above the damper piston head at full compression'
 
 // ---- Task 4: the rear shock (side view, horizontal body; the shaft and the far eye slide left) ----
 const poseOf = (kind, st) => Object.fromEntries(L.lockPose(kind, st).map(p => [p.id, p.attrs]));
-const labelsOf = svg => [...svg.matchAll(/<text class="la-label" x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)"[^>]*>([^<]+)<\/text>/g)]
-  .map(m => ({ x: Number(m[1]), y: Number(m[2]), anchor: m[3], text: m[4] }));
-// a rough box of a label: 18 px Arial, about 10 px per letter
+const labelsOf = svg => [...svg.matchAll(/<text class="la-label" x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)"[^>]*font-size="(\d+)"[^>]*>([^<]+)<\/text>/g)]
+  .map(m => ({ x: Number(m[1]), y: Number(m[2]), anchor: m[3], fs: Number(m[4]), text: m[5] }));
+// a rough box of a label: Arial, about 0.58 em per letter (measured in a browser: the widest label is 0.57 em per letter), 0.8 em above the baseline, 0.2 em below
 const boxOf = (l, dx = 0) => {
-  const w = l.text.length * 10, x0 = l.anchor === 'middle' ? l.x - w / 2 : l.anchor === 'end' ? l.x - w : l.x;
-  return [x0 + dx, l.y - 14, x0 + w + dx, l.y + 4];
+  const w = l.text.length * l.fs * 0.58, x0 = l.anchor === 'middle' ? l.x - w / 2 : l.anchor === 'end' ? l.x - w : l.x;
+  return [x0 + dx, l.y - l.fs * 0.8, x0 + w + dx, l.y + l.fs * 0.2];
 };
 const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
 const SH = L.SHOCK_LAYOUT, SHOCK_CY = SH.cy, TS = L.TRAVEL_SHOCK;
@@ -378,7 +380,7 @@ const hitTip = SH.eye2 + SH.eyeR + 6;  // the tip of the impact arrow when it to
 
 test('shock cutaway: two eyes, a shaft, labels, moving ids', () => {
   const svg = L.lockMarkup('shock'), have = ids(svg);
-  assert.ok(svg.includes('class="la-svg"') && svg.includes('data-lock="shock"') && svg.includes('viewBox="0 0 1000 600"'));
+  assert.ok(svg.includes('class="la-svg"') && svg.includes('data-lock="shock"') && svg.includes('viewBox="10 44 984 438"'));
   for (const id of ['la-eye1', 'la-eye2', 'la-shaft', 'la-move', 'la-piston', 'la-lever', 'la-ind', 'la-needle', 'la-flow', 'la-cross', 'la-hit']) assert.ok(have.includes(id), id);
   // the far eye and the shaft slide inside la-move, the near eye (frame side) stays out of it
   const move = groupInner(svg, 'la-move');
@@ -467,7 +469,7 @@ test('shock: the hit arrow comes from the right and stays inside the picture eve
   const tip = poly.reduce((a, p) => (p[0] < a[0] ? p : a)), tail = Math.max(...poly.map(p => p[0]));
   assert.equal(tip[1], SHOCK_CY, 'the tip is on the axis');
   assert.equal(tip[0], hitTip, 'the tip touches the far eye');
-  assert.ok(tail + 60 + 1 <= 1000, `tail at ${tail + 60}`);
+  assert.ok(tail + 60 + 1.5 <= viewBoxOf(svg)[2], `tail at ${tail + 60}`);
   assert.ok(/translate\(60 0\)/.test(/<g id="la-hit"[^>]*transform="([^"]+)"/.exec(svg)[1]));
 });
 
@@ -483,7 +485,7 @@ test('shock: the lever label line stays above the lever arc', () => {
 
 test('shock: labels stay clear of every moving part through the whole travel', () => {
   const svg = L.lockMarkup('shock'), cy = SHOCK_CY, eye2Group = groupInner(svg, 'la-lead-eye2');
-  const all = labelsOf(svg), movingText = labelsOf(eye2Group)[0];
+  const all = labelsOf(svg), movingText = labelsOf(eye2Group)[0], vb = viewBoxOf(svg);
   const hit = /<g id="la-hit"[^>]*><polygon points="([^"]+)"/.exec(svg)[1].trim().split(/\s+/).map(p => p.split(',').map(Number));
   const farShift = Number(/translate\(([\d.]+) 0\)/.exec(poseOf('shock', { ...L.lockState(0), hitD: 1 })['la-hit'].transform)[1]);
   const hitBox = [hitTip, cy - 20, Math.max(...hit.map(p => p[0])) + farShift, cy + 20];
@@ -502,9 +504,9 @@ test('shock: labels stay clear of every moving part through the whole travel', (
     for (const l of still) for (const b of moving) assert.ok(!overlap(boxOf(l), b), `${l.text} meets a moving part at c=${c.toFixed(1)}`);
     for (const l of still) assert.ok(!overlap(boxOf(l), boxOf(movingText, d)), `${l.text} meets the moving label at c=${c.toFixed(1)}`);
     const mb = boxOf(movingText, d);
-    assert.ok(mb[0] >= 0 && mb[2] <= 1000, 'the moving label stays inside the picture');
+    assert.ok(mb[0] >= vb[0] && mb[2] <= vb[2], 'the moving label stays inside the picture');
   }
-  for (const l of all) { const b = boxOf(l); assert.ok(b[0] >= 0 && b[2] <= 1000 && b[1] >= 0 && b[3] <= 600, `${l.text} inside the viewBox`); }
+  for (const l of all) { const b = boxOf(l); assert.ok(b[0] >= vb[0] && b[2] <= vb[2] && b[1] >= vb[1] && b[3] <= vb[3], `${l.text} inside the viewBox`); }
   // no label sits on another
   for (let i = 0; i < still.length; i++) for (let j = i + 1; j < still.length; j++) assert.ok(!overlap(boxOf(still[i]), boxOf(still[j])), `${still[i].text} / ${still[j].text}`);
   // the static leader lines (after their first 8 px) never enter the swept area of the far eye, the shaft or the hit arrow
@@ -591,4 +593,156 @@ test('shock: the lever housing stands on the body', () => {
     assert.ok(y <= cy - 100 + 22 + 1, 'the post starts at the housing');
     assert.ok(Math.abs(x + w / 2 - SH.px) > 3 + w / 2, 'the post is off the needle stem');
   }
+});
+
+// ---- Task 5: the page block with steps, pause and reduced motion ----
+const STEP_NAMES = ['1 Сжатие', '2 Отбой', '3 Блокировка', '4 Удар'];
+
+test('lockBlock: four step buttons, a play button, a live caption', () => {
+  for (const kind of ['spring', 'air', 'shock']) {
+    const h = L.lockBlock(kind);
+    assert.ok(h.startsWith(`<section class="lock-anim" data-lock-kind="${kind}">`), kind);
+    assert.ok(h.includes(`data-lock="${kind}"`), 'the drawing is inside');
+    assert.match(h, /<p class="la-caption" aria-live="polite">/);
+    assert.match(h, /role="radiogroup"/);
+    for (let i = 1; i <= 4; i++) {
+      assert.match(h, new RegExp(`<button[^>]*role="radio"[^>]*data-lock-step="${i}"[^>]*>${STEP_NAMES[i - 1]}</button>`), `step ${i}`);
+    }
+    assert.equal([...h.matchAll(/data-lock-step="/g)].length, 4);
+    assert.equal([...h.matchAll(/role="radio"/g)].length, 4);
+    assert.equal([...h.matchAll(/aria-checked="true"/g)].length, 1, 'one step is current');
+    assert.match(h, /<button[^>]*data-lock-play[^>]*>Пауза<\/button>/);
+  }
+  assert.equal(L.lockBlock('nope'), '');
+});
+
+test('captions: the shock says амортизатор', () => {
+  assert.equal(L.LOCK_CAPTIONS.length, 4);
+  assert.equal(L.captionOf('air', 1), 'Блокировка открыта: вилка сжимается на кочке, масло свободно проходит через клапан');
+  assert.equal(L.captionOf('spring', 2), 'Отбой: вилка возвращается, масло течёт обратно');
+  assert.equal(L.captionOf('air', 3), 'Рычаг повернули: индикатор красный, игла перекрывает масло');
+  assert.equal(L.captionOf('spring', 4), 'Удар при закрытой блокировке: масло не проходит, вилка не сжимается');
+  for (let s = 1; s <= 4; s++) {
+    assert.ok(!/вилк/.test(L.captionOf('shock', s)), `shock step ${s}`);
+    assert.ok(L.captionOf('air', s).length > 20);
+  }
+  assert.equal(L.captionOf('shock', 1), 'Блокировка открыта: амортизатор сжимается на кочке, масло свободно проходит через клапан');
+  assert.equal(L.captionOf('shock', 2), 'Отбой: амортизатор возвращается, масло течёт обратно');
+  assert.equal(L.captionOf('shock', 4), 'Удар при закрытой блокировке: масло не проходит, амортизатор не сжимается');
+  assert.ok(L.lockBlock('shock').includes('амортизатор сжимается'));
+});
+
+// a fake page: rAF callbacks are kept and run by hand; the root keeps its click listeners and a few elements
+function fakeLockWin(reduce) {
+  const q = [];
+  return { q, requestAnimationFrame: cb => q.push(cb), matchMedia: () => ({ matches: reduce }) };
+}
+function fakeLockRoot() {
+  const mk = (attrs = {}) => ({ attrs: { ...attrs }, textContent: '', setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; } });
+  const steps = [1, 2, 3, 4].map(i => { const b = mk({ 'aria-checked': 'false' }); b.dataset = { lockStep: String(i) }; b.hasAttribute = k => k === 'data-lock-step'; b.closest = () => b; return b; });
+  const play = mk(); play.dataset = {}; play.hasAttribute = k => k === 'data-lock-play'; play.closest = () => play;
+  const cap = mk(), svg = mk();
+  svg.querySelector = () => null; // applyLock finds no elements: only the loop is under test here
+  const listeners = [];
+  return {
+    isConnected: true, steps, play, cap, svg, listeners,
+    addEventListener(type, fn) { listeners.push([type, fn]); },
+    removeEventListener(type, fn) { const i = listeners.findIndex(l => l[0] === type && l[1] === fn); if (i >= 0) listeners.splice(i, 1); },
+    click(btn) { for (const [type, fn] of [...listeners]) if (type === 'click') fn({ target: btn }); },
+    querySelector(sel) { return sel === '.la-caption' ? cap : sel === '[data-lock-play]' ? play : sel === 'svg.la-svg' ? svg : null; },
+    querySelectorAll(sel) { return sel === '[data-lock-step]' ? steps : []; },
+  };
+}
+
+test('reduced motion: paused on the impact', () => {
+  const win = fakeLockWin(true), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'air', win);
+  const s = a.state();
+  assert.equal(s.playing, false);
+  assert.equal(s.t, 7.8);
+  assert.equal(root.steps[3].getAttribute('aria-checked'), 'true');
+  assert.equal(root.steps[0].getAttribute('aria-checked'), 'false');
+  assert.equal(root.cap.textContent, L.captionOf('air', 4));
+  assert.equal(root.play.textContent, 'Пуск');
+  win.q.shift()(1000); win.q.shift()(2000);
+  assert.equal(a.state().t, 7.8, 'the time stands still');
+});
+
+test('time advances, capped per frame; the caption and the radios follow the step', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'shock', win);
+  assert.equal(a.state().playing, true);
+  assert.equal(root.play.textContent, 'Пауза');
+  win.q.shift()(1000); win.q.shift()(1016);
+  assert.ok(a.state().t > 0.015 && a.state().t < 0.017);
+  win.q.shift()(61016); // a minute in the background
+  assert.ok(a.state().t < 0.07, 'no jump after the tab comes back');
+  assert.equal(root.cap.textContent, L.captionOf('shock', 1));
+  let now = 61016;
+  while (a.state().t < 3.2) { now += 50; win.q.shift()(now); }
+  assert.equal(root.cap.textContent, L.captionOf('shock', 2));
+  assert.equal(root.steps[1].getAttribute('aria-checked'), 'true');
+  assert.equal(root.steps[0].getAttribute('aria-checked'), 'false');
+});
+
+test('a step button jumps and pauses', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'spring', win);
+  win.q.shift()(1000);
+  root.click(root.steps[2]);
+  assert.equal(a.state().t, 5);
+  assert.equal(a.state().playing, false);
+  assert.equal(root.steps[2].getAttribute('aria-checked'), 'true');
+  assert.equal(root.cap.textContent, L.captionOf('spring', 3));
+  assert.equal(root.play.textContent, 'Пуск');
+  root.click(root.steps[3]);
+  assert.equal(a.state().t, 7.8, 'step 4 is the moment of the impact');
+  root.click(root.steps[0]);
+  assert.equal(a.state().t, 0);
+  root.click(root.steps[1]);
+  assert.equal(a.state().t, 3);
+  win.q.shift()(2000); win.q.shift()(3000);
+  assert.equal(a.state().t, 3, 'paused: the time does not move');
+  root.click(root.play);
+  assert.equal(a.state().playing, true);
+  assert.equal(root.play.textContent, 'Пауза');
+  win.q.shift()(4000); win.q.shift()(4016);
+  assert.ok(a.state().t > 3.015 && a.state().t < 3.017, 'resumes from where it stood');
+});
+
+test('the loop stops when the block leaves the page', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  L.startLockAnim(root, 'air', win);
+  assert.equal(win.q.length, 1);
+  win.q.shift()(1000);
+  assert.equal(win.q.length, 1, 'keeps running while on the page');
+  root.isConnected = false;
+  win.q.shift()(1016);
+  assert.equal(win.q.length, 0, 'no new frame after leaving');
+});
+
+test('stop() ends the loop and the click handler; a second start on the same element leaves one loop', () => {
+  const win = fakeLockWin(false), root = fakeLockRoot();
+  const a = L.startLockAnim(root, 'air', win);
+  win.q.shift()(1000);
+  a.stop();
+  win.q.shift()(1016);
+  assert.equal(win.q.length, 0, 'no frame after stop');
+  assert.equal(root.listeners.length, 0, 'the click handler is gone');
+  const w2 = fakeLockWin(false), r2 = fakeLockRoot();
+  const b1 = L.startLockAnim(r2, 'air', w2), b2 = L.startLockAnim(r2, 'air', w2);
+  assert.equal(r2.listeners.length, 1, 'one click handler');
+  w2.q.shift()(1000); w2.q.shift()(1016);
+  assert.equal(w2.q.length, 1, 'only the second loop is alive');
+  r2.click(r2.play);
+  assert.equal(b2.state().playing, false, 'one click toggles once');
+  assert.equal(b1.state().playing, true, 'the first controller no longer reacts');
+});
+
+test('the page loads lockAnim.js before guide.js and styles the block', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const a = html.indexOf('<script src="./lockAnim.js"></script>'), g = html.indexOf('<script src="./guide.js"></script>');
+  assert.ok(a > 0 && g > a, 'lockAnim.js before guide.js');
+  for (const cls of ['.lock-anim', '.la-svg', '.la-caption', '.la-ind.la-open', '.la-ind.la-closed', '.la-label']) assert.ok(html.includes(cls), cls);
+  assert.ok(html.includes('#3FAE5C') && html.includes('#D9473F'));
 });

@@ -105,16 +105,25 @@ const defs = `<defs>
   <marker id="la-g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#6b3f04"/></marker>
 </defs>`;
 
+// label sizes in viewBox units: the block is about 360 px wide on a phone, so the text is large and the drawings are cropped to their content
+const FS = { fork: 26, shock: 28 };
+// where the leader lines of the front-view fork end: left of the crown, left of the lower leg, right of the lower leg
+const EDGE_CROWN = 190, EDGE_L = 244, EDGE_R = 666;
+const LEADER_W = 2, DOT_R = 4.5;
+// the viewBox of each drawing is its measured content (labels, leaders and the impact arrow in its far position) plus a small margin:
+// forks end at the far hit arrow (y 894), the shock is wide and low
+const VIEWBOX = { fork: '-6 10 912 890', shock: '10 44 984 438' };
+
 // a leader line from a point on a part to its label (side 'l' = label on the left of the fork);
 // with ly set, the line first goes vertically to the label's height (to keep clear of moving parts)
-function leader(x, y, edge, text, side, ly = y) {
+function leader(x, y, edge, text, side, ly = y, fs = FS.fork) {
   const tx = side === 'l' ? edge - 6 : edge + 6;
   const line = ly === y
-    ? `<line class="la-leader" x1="${x}" y1="${y}" x2="${edge}" y2="${y}" stroke="#8b97a2" stroke-width="1.2"/>`
-    : `<path class="la-leader" d="M ${x} ${y} V ${ly} H ${edge}" fill="none" stroke="#8b97a2" stroke-width="1.2"/>`;
+    ? `<line class="la-leader" x1="${x}" y1="${y}" x2="${edge}" y2="${y}" stroke="#8b97a2" stroke-width="${LEADER_W}"/>`
+    : `<path class="la-leader" d="M ${x} ${y} V ${ly} H ${edge}" fill="none" stroke="#8b97a2" stroke-width="${LEADER_W}"/>`;
   return line
-    + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="3.2" fill="#24303a"/>`
-    + `<text class="la-label" x="${tx}" y="${ly + 6}" text-anchor="${side === 'l' ? 'end' : 'start'}" font-family="${FONT}" font-size="18" fill="#1c2630">${text}</text>`;
+    + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="${DOT_R}" fill="#24303a"/>`
+    + `<text class="la-label" x="${tx}" y="${ly + Math.round(fs * 0.34)}" text-anchor="${side === 'l' ? 'end' : 'start'}" font-family="${FONT}" font-size="${fs}" fill="#1c2630">${text}</text>`;
 }
 
 // the lower leg: open-top shell with a dark cavity, a seal ring on top and the axle hole at the bottom
@@ -195,24 +204,24 @@ function hitArrow(g) {
 function forkLeaders(g) {
   const lv = g.lever;
   return [
-    leader(228, 158, 190, 'Корона', 'l'),
-    leader(LX - 24, 262, 190, 'Верхняя нога', 'l'),
+    leader(228, 158, EDGE_CROWN, 'Корона', 'l'),
+    leader(LX - 24, 262, EDGE_L, 'Верхняя нога', 'l'),
     // the seal point is the stanchion bushing: the stanchion never moves, so the dot stays on metal through the whole travel
-    leader(LX - 25, 528, 190, 'Сальник', 'l'),
-    leader(LX - 44, 600, 190, 'Нижняя нога', 'l'),
+    leader(LX - 25, 528, EDGE_L, 'Сальник', 'l'),
+    leader(LX - 44, 600, EDGE_L, 'Нижняя нога', 'l'),
     // from the top of the pivot straight up, above the arc the lever sweeps, then to the label
-    leader(lv.x - 12, lv.y - 18, 712, 'Рычаг блокировки', 'r', 70),
-    leader(RX, 214, 712, 'Игла', 'r'),
-    leader(RX + 15, 272, 712, 'Клапан', 'r'),
-    leader(RX + 14, 480, 712, 'Демпфер', 'r'),
-    leader(RX, 590, 712, 'Шток', 'r'),
+    leader(lv.x - 12, lv.y - 18, EDGE_R, 'Рычаг блокировки', 'r', 66),
+    leader(RX, 214, EDGE_R, 'Игла', 'r'),
+    leader(RX + 15, 272, EDGE_R, 'Клапан', 'r'),
+    leader(RX + 14, 480, EDGE_R, 'Демпфер', 'r'),
+    leader(RX, 590, EDGE_R, 'Шток', 'r'),
   ];
 }
 
 // the frame every fork shares: left = markup of the left leg, leaders = the labels of that leg, before = drawn under the crown, after = drawn over the stanchions
 function forkSvg(kind, aria, left, leaders, before = '', after = '') {
   const g = GEOM[kind];
-  return `<svg class="la-svg" data-lock="${kind}" viewBox="0 0 900 900" role="img" aria-label="${aria}">${defs}
+  return `<svg class="la-svg" data-lock="${kind}" viewBox="${VIEWBOX.fork}" role="img" aria-label="${aria}">${defs}
   ${lowerLegs()}
   ${left}
   ${damperLeg(g, RX)}
@@ -227,7 +236,7 @@ function springMarkup() {
   <rect x="${LX - 20}" y="205" width="40" height="8" fill="url(#la-g-steel)"/>
   <polyline id="la-spring" points="${springPoints(0, GEOM.spring.travel)}" fill="none" stroke="url(#la-g-spring)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
   <g id="la-cup" transform="translate(0 0)"><rect x="${LX - 3}" y="510" width="6" height="221" fill="url(#la-g-steel)"/><path d="M ${LX - 17} 498 h 34 l -4 12 h -26 z" fill="url(#la-g-steel)"/></g>`;
-  return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, 190, 'Пружина', 'l')]);
+  return forkSvg('spring', 'Пружинная вилка в разрезе, вид спереди', left, [leader(LX, 320, EDGE_L, 'Пружина', 'l')]);
 }
 
 // ---- the air fork: the left leg holds two air chambers split by a piston; the bypass tube runs outside its wall ----
@@ -296,12 +305,12 @@ function airMarkup() {
   // the air valve (nipple) sticks out of the crown above the left leg
   const nipple = `<rect x="${LX - 8}" y="104" width="16" height="30" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${LX - 5}" y="95" width="10" height="11" rx="2" fill="url(#la-g-brass)"/>`;
   const leaders = [
-    leader(LX, 112, 190, 'Ниппель', 'l'),
-    leader(LX, 209, 190, 'Позитивная камера', 'l'),
+    leader(LX, 112, EDGE_L, 'Ниппель', 'l'),
+    leader(LX, 209, EDGE_L, 'Позитивная камера', 'l'),
     // the piston rises with the legs: its leader moves with it (the line stays level, the label follows)
-    `<g id="la-lead-piston" transform="translate(0 0)">${leader(LX, AIR.pist + 7, 190, 'Поршень', 'l')}</g>`,
-    leader(TUBE.x + TUBE.w / 2, 440, 190, 'Байпас', 'l'),
-    leader(LX, 480, 190, 'Негативная камера', 'l'),
+    `<g id="la-lead-piston" transform="translate(0 0)">${leader(LX, AIR.pist + 7, EDGE_L, 'Поршень', 'l')}</g>`,
+    leader(TUBE.x + TUBE.w / 2, 440, EDGE_L, 'Байпас', 'l'),
+    leader(LX, 480, EDGE_L, 'Негативная камера', 'l'),
   ];
   return forkSvg('air', 'Воздушная вилка в разрезе, вид спереди', left, leaders, nipple, tube);
 }
@@ -312,10 +321,10 @@ function airMarkup() {
 const shockEye = (id, x, behind = '') => `<g id="${id}">${behind}<circle cx="${x}" cy="${SH.cy}" r="${SH.eyeR}" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/><path d="M ${x - 19} ${SH.cy - 10} A 21 21 0 0 1 ${x - 5} ${SH.cy - 20}" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.3"/><circle cx="${x}" cy="${SH.cy}" r="10" fill="#22282f" stroke="#c5ced6" stroke-width="2"/></g>`;
 
 // a vertical leader: a line from the point straight to the label height, the label centred on it (above or below)
-function leaderV(x, y, ly, text) {
-  return `<line class="la-leader" x1="${x}" y1="${y}" x2="${x}" y2="${ly}" stroke="#8b97a2" stroke-width="1.2"/>`
-    + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="3.2" fill="#24303a"/>`
-    + `<text class="la-label" x="${x}" y="${ly > y ? ly + 18 : ly - 6}" text-anchor="middle" font-family="${FONT}" font-size="18" fill="#1c2630">${text}</text>`;
+function leaderV(x, y, ly, text, fs = FS.shock) {
+  return `<line class="la-leader" x1="${x}" y1="${y}" x2="${x}" y2="${ly}" stroke="#8b97a2" stroke-width="${LEADER_W}"/>`
+    + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="${DOT_R}" fill="#24303a"/>`
+    + `<text class="la-label" x="${x}" y="${ly > y ? ly + fs : ly - 8}" text-anchor="middle" font-family="${FONT}" font-size="${fs}" fill="#1c2630">${text}</text>`;
 }
 
 // the damper body with its oil, the air can around the exit of the shaft, the valve partition, the needle, the oil arrows and the cross
@@ -367,12 +376,12 @@ function shockLeaders(g) {
   const { cy, px, eye1, eye2 } = SH, lv = g.lever;
   return [
     // from the top of the housing straight up, left of the sweep of the lever (it swings right), then to the label
-    leader(lv.x - 12, lv.y - 18, lv.x - 12, 'Рычаг блокировки', 'r', cy - 262),
+    leader(lv.x - 12, lv.y - 18, lv.x - 12, 'Рычаг блокировки', 'r', cy - 262, FS.shock),
     // the stem between the housing and the body: the plug moves down, the stem stays under the dot
-    leader(px, cy - 64, px - 60, 'Игла', 'l'),
+    leader(px, cy - 64, px - 60, 'Игла', 'l', cy - 64, FS.shock),
     leaderV(px, cy + 30, cy + 110, 'Клапан'),
     leaderV(410, cy + 34, cy + 110, 'Демпфер'),
-    leaderV(eye1, cy + 18, cy + 110, 'Проушина'),
+    leaderV(eye1, cy + 18, cy + 66, 'Проушина'), // one row higher than the others: its text would touch «Клапан»
     leaderV(654, cy, cy + 110, 'Шток'),
     leaderV(SH.bodyR + 20, cy - 44, cy - 170, 'Воздушная камера'),
     `<g id="la-lead-eye2" transform="translate(0 0)">${leaderV(eye2, cy - 18, cy - 170, 'Проушина')}</g>`,
@@ -390,7 +399,7 @@ function shockMarkup() {
   // the near eye is fixed to the body: a neck behind the body and the ring
   const neck = `<rect x="${eye1 + 10}" y="${cy - 14}" width="${bodyL - eye1 - 4}" height="28" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/>`;
   const eye = shockEye('la-eye1', eye1, neck);
-  return `<svg class="la-svg" data-lock="shock" viewBox="0 0 1000 600" role="img" aria-label="Задний амортизатор в разрезе, вид сбоку">${defs}
+  return `<svg class="la-svg" data-lock="shock" viewBox="${VIEWBOX.shock}" role="img" aria-label="Задний амортизатор в разрезе, вид сбоку">${defs}
   ${eye}
   ${shockInner()}
   ${shockSlide()}
@@ -459,7 +468,88 @@ function applyLock(svg, list) {
   }
 }
 
-const api = { LOCK_PERIOD, TRAVEL, TRAVEL_SHOCK, SHOCK_LAYOUT: SH, lockState, lockMarkup, lockPose, applyLock };
+// ---- the page block: the drawing, the caption of the current step, the step buttons and the pause button ----
+const STEP_NAMES = ['1 Сжатие', '2 Отбой', '3 Блокировка', '4 Удар'];
+const STEP_START = [0, T1, T2, HIT_NEAR]; // a step button sets the time here (step 4: the moment of the impact)
+const LOCK_CAPTIONS = [
+  'Блокировка открыта: вилка сжимается на кочке, масло свободно проходит через клапан',
+  'Отбой: вилка возвращается, масло течёт обратно',
+  'Рычаг повернули: индикатор красный, игла перекрывает масло',
+  'Удар при закрытой блокировке: масло не проходит, вилка не сжимается',
+];
+// the shock has no fork: «вилка» (any form used above) becomes «амортизатор»
+const captionOf = (kind, step) => {
+  const text = LOCK_CAPTIONS[step - 1] || '';
+  return kind === 'shock' ? text.replace(/вилка/g, 'амортизатор') : text;
+};
+const PLAY_TEXT = 'Пуск', PAUSE_TEXT = 'Пауза';
+
+function lockBlock(kind) {
+  const drawing = lockMarkup(kind);
+  if (!drawing) return '';
+  const step = (i, on) => `<button class="chip" type="button" role="radio" aria-checked="${on}" data-lock-step="${i + 1}">${STEP_NAMES[i]}</button>`;
+  return `<section class="lock-anim" data-lock-kind="${kind}"><div class="la-stage">${drawing}</div>`
+    + `<p class="la-caption" aria-live="polite">${captionOf(kind, 1)}</p>`
+    + `<div class="la-ctl"><div class="la-steps" role="radiogroup" aria-label="Шаги">${STEP_NAMES.map((_, i) => step(i, i === 0)).join('')}</div>`
+    + `<button class="chip" type="button" data-lock-play>${PAUSE_TEXT}</button></div></section>`;
+}
+
+// one running loop per element: a second start stops the first one (its loop and its click handler)
+const RUNNING = typeof WeakMap === 'function' ? new WeakMap() : null;
+
+function startLockAnim(rootEl, kind, win = typeof window !== 'undefined' ? window : null) {
+  if (RUNNING && RUNNING.has(rootEl)) RUNNING.get(rootEl).stop();
+  const reduce = !!(win && win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const st = { playing: !reduce, t: reduce ? HIT_NEAR : 0 }; // reduced motion: paused on the impact
+  const svg = rootEl.querySelector('svg.la-svg'), cap = rootEl.querySelector('.la-caption'), play = rootEl.querySelector('[data-lock-play]');
+  const steps = [...rootEl.querySelectorAll('[data-lock-step]')];
+  let last = null, stopped = false, shown = 0;
+  function sync() {
+    const step = lockState(st.t).step;
+    if (step !== shown) { // touch the page only when the step changes (the caption is a live region)
+      shown = step;
+      steps.forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.lockStep) === step)));
+      if (cap) cap.textContent = captionOf(kind, step);
+    }
+    if (play) play.textContent = st.playing ? PAUSE_TEXT : PLAY_TEXT;
+  }
+  function draw() {
+    if (svg) applyLock(svg, lockPose(kind, lockState(st.t)));
+    sync();
+  }
+  function onClick(e) {
+    const b = e.target && e.target.closest && e.target.closest('button');
+    if (!b) return;
+    if (b.hasAttribute('data-lock-step')) { st.t = STEP_START[Number(b.dataset.lockStep) - 1]; st.playing = false; }
+    else if (b.hasAttribute('data-lock-play')) { st.playing = !st.playing; last = null; }
+    else return;
+    draw();
+  }
+  function frame(now) {
+    if (stopped || !rootEl.isConnected) return;
+    if (st.playing) {
+      if (last !== null) st.t = wrap(st.t + Math.min(0.05, (now - last) / 1000)); // a tab back from the background does not jump
+      last = now;
+      draw();
+    }
+    win.requestAnimationFrame(frame);
+  }
+  const ctl = {
+    stop() {
+      stopped = true;
+      if (rootEl.removeEventListener) rootEl.removeEventListener('click', onClick);
+      if (RUNNING && RUNNING.get(rootEl) === ctl) RUNNING.delete(rootEl);
+    },
+    state: () => ({ ...st, step: lockState(st.t).step }),
+  };
+  if (rootEl.addEventListener) rootEl.addEventListener('click', onClick);
+  if (RUNNING) RUNNING.set(rootEl, ctl);
+  draw();
+  if (win) win.requestAnimationFrame(frame);
+  return ctl;
+}
+
+const api = { LOCK_PERIOD, TRAVEL, TRAVEL_SHOCK, SHOCK_LAYOUT: SH, lockState, lockMarkup, lockPose, applyLock, LOCK_CAPTIONS, captionOf, lockBlock, startLockAnim };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
