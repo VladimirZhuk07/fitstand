@@ -65,3 +65,39 @@ test('kids\' styles drop the reach row and its vote in the verdict', () => {
 test('the training-wheels style carries the button\'s name', () => {
   assert.equal(require('../model.js').STYLES.kidTraining.name, 'С подпорными колёсами');
 });
+
+const STYLE_COLOR_EXPECTED = { track: '#8CCB2E', women: '#4FB8D6', teen: '#E8C21C', bmx: '#8A8A3A', cx: '#2B5FB8', hybrid: '#23407A', folding: '#5A6E82' };
+
+test('every style has its own frame colour, with a Russian name', () => {
+  const m = html.match(/const STYLE_COLOR=\{([^}]*)\}/);
+  assert.ok(m, 'STYLE_COLOR is declared');
+  const map = Object.fromEntries([...m[1].matchAll(/(\w+):\['(#[0-9A-Fa-f]{6})','([^']+)'\]/g)].map(x => [x[1], [x[2], x[3]]]));
+  assert.deepEqual(Object.keys(map).sort(), [...FIT_STYLES].sort());
+  for (const s of FIT_STYLES) {
+    assert.equal(map[s][0].toUpperCase(), (STYLE_COLOR_EXPECTED[s] || '#2E3237').toUpperCase(), s);
+    assert.match(map[s][1], /^[А-Яа-яЁё-]+$/, s);
+  }
+});
+
+test('loadSaved gets the basic colours and the style colours together', () => {
+  const call = html.match(/loadSaved\([^\n]*\)/)[0];
+  assert.match(call, /COLORS/);
+  assert.match(call, /STYLE_COLOR/);
+});
+
+test('the first swatch is the style colour and follows the style', () => {
+  assert.match(html, /data-style-color/);
+  const sync = html.slice(html.indexOf('function syncStyle()'), html.indexOf("document.querySelectorAll('#seg button').forEach(b=>b.addEventListener"));
+  assert.match(sync, /STYLE_COLOR\[state\.style\]/);
+});
+
+test('a style switch (button and applyStyle) takes the style colour; page load does not override', () => {
+  const pick = html.slice(html.indexOf('function setStyle('), html.indexOf("$('#seg').addEventListener('keydown'"));
+  assert.match(pick, /state\.color=STYLE_COLOR\[/);
+  assert.match(pick, /--frame/);
+  assert.match(html, /addEventListener\('click',\(\)=>pickStyle\(b\.dataset\.style\)\)/);
+  const api = html.slice(html.indexOf('applyStyle(style,motor,health)'), html.indexOf('showTab(name)'));
+  assert.match(api, /setStyle\(style\)/);
+  const load = html.slice(html.indexOf('// restore saved view state'), html.indexOf('// tabs (phone layout)'));
+  assert.doesNotMatch(load, /STYLE_COLOR/);
+});

@@ -585,12 +585,14 @@ const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduc
 
 const PRESETS=[{H:160,I:74,A:54,W:37},{H:178,I:83,A:61,W:42},{H:195,I:92,A:67,W:46}];
 const COLORS=[['#2B47D6','Кобальт'],['#D44A2C','Сигнальный'],['#4F8A64','Шалфей'],['#C59A55','Песок'],['#5C656E','Графит']];
+// every style has its own frame colour; the first swatch shows it, the basic colours stay as alternatives
+const STYLE_COLOR={city:['#2E3237','Чёрный'],hybrid:['#23407A','Тёмно-синий'],women:['#4FB8D6','Голубой'],gravel:['#2E3237','Чёрный'],cx:['#2B5FB8','Синий'],road:['#2E3237','Чёрный'],track:['#8CCB2E','Салатовый'],mtb:['#2E3237','Чёрный'],fullsus:['#2E3237','Чёрный'],folding:['#5A6E82','Сине-серый'],ebike:['#2E3237','Чёрный'],bmx:['#8A8A3A','Оливковый'],teen:['#E8C21C','Жёлтый'],kidTraining:['#2E3237','Чёрный']};
 const FLEX=['Низкая','Ниже средней','Средняя','Хорошая','Отличная'];
-const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'hybrid',color:COLORS[0][0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
+const DEFAULTS={H:178,I:83,A:61,W:42,flex:3,style:'hybrid',color:STYLE_COLOR.hybrid[0],rider:true,dims:true,motor:false,quiz:null,health:null,healthOn:true,playing:!reduceMotion};
 const SAVE_KEY='fitstand:v1';
 let saved=null; try{saved=localStorage.getItem(SAVE_KEY);}catch(e){}
 const FIT_ONLY=Object.fromEntries(FIT_STYLES.map(s=>[s,STYLES[s]]));
-const state=loadSaved(saved,DEFAULTS,FIT_ONLY,COLORS.map(c=>c[0]));
+const state=loadSaved(saved,DEFAULTS,FIT_ONLY,[...COLORS.map(c=>c[0]),...Object.values(STYLE_COLOR).map(v=>v[0])]);
 // a kids' style takes only the child's height; its other measures come from riderOf
 const kidOf=s=>STYLES[s].kidFit||null;
 let saveT=0;
@@ -643,17 +645,32 @@ function syncStyle(){
   const eb=!!STYLES[state.style].motor;
   $('#tMotor').checked=eb||state.motor; $('#tMotor').disabled=eb;
   syncHealth();
+  syncSwatches();
 }
-document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{state.style=b.dataset.style;syncStyle();changed();}));
+// the first swatch follows the style; the checked one is whichever matches the frame colour
+function syncSwatches(){
+  const [c,n]=STYLE_COLOR[state.style], first=$('#sw').firstElementChild;
+  first.style.setProperty('--c',c);first.setAttribute('aria-label',n);first.title=n;first.dataset.color=c;
+  let hit=false;
+  $('#sw').querySelectorAll('button').forEach(x=>{const on=!hit&&x.dataset.color===state.color;hit=hit||on;x.setAttribute('aria-checked',String(on));});
+}
+// a style switch sets the frame to the style's colour; reloading the page keeps the saved colour
+function setStyle(s){
+  if(s===state.style)return;
+  state.style=s;state.color=STYLE_COLOR[s][0];
+  document.documentElement.style.setProperty('--frame',state.color);
+}
+function pickStyle(s){setStyle(s);syncStyle();changed();}
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>pickStyle(b.dataset.style)));
 $('#seg').addEventListener('keydown',e=>{
   if(!['ArrowLeft','ArrowRight'].includes(e.key))return;
   const bs=[...document.querySelectorAll('#seg button')];let i=bs.findIndex(x=>x.dataset.style===state.style);
   i=(i+(e.key==='ArrowRight'?1:-1)+bs.length)%bs.length;bs[i].click();bs[i].focus();e.preventDefault();
 });
 const sw=$('#sw');
-COLORS.forEach(([c,n])=>{const b=document.createElement('button');b.setAttribute('role','radio');b.setAttribute('aria-label',n);b.title=n;b.style.setProperty('--c',c);
-  b.setAttribute('aria-checked',String(c===state.color));
-  b.addEventListener('click',()=>{state.color=c;document.documentElement.style.setProperty('--frame',c);sw.querySelectorAll('button').forEach(x=>x.setAttribute('aria-checked',String(x===b)));save();});
+[[STYLE_COLOR[state.style][0],STYLE_COLOR[state.style][1],true],...COLORS].forEach(([c,n,own])=>{const b=document.createElement('button');b.setAttribute('role','radio');b.setAttribute('aria-label',n);b.title=n;b.style.setProperty('--c',c);
+  b.dataset.color=c; if(own)b.setAttribute('data-style-color','');
+  b.addEventListener('click',()=>{state.color=b.dataset.color;document.documentElement.style.setProperty('--frame',state.color);syncSwatches();save();});
   sw.appendChild(b);});
 const bikeSvg=$('#bike');
 $('#tRider').addEventListener('change',e=>{state.rider=e.target.checked;bikeSvg.classList.toggle('no-rider',!state.rider);changed();});
@@ -867,7 +884,7 @@ window.fitstand={
   getState:()=>JSON.parse(JSON.stringify(state)),
   applyStyle(style,motor,health){
     if(!FIT_STYLES.includes(style))return;
-    state.style=style;state.motor=!!motor;
+    setStyle(style);state.motor=!!motor;
     if(health!==undefined){state.health=health?{upright:health.upright||0,barUp:health.barUp||0,crankMax:health.crankMax??null,stepThrough:!!health.stepThrough,gear:[...(health.gear||[])]}:null;state.healthOn=true;}
     syncStyle();dirty=true;changed();
   },
