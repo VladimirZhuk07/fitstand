@@ -644,6 +644,19 @@ test('review fixes: suspension page facts and drawings', () => {
   assert.ok(shifters.usage[0].list.join(' ').toLowerCase().includes('запомните'));
 });
 
+test('suspension texts agree with each other (review of the lockout content)', () => {
+  const text = id => JSON.stringify(forkDetail(id));
+  assert.ok(!text('springFork').includes('нижние ноги'), 'the dirt is wiped from the upper legs');
+  assert.ok(text('springFork').includes('верхние ноги'));
+  assert.ok(!forkDetail('airFork').usage.some(u => u.list.some(l => l.includes('Раз в сезон протирайте'))), 'usage does not contradict the monthly care');
+  const oil = forkDetail('airFork').breaks.find(b => b.name === 'Течёт масло');
+  assert.ok(/не мойте|протирайте/i.test(oil.text), 'how to avoid the leak');
+  const knock = forkDetail('rearShock').breaks.find(b => b.name === 'Стучит или люфтит в креплениях');
+  assert.ok(knock.text.includes('болты') && knock.text.includes('втулки'), 'the cause: loose bolts or worn bushings');
+  const loss = forkDetail('rearShock').breaks.find(b => b.name === 'Воздушный амортизатор не держит давление');
+  assert.ok(loss.text.includes('с уходящим давлением') && !loss.text.includes('без давления'));
+});
+
 test('no suspension makers in the content', () => {
   const s = JSON.stringify(CONTENT).toLowerCase();
   for (const b of ['rockshox', 'manitou', 'suntour', 'marzocchi', 'cane creek']) assert.ok(!s.includes(b), b);
