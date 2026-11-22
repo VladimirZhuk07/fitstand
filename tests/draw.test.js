@@ -232,3 +232,44 @@ test('copyFlags copies every non-numeric key that changed and reports it', () =>
   assert.equal(cur.a, 1);
   assert.equal(Dr.copyFlags(cur, target, ['a']), false);
 });
+
+// ---------- details of e-bike, teen and kids' bikes (feedback 6, task 11) ----------
+const DETAIL = ['display', 'reflectors', 'bell', 'parentHandle'];
+const hasK = (s, k) => new RegExp(`data-k="${k}"`).test(s);
+
+test('e-bike draws its motor without opts.motor, and a display inside the cockpit', () => {
+  const s = Dr.bikeMarkup(gt('ebike'), 1, { live: false });
+  assert.match(s, /data-k="motor"/);
+  assert.match(partBody(s, 'cockpit'), /data-k="display"/);
+  assert.doesNotMatch(Dr.bikeMarkup(gt('hybrid'), 1, { live: false }), /data-k="(motor|display)"/);
+});
+
+test('teen has a spoke reflector on each wheel, inside the turning spokes on a live drawing', () => {
+  const st = Dr.bikeMarkup(gt('teen'), 1, { live: false });
+  assert.equal((st.match(/data-k="reflectors"/g) || []).length, 2);
+  assert.match(st, /f-reflector/);
+  const live = Dr.bikeMarkup(gt('teen'), 1);
+  for (const id of ['wR', 'wF']) {
+    const at = live.indexOf(`<g id="${id}">`);
+    assert.ok(at >= 0, id);
+    const spokes = live.slice(at, live.indexOf('<circle class="blur-disc"', at));
+    assert.match(spokes, /<g class="spokes">/);
+    assert.match(spokes, /data-k="reflectors"/, `${id} reflector rotates with the spokes`);
+  }
+});
+
+test('kids training bike: orange rims, bell on the bar, parent handle behind the saddle', () => {
+  const s = Dr.bikeMarkup(gt('kidTraining'), 1, { live: false });
+  assert.match(s, /class="s-rim rim-accent nf"/);
+  assert.match(partBody(s, 'cockpit'), /data-k="bell"/);
+  assert.match(partBody(s, 'saddle'), /data-k="parentHandle"/);
+  assert.doesNotMatch(s, /data-k="(display|reflectors)"/);
+});
+
+test('plain styles have none of the new details', () => {
+  for (const style of ['road', 'hybrid', 'city', 'mtb', 'kidTrike']) {
+    const s = Dr.bikeMarkup(gt(style), 1, { live: false });
+    for (const k of DETAIL) assert.ok(!hasK(s, k), `${style} has no ${k}`);
+    assert.doesNotMatch(s, /rim-accent|f-reflector/, style);
+  }
+});
