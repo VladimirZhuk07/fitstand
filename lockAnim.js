@@ -51,7 +51,25 @@ const FORK_GEOM = {
   travel: 160,                       // px the lower legs rise at full compression (c = 1)
   dir: [0, -1],                      // the direction the lower part moves when it compresses (a side-view shock uses [-1, 0] or [1, 0])
 };
-const GEOM = { spring: FORK_GEOM, air: FORK_GEOM };
+// the rear shock is seen from the side: the axis is horizontal, the shaft and the far eye slide left when it compresses
+const TRAVEL_SHOCK = 120;          // px the shaft and the far eye slide at full compression (c = 1)
+const SH = {
+  cy: 330, px: 200,                // height of the axis; x of the valve partition inside the damper body
+  eye1: 90, eye2: 810, eyeR: 26,   // eye centres (the far eye at rest) and the eye radius
+  bodyL: 116, bodyR: 450,          // the damper body (height 100, the oil cavity 84)
+  canR: 644,                       // the air can runs from the body end to here (height 150)
+  pistX: 352, pistW: 16,           // the damper piston head at rest (left face)
+  wallT: 22, orH: 28,              // valve partition thickness, orifice height (the needle drop)
+};
+const SHOCK_GEOM = {
+  lever: { x: SH.px, y: SH.cy - 100, rest: -60 }, // on a housing above the body; the lever sweeps right, above the body
+  needleDrop: SH.orH,                // the plug drops from the bore above the orifice into the orifice
+  flowMirror: 2 * SH.px,             // vertical mirror axis (the partition): the reversed flow lands on the same spots
+  hitShift: 60,                      // px the impact arrow is held back (to the right) while it is "far"
+  travel: TRAVEL_SHOCK,
+  dir: [-1, 0],                      // compression pushes the shaft and the far eye to the left
+};
+const GEOM = { spring: FORK_GEOM, air: FORK_GEOM, shock: SHOCK_GEOM };
 const TRAVEL = FORK_GEOM.travel;
 
 const nr = v => Math.round(v * 100) / 100;
@@ -78,6 +96,7 @@ const defs = `<defs>
   <linearGradient id="la-g-steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d5dde4"/><stop offset="0.5" stop-color="#8b969f"/><stop offset="1" stop-color="#5c6770"/></linearGradient>
   <linearGradient id="la-g-brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3dc9a"/><stop offset="0.45" stop-color="#c4963c"/><stop offset="1" stop-color="#7c5a1e"/></linearGradient>
   <linearGradient id="la-g-oil" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ECC26E"/><stop offset="0.5" stop-color="#D9A441"/><stop offset="1" stop-color="#B8872D"/></linearGradient>
+  <linearGradient id="la-g-oilV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECC26E"/><stop offset="0.5" stop-color="#D9A441"/><stop offset="1" stop-color="#B8872D"/></linearGradient>
   <linearGradient id="la-g-rubber" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4048"/><stop offset="1" stop-color="#14181c"/></linearGradient>
   <pattern id="la-g-hatch" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 5 L5 0" stroke="#0e1318" stroke-width="0.7" opacity="0.28"/></pattern>
   <marker id="la-g-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#6b3f04"/></marker>
@@ -127,19 +146,31 @@ function lowerLegs() {
 
 // the oil damper leg: amber oil, a funnel-seat valve plate, the cone-tipped needle coming down from the lever,
 // the damper piston on its rod, the oil arrows and the red cross that shows when the valve is shut
+const flowArrow = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6b3f04" stroke-width="2.4" marker-end="url(#la-g-arr)"/>`;
+
 function damperLeg(g, cx) {
   const plate = `<path d="M ${cx - 20} 262 h 11 l 6 20 h -17 z M ${cx + 20} 262 h -11 l -6 20 h 17 z" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>`;
   const needle = `<g id="la-needle" transform="translate(0 0)"><rect x="${cx - 3}" y="150" width="6" height="84" fill="url(#la-g-steel)"/><rect x="${cx - 6}" y="224" width="12" height="9" rx="2" fill="url(#la-g-brass)"/><polygon points="${cx - 9},234 ${cx + 9},234 ${cx},264" fill="url(#la-g-brass)"/></g>`;
   const piston = `<g id="la-piston" transform="translate(0 0)"><rect x="${cx - 3}" y="446" width="6" height="285" fill="url(#la-g-steel)"/><rect x="${cx - 19}" y="430" width="38" height="16" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${cx - 19}" y="435" width="38" height="3" fill="#14181c" opacity="0.5"/></g>`;
-  const arrow = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#6b3f04" stroke-width="2.4" marker-end="url(#la-g-arr)"/>`;
+  const arrow = flowArrow;
   // below the plate the oil comes up to the seat (the lower pair), above it the oil leaves (the upper pair, the lower
-  // pair mirrored); the upper pair starts in the valve gap and all four stay off the needle cone, so the needle is visible
-  const out = 17, seat = 7, run = 30, m = g.flowMirror; // out: at the wall side (inside the column), seat: in the valve gap
+  // pair mirrored); the upper pair starts in the valve gap and all four stay off the needle cone, so the needle is visible;
+  // the lower tips stop 4 px under the underside of the plate (y 282), in line with the gap
+  const out = 17, seat = 4, run = 28, m = g.flowMirror; // out: at the wall side (inside the column), seat: in the valve gap
   const flow = `<g id="la-flow" opacity="0" transform="translate(0 0)">`
     + arrow(cx - out, FLOW_BOT, cx - seat, FLOW_BOT - run) + arrow(cx + out, FLOW_BOT, cx + seat, FLOW_BOT - run)
     + arrow(cx - seat, m - (FLOW_BOT - run), cx - out, m - FLOW_BOT) + arrow(cx + seat, m - (FLOW_BOT - run), cx + out, m - FLOW_BOT) + `</g>`;
   const cross = `<g id="la-cross" opacity="0"><path d="M ${cx - 14} 258 L ${cx + 14} 286 M ${cx + 14} 258 L ${cx - 14} 286" stroke="#D9473F" stroke-width="6" stroke-linecap="round"/></g>`;
   return `<rect x="${cx - 20}" y="205" width="40" height="315" fill="url(#la-g-oil)"/>${plate}${needle}${piston}${flow}${cross}`;
+}
+
+// the pivot disc and the lever with its colour indicator (the lever turns about lv.x, lv.y; its pose is set by lockPose)
+function leverParts(lv, discR) {
+  return `<circle cx="${lv.x}" cy="${lv.y}" r="${discR}" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>
+  <g id="la-lever" transform="translate(${lv.x} ${lv.y}) rotate(0)">
+    <g transform="rotate(${lv.rest})"><rect x="4" y="-8" width="68" height="16" rx="8" fill="url(#la-g-brass)" stroke="#7c5a1e" stroke-width="1"/><rect x="12" y="-5" width="52" height="3" rx="1.5" fill="#fff" opacity="0.35"/></g>
+    <circle id="la-ind" class="la-ind la-open" r="14" fill="#3FAE5C" stroke="#fff" stroke-width="2"/>
+  </g>`;
 }
 
 // the crown with the steerer, both stanchions and the lock lever with its colour indicator above the damper leg
@@ -150,11 +181,7 @@ function forkTop(g) {
   <rect x="190" y="130" width="520" height="55" rx="14" fill="url(#la-g-alumV)"/>
   <rect x="204" y="135" width="492" height="5" rx="2" fill="#fff" opacity="0.28"/>
   <rect x="${LX - 34}" y="180" width="68" height="24" rx="4" fill="url(#la-g-alum)"/><rect x="${RX - 34}" y="180" width="68" height="24" rx="4" fill="url(#la-g-alum)"/>
-  <circle cx="${lv.x}" cy="${lv.y}" r="22" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>
-  <g id="la-lever" transform="translate(${lv.x} ${lv.y}) rotate(0)">
-    <g transform="rotate(${lv.rest})"><rect x="4" y="-8" width="68" height="16" rx="8" fill="url(#la-g-brass)" stroke="#7c5a1e" stroke-width="1"/><rect x="12" y="-5" width="52" height="3" rx="1.5" fill="#fff" opacity="0.35"/></g>
-    <circle id="la-ind" class="la-ind la-open" r="14" fill="#3FAE5C" stroke="#fff" stroke-width="2"/>
-  </g>`;
+  ${leverParts(lv, 22)}`;
 }
 
 // the red arrow that hits the axle from below; "far" means held back by g.hitShift
@@ -277,9 +304,98 @@ function airMarkup() {
   return forkSvg('air', 'Воздушная вилка в разрезе, вид спереди', left, leaders, nipple, tube);
 }
 
-// kind 'shock' is drawn in a later task; until then it returns an empty string
+// ---- the rear shock: side view, a horizontal body. Left: the fixed eye on the damper body, then the air can; right: the
+// shaft with the far eye. The valve is a vertical partition with an orifice; the needle comes down from the lever above
+// and plugs the orifice. Everything that slides (shaft, far eye) is in la-move; the damper piston head is la-piston.
+const shockEye = (id, x) => `<g id="${id}"><circle cx="${x}" cy="${SH.cy}" r="${SH.eyeR}" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/><path d="M ${x - 19} ${SH.cy - 10} A 21 21 0 0 1 ${x - 5} ${SH.cy - 20}" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.3"/><circle cx="${x}" cy="${SH.cy}" r="10" fill="#22282f" stroke="#c5ced6" stroke-width="2"/></g>`;
+
+// a vertical leader: a line from the point straight to the label height, the label centred on it (above or below)
+function leaderV(x, y, ly, text) {
+  return `<line class="la-leader" x1="${x}" y1="${y}" x2="${x}" y2="${ly}" stroke="#8b97a2" stroke-width="1.2"/>`
+    + `<circle class="la-leader-dot" cx="${x}" cy="${y}" r="3.2" fill="#24303a"/>`
+    + `<text class="la-label" x="${x}" y="${ly > y ? ly + 18 : ly - 6}" text-anchor="middle" font-family="${FONT}" font-size="18" fill="#1c2630">${text}</text>`;
+}
+
+// the damper body with its oil, the air can around the exit of the shaft, the valve partition, the needle, the oil arrows and the cross
+function shockInner() {
+  const { cy, px, bodyL, bodyR, canR, wallT, orH } = SH, top = cy - 50, cavT = cy - 42, half = orH / 2, w = bodyR - bodyL;
+  const body = `<rect x="${bodyL}" y="${top}" width="${w}" height="100" rx="10" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/>
+  <rect x="${bodyL + 8}" y="${cavT}" width="${w - 16}" height="84" fill="url(#la-g-oilV)"/>
+  <rect x="${bodyL + 14}" y="${top + 3}" width="${w - 28}" height="3" rx="1.5" fill="#fff" opacity="0.28"/>
+  <rect x="${px - 9}" y="${top - 4}" width="18" height="8" rx="2" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>`;
+  // the air can: a sleeve around the shaft exit with a light chamber inside; the shaft slides through a slot in each cap
+  const can = `<rect x="${bodyR}" y="${cy - 75}" width="${canR - bodyR}" height="150" rx="6" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/>
+  <rect x="${bodyR + 12}" y="${cy - 67}" width="${canR - bodyR - 24}" height="134" fill="${BG_POS}"/>`;
+  const piece = (y0, y1) => `<rect x="${px - wallT / 2}" y="${y0}" width="${wallT}" height="${y1 - y0}" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/>`;
+  const valve = piece(cavT, cy - half) + piece(cy + half, cy + 42) + `<rect x="${px - 10}" y="${cavT}" width="20" height="${42 - half}" fill="#12171c"/>`;
+  const needle = `<g id="la-needle" transform="translate(0 0)"><rect x="${px - 3}" y="${cy - 112}" width="6" height="82" fill="url(#la-g-steel)"/><polygon points="${px - 10},${cy - 42} ${px + 10},${cy - 42} ${px + 10},${cy - 20} ${px + 8},${cy - half} ${px - 8},${cy - half} ${px - 10},${cy - 20}" fill="url(#la-g-brass)" stroke="#7c5a1e" stroke-width="1"/></g>`;
+  // compression sends the oil through the valve to the left: the arrows on the piston side converge on the orifice,
+  // the ones on the far side leave it; the reversed flow mirrors the group about the partition, same spots, opposite direction
+  const out = 62, seat = 15, ya = 28, yb = 9;
+  const flow = `<g id="la-flow" opacity="0" transform="translate(0 0)">`
+    + flowArrow(px + out, cy - ya, px + seat, cy - yb) + flowArrow(px + out, cy + ya, px + seat, cy + yb)
+    + flowArrow(px - seat, cy - yb, px - out, cy - ya) + flowArrow(px - seat, cy + yb, px - out, cy + ya) + `</g>`;
+  const cross = `<g id="la-cross" opacity="0"><path d="M ${px - 11} ${cy - 11} L ${px + 11} ${cy + 11} M ${px + 11} ${cy - 11} L ${px - 11} ${cy + 11}" stroke="#D9473F" stroke-width="6" stroke-linecap="round"/></g>`;
+  return body + can + valve + needle + flow + cross;
+}
+
+// the sliding part: the shaft from the piston head to the far eye, and the eye
+function shockSlide() {
+  const { cy, pistX, pistW, eye2 } = SH;
+  return `<g id="la-move" transform="translate(0 0)"><rect id="la-shaft" x="${pistX + pistW}" y="${cy - 6}" width="${eye2 - pistX - pistW}" height="12" fill="url(#la-g-steel)"/>${shockEye('la-eye2', eye2)}</g>`;
+}
+
+// the damper piston head (on the shaft), the shaft seal and both can caps (the shaft passes through a slot in each),
+// the lever housing with the lever on top
+function shockFront(g) {
+  const { cy, pistX, pistW, bodyR, canR } = SH, lv = g.lever;
+  const piston = `<g id="la-piston" transform="translate(0 0)"><rect x="${pistX}" y="${cy - 38}" width="${pistW}" height="76" rx="3" fill="url(#la-g-steel)" stroke="#5c6770" stroke-width="1"/><rect x="${pistX + 5}" y="${cy - 38}" width="3" height="76" fill="#14181c" opacity="0.5"/></g>`;
+  const slotted = (x, w, y0, y1, fill) => `<rect x="${x}" y="${y0}" width="${w}" height="${cy - 6 - y0}" fill="${fill}"/><rect x="${x}" y="${cy + 6}" width="${w}" height="${y1 - cy - 6}" fill="${fill}"/>`;
+  const seal = slotted(bodyR - 14, 14, cy - 42, cy + 42, 'url(#la-g-rubber)');
+  const caps = slotted(bodyR, 12, cy - 75, cy + 75, 'url(#la-g-alumV)') + slotted(canR - 12, 12, cy - 75, cy + 75, 'url(#la-g-alumV)');
+  const housing = `<rect x="${lv.x - 24}" y="${lv.y - 22}" width="48" height="44" rx="8" fill="url(#la-g-alum)" stroke="#2a313a" stroke-width="1"/><rect x="${lv.x - 18}" y="${lv.y - 19}" width="36" height="3" rx="1.5" fill="#fff" opacity="0.28"/>`;
+  return piston + seal + caps + housing + leverParts(lv, 20);
+}
+
+// labels go above and below the body, on vertical leaders, clear of everything that slides; the label of the far eye slides with it
+function shockLeaders(g) {
+  const { cy, px, eye1, eye2 } = SH, lv = g.lever;
+  return [
+    // from the top of the housing straight up, left of the sweep of the lever (it swings right), then to the label
+    leader(lv.x - 12, lv.y - 18, lv.x - 12, 'Рычаг блокировки', 'r', cy - 262),
+    // the stem between the housing and the body: the plug moves down, the stem stays under the dot
+    leader(px, cy - 64, px - 60, 'Игла', 'l'),
+    leaderV(px, cy + 30, cy + 110, 'Клапан'),
+    leaderV(410, cy + 34, cy + 110, 'Демпфер'),
+    leaderV(eye1, cy + 18, cy + 110, 'Проушина'),
+    leaderV(654, cy, cy + 110, 'Шток'),
+    leaderV(545, cy - 44, cy - 170, 'Воздушная камера'),
+    `<g id="la-lead-eye2" transform="translate(0 0)">${leaderV(eye2, cy - 18, cy - 170, 'Проушина')}</g>`,
+  ].join('');
+}
+
+// the impact arrow comes from the right, towards the far eye; "far" means held back (to the right) by g.hitShift
+function shockHit(g) {
+  const { cy, eye2, eyeR } = SH, x = eye2 + eyeR + 6;
+  return `<g id="la-hit" opacity="0" transform="${shift(g, g.hitShift, -1)}"><polygon points="${x},${cy} ${x + 32},${cy - 20} ${x + 32},${cy - 7} ${x + 84},${cy - 7} ${x + 84},${cy + 7} ${x + 32},${cy + 7} ${x + 32},${cy + 20}" fill="#D9473F" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></g>`;
+}
+
+function shockMarkup() {
+  const g = GEOM.shock, { cy, eye1, bodyL } = SH;
+  // the near eye is fixed to the body: a neck behind the body and the ring
+  const eye = shockEye('la-eye1', eye1).replace('>', `><rect x="${eye1 + 10}" y="${cy - 14}" width="${bodyL - eye1 - 4}" height="28" fill="url(#la-g-alumV)" stroke="#2a313a" stroke-width="1"/>`);
+  return `<svg class="la-svg" data-lock="shock" viewBox="0 0 1000 600" role="img" aria-label="Задний амортизатор в разрезе, вид сбоку">${defs}
+  ${eye}
+  ${shockInner()}
+  ${shockSlide()}
+  ${shockFront(g)}
+  <g class="la-leaders">${shockLeaders(g)}</g>
+  ${shockHit(g)}
+</svg>`;
+}
+
 function lockMarkup(kind) {
-  return kind === 'spring' ? springMarkup() : kind === 'air' ? airMarkup() : '';
+  return kind === 'spring' ? springMarkup() : kind === 'air' ? airMarkup() : kind === 'shock' ? shockMarkup() : '';
 }
 
 // ---- one frame: attribute changes only, the list of ids is the same for every state ----
@@ -316,6 +432,7 @@ const airPose = (g, st) => {
 };
 const PARTS = {
   air: airPose,
+  shock: (g, st) => [rise('la-lead-eye2', g, st)], // the leader of the far eye slides with the eye
   spring: (g, st) => [rise('la-cup', g, st), { id: 'la-spring', attrs: { points: springPoints(st.c, g.travel) } }],
 };
 
@@ -332,7 +449,7 @@ function applyLock(svg, list) {
   }
 }
 
-const api = { LOCK_PERIOD, TRAVEL, lockState, lockMarkup, lockPose, applyLock };
+const api = { LOCK_PERIOD, TRAVEL, TRAVEL_SHOCK, lockState, lockMarkup, lockPose, applyLock };
 if (typeof module === 'object' && module.exports) module.exports = api;
 else Object.assign(root, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
